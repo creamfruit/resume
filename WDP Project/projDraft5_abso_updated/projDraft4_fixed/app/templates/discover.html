@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discover Matches - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <link rel="stylesheet" href="/static/css/matching.css">
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+<body style="background: #f8fafc;">
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+    </div>
+  </nav>
+
+  <main class="dashboard-main" style="padding-top: 96px;">
+    <div class="container">
+      <div class="section-header" style="margin-bottom: 1.5rem;">
+        <h2>Discover Connections</h2>
+        <p>Find new matches and build meaningful connections.</p>
+      </div>
+
+      <div class="match-toolbar">
+        <div class="match-filters">
+          <a href="javascript:history.back()" aria-label="Go back" class="filter-btn back-filter-btn">&#8592; Back</a>
+          <button class="filter-btn active" data-sort="default">Default</button>
+          <button class="filter-btn" data-sort="distance">Display by Distance</button>
+          <button class="filter-btn" data-sort="compatibility">Display by Compatibility</button>
+        </div>
+        <div class="header">
+          <button class="header-btn" id="matchesBtn">&#x1F91D; Matches (<span id="matchCount">0</span>)</button>
+          <button class="header-btn" id="resetBtn">&#x1F504; Reset</button>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="card" id="card">
+          <div class="card-header" id="cardHeader">
+            <img class="avatar" src="" alt="Profile Avatar" />
+            <div class="header-info">
+              <h2 class="name"></h2>
+              <div class="location-availability">
+                <span>&#x1F4CD; <span class="location"></span></span>
+                <span class="availability-status">&#x1F550; Availability not set</span>
+              </div>
+            </div>
+            <div class="match-badge">
+              <span class="match-value"></span> Match
+            </div>
+          </div>
+
+          <div class="bio"></div>
+
+          <div class="card-content">
+            <div class="section">
+              <div class="section-title">Why We Matched</div>
+              <div class="tags" id="matchedTags"></div>
+            </div>
+
+            <div class="section interests-section">
+              <div class="section-title">Interests</div>
+              <div class="tags" id="interestTags"></div>
+            </div>
+
+            <div class="two-column">
+              <div class="section teach-section">
+                <div class="section-title">Can Teach You</div>
+                <div class="tags" id="teachTags"></div>
+              </div>
+
+              <div class="section learn-section">
+                <div class="section-title">Wants to Learn</div>
+                <div class="tags" id="learnTags"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="action-btn action-pass" id="passBtn">&#x2716; Pass</button>
+            <button class="action-btn action-connect" id="connectBtn">&#x2764;&#xFE0F; Connect</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="match-modal" id="matchModal">
+        <div class="match-content">
+          <div class="match-icon">&#x2764;&#xFE0F;</div>
+          <h2>It's a Match!</h2>
+          <p>You and <span id="matchedName"></span> want to connect!</p>
+          <div class="match-buttons">
+            <button class="modal-btn send-message-btn" id="sendMessageBtn">&#x1F4AC; Send Message</button>
+            <button class="modal-btn keep-swiping-btn" id="keepSwipingBtn">Keep Swiping</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="matches-modal" id="matchesModal">
+        <div class="matches-content">
+          <div class="matches-header">
+            <h2>Your Matches</h2>
+            <button class="close-btn" id="closeMatchesBtn">&#x2716;</button>
+          </div>
+          <p class="matches-subtitle">
+            <span id="matchesCount">0</span> connections ready to chat
+          </p>
+          <div id="matchesList"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/js/matching.js"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+</html>
+

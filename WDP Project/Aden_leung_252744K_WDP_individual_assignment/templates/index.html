@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RE:CONNECT SG - Your Singapore Journey</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ request.script_root }}/static/css/global_navbar.css">
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+
+<body data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+<div class="global-topbar" id="reconnect-global-navbar">
+  <div class="brand">Re:Connect Global</div>
+  <div class="actions">
+    <button type="button" id="global-notif-btn">Notifications <span class="badge" id="global-notif-badge">0</span></button>
+    <button type="button" id="global-chatbot-btn">Chatbot</button>
+    <button type="button" id="global-access-btn">Accessibility</button>
+  </div>
+  <div class="panel" id="global-notif-panel">
+    <header>Notifications</header>
+    <div class="panel-body" id="global-notif-list">
+      <div class="item">No notifications yet.</div>
+    </div>
+  </div>
+  <div class="panel" id="global-chatbot-panel">
+    <header>FAQ Chatbot</header>
+    <div class="panel-body">
+      <div id="global-chatbot-log" style="max-height:160px; overflow:auto;"></div>
+      <form id="global-chatbot-form" class="chatbot-input">
+        <input id="global-chatbot-input" type="text" placeholder="Ask a question...">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+  <div class="panel" id="global-access-panel">
+    <header>Accessibility</header>
+    <div class="panel-body">
+      <div class="item">Use browser zoom for text size.</div>
+      <div class="item">High contrast mode: Alt + Shift + H.</div>
+      <div class="item">Keyboard navigation supported.</div>
+    </div>
+  </div>
+</div>
+
+    <div class="container py-4">
+        <div class="card mb-3 shadow-sm">
+            <div class="card-body">
+                <div class="mb-3 d-flex justify-content-between align-items-start flex-wrap gap-3">
+                    <div>
+                        <h2 class="mb-2">Welcome back, <span id="userName" class="text-orange">Friend</span>!</h2>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <span class="badge rounded-pill tier-badge px-3 py-2" id="tierBadge">Tier 1</span>
+                            <span class="badge rounded-pill multiplier-badge px-3 py-2" id="multiplierBadge">1.0x multiplier</span>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 align-self-start">
+                        <a class="btn btn-outline-teal btn-sm d-none" id="adminLink" href="/admin">Admin</a>
+                        <button class="btn btn-outline-secondary btn-sm" id="logoutBtn">Log out</button>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <div class="small text-muted mb-1">Your Points</div>
+                        <div class="h3 fw-bold mb-0">
+                            <span id="totalPoints" class="text-orange">0</span><small class="text-muted fw-normal ms-1">pts</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted mb-1">Landmarks Visited</div>
+                        <div class="h3 fw-bold mb-0">
+                            <span id="landmarkCount" class="text-teal">0</span><small class="text-muted fw-normal ms-1">/ 10</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted mb-1">Active Days</div>
+                        <div class="h3 fw-bold mb-0">
+                            <span id="activeDays">1</span><small class="text-muted fw-normal ms-1">days</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="small text-muted mb-1">Streak</div>
+                        <div class="h3 fw-bold mb-0">
+                            <span>&#128293;</span> <span id="streakCount">0</span><small class="text-muted fw-normal ms-1">days</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
+                    <span class="fw-semibold">Progress to Next Tier</span>
+                    <span class="fw-semibold text-primary" id="tierProgressPoints">0 / 2,000 points</span>
+                </div>
+                <div class="progress mb-2" style="height: 10px;">
+                    <div class="progress-bar tier-progress" role="progressbar" id="tierProgressFill" style="width: 0%"></div>
+                </div>
+                <div class="small text-muted mb-1" id="tierCountdown">2,000 points to go</div>
+                <p class="small text-muted mb-0 tier-progress-hint">Reach the next tier to boost all your points by 1.1x</p>
+            </div>
+        </div>
+
+        <div class="card mb-4 shadow-sm" id="checkinCard">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
+                    <span class="fw-semibold">Daily Check-In Calendar</span>
+                    <span class="small text-muted" id="checkinSummary">Keep the chain going</span>
+                </div>
+                <div class="checkin-grid" id="checkinCalendar"></div>
+                <div class="small text-muted mt-2">Perfect week: +100 pts | Perfect month: +500 pts</div>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="journey-tab" data-bs-toggle="tab" data-bs-target="#journeyTab" type="button" role="tab">Your Journey</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="quests-tab" data-bs-toggle="tab" data-bs-target="#questsTab" type="button" role="tab">Quests</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="badges-tab" data-bs-toggle="tab" data-bs-target="#badgesTab" type="button" role="tab">Achievements</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="rewards-tab" data-bs-toggle="tab" data-bs-target="#rewardsTab" type="button" role="tab">Rewards</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="leaderboard-tab" data-bs-toggle="tab" data-bs-target="#leaderboardTab" type="button" role="tab">Leaderboard</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabContent">
+            <div class="tab-pane fade show active" id="journeyTab" role="tabpanel">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h3 class="card-title">Your Singapore Journey</h3>
+                        <p class="card-text text-muted mb-4">Travel across Singapore, unlocking landmarks one by one. Each stop brings you closer to becoming a community connector.</p>
+
+                        <div class="mb-4">
+                            <div class="progress mb-2" style="height: 12px;">
+                                <div class="progress-bar landmark-progress" role="progressbar" id="nextLandmarkProgress" style="width: 0%"></div>
+                            </div>
+                            <p class="small text-muted mb-0" id="nextLandmarkText">Earn <strong>1,000 points</strong> to unlock your first landmark</p>
+                        </div>
+
+                        <div class="singapore-map-container">
+                            <svg class="singapore-map" viewBox="0 0 800 550" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <linearGradient id="waterGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#A8D8F0" />
+                                        <stop offset="100%" stop-color="#7EC8E3" />
+                                    </linearGradient>
+
+                                    <linearGradient id="landGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#4A7C59" />
+                                        <stop offset="55%" stop-color="#5A9367" />
+                                        <stop offset="100%" stop-color="#4A7C59" />
+                                    </linearGradient>
+
+                                    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="rgba(0,0,0,0.18)"/>
+                                    </filter>
+                                </defs>
+
+                                <rect width="800" height="550" fill="url(#waterGrad)"/>
+
+                                <path id="sgOutline" d="M 150 300 Q 190 240 240 225 Q 300 210 335 175 Q 370 140 420 155 Q 470 170 520 185 Q 585 205 640 245 Q 685 275 660 315 Q 635 355 595 365 Q 560 375 520 405 Q 470 445 420 430 Q 360 415 320 430 Q 275 445 235 420 Q 185 385 165 350 Q 150 330 150 300 Z"
+                                    fill="url(#landGrad)" stroke="#3D6647" stroke-width="3" filter="url(#softShadow)"/>
+
+                                <path d="M 175 305 Q 215 255 255 245 Q 315 230 350 195 Q 385 160 425 172 Q 470 185 520 200 Q 580 220 625 252 Q 655 275 640 302 Q 625 332 585 340 Q 540 350 510 380 Q 470 420 425 408 Q 360 390 315 405 Q 275 418 245 398 Q 205 372 188 345 Q 175 328 175 305 Z"
+                                    fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
+
+                                <path id="sentosaOutline" d="M 320 460 Q 350 440 385 448 Q 415 455 420 470 Q 415 490 385 495 Q 345 503 320 487 Q 305 475 320 460 Z"
+                                    fill="#5A9367" stroke="#3D6647" stroke-width="2" filter="url(#softShadow)"/>
+
+                                <g id="landmarkMarkers"></g>
+
+                                <text x="400" y="530" text-anchor="middle" font-size="18" font-weight="700" fill="#2C5F2D" opacity="0.55">
+                                    Singapore Journey Map
+                                </text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="questsTab" role="tabpanel">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h3 class="card-title">Active Quests</h3>
+                        <p class="card-text text-muted mb-4">Small steps that guide you through Re:Connect. Complete quests to earn points toward your next landmark.</p>
+                        <div id="activeQuestList"></div>
+                        <hr class="my-4">
+                        <h4 class="card-title">Completed Quests</h4>
+                        <p class="card-text text-muted mb-4">Celebrate what you've already finished.</p>
+                        <div id="completedQuestList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="badgesTab" role="tabpanel">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h3 class="card-title">Your Achievements</h3>
+                        <p class="card-text text-muted mb-4">Milestones that celebrate your journey and contributions to the community.</p>
+                        <div id="badgeGroups"></div>
+                        <hr class="my-4">
+                        <h4 class="card-title">Skill Tree / Tech Mastery</h4>
+                        <p class="card-text text-muted mb-4">Track the digital skills you are teaching. Complete each chain to unlock mastery.</p>
+                        <div id="skillTree"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="rewardsTab" role="tabpanel">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h3 class="card-title">Redeem Rewards</h3>
+                        <p class="card-text text-muted mb-4">Turn your efforts into real value. See how close you are to each reward.</p>
+                        <div class="row g-3" id="rewardGrid"></div>
+                        <hr class="my-4">
+                        <h5 class="mb-3">Your Redeemed Rewards</h5>
+                        <div id="redeemedCart"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="leaderboardTab" role="tabpanel">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h3 class="card-title">Leaderboard</h3>
+                        <p class="card-text text-muted mb-4">Top 10 users by total points.</p>
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>User</th>
+                                        <th>Points</th>
+                                        <th>Tier</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaderboardRows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="landmarkModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="modal-landmark-icon mb-3" id="modalIcon"></div>
+                    <h3 class="mb-3" id="modalTitle"></h3>
+                    <div class="alert alert-info" id="modalStory"></div>
+                    <p class="fw-semibold mb-3" id="modalQuestion"></p>
+                    <div class="d-grid gap-2" id="quizOptions"></div>
+                    <div class="alert d-none mt-3" id="quizFeedback"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-orange w-100 d-none" id="modalAction" onclick="continueJourney()">Continue Journey</button>
+                    <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script src="{{ request.script_root }}/static/js/global_navbar.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,98 @@
+[
+  {
+    "id": "signup_login",
+    "question": "How do I sign up or log in?",
+    "answer": "Use the Sign Up page to create your account, then log in with your registered email and password.",
+    "keywords": ["sign up", "signup", "register", "create account", "login", "log in", "password"]
+  },
+  {
+    "id": "profile_customization",
+    "question": "How can I customize my profile and avatar?",
+    "answer": "Open Profile, then update your details, interests, and avatar customization options. Save your changes when done.",
+    "keywords": ["profile", "customize", "avatar", "edit profile", "settings"]
+  },
+  {
+    "id": "matching",
+    "question": "How does buddy matching work?",
+    "answer": "Re:Connect suggests buddies based on shared interests, onboarding preferences, and location compatibility.",
+    "keywords": ["match", "matching", "buddy", "connect", "recommendation"]
+  },
+  {
+    "id": "messaging_start",
+    "question": "How do I start messaging someone?",
+    "answer": "Open Messages, select a connection from your conversation list, then type and send your message.",
+    "keywords": ["message", "chat", "conversation", "send message", "inbox"]
+  },
+  {
+    "id": "messaging_safety",
+    "question": "How do I report unsafe behavior in messages?",
+    "answer": "Use the report or safety options in the chat/profile area. If urgent, stop engaging and contact admin support immediately.",
+    "keywords": ["report", "unsafe", "abuse", "harassment", "safety", "flag"]
+  },
+  {
+    "id": "block_user",
+    "question": "Can I block a user?",
+    "answer": "Yes. Open the user profile or chat options and choose block. You can also report the account to moderators.",
+    "keywords": ["block", "mute", "stop contact", "ban user"]
+  },
+  {
+    "id": "circles_join",
+    "question": "How do I join a learning circle?",
+    "answer": "Go to Learning Circles, browse sessions, and tap Join Circle on the one you want.",
+    "keywords": ["learning circle", "join circle", "class", "workshop", "session"]
+  },
+  {
+    "id": "circles_leave",
+    "question": "How do I leave a learning circle?",
+    "answer": "In the circle card or session details, choose Leave Circle. Your slot is released automatically.",
+    "keywords": ["leave circle", "cancel circle", "unjoin", "quit session"]
+  },
+  {
+    "id": "forum_posting",
+    "question": "How do I post in Wisdom Forum?",
+    "answer": "Open Wisdom Forum and use Ask a Question or Post to share your topic.",
+    "keywords": ["wisdom forum", "post", "ask question", "forum"]
+  },
+  {
+    "id": "forum_delete",
+    "question": "Can I edit or delete my forum post?",
+    "answer": "Yes, if the post belongs to you. Use the post options menu to edit or remove it.",
+    "keywords": ["delete post", "edit post", "remove forum", "update forum"]
+  },
+  {
+    "id": "challenges_submit",
+    "question": "How do weekly challenge submissions work?",
+    "answer": "Open Weekly Challenges, pick the active challenge, submit your entry before the deadline, and track status.",
+    "keywords": ["weekly challenge", "submit", "entry", "deadline", "challenge"]
+  },
+  {
+    "id": "points_badges",
+    "question": "How do points and badges work?",
+    "answer": "You earn Re:Points by participating in circles, challenges, and community activity. Badges unlock at milestones.",
+    "keywords": ["points", "repoints", "badge", "achievement", "rewards"]
+  },
+  {
+    "id": "meetup_mrt",
+    "question": "How do meetup location and MRT selection work?",
+    "answer": "During onboarding/profile setup, choose MRT stations you are comfortable with. Matching uses this to suggest safer meetup zones.",
+    "keywords": ["mrt", "station", "meetup", "location", "onboarding station"]
+  },
+  {
+    "id": "privacy_settings",
+    "question": "Where can I change privacy settings?",
+    "answer": "Go to Profile settings to control visibility and safety preferences like location display and profile sharing.",
+    "keywords": ["privacy", "visibility", "settings", "location visibility"]
+  },
+  {
+    "id": "language_accessibility",
+    "question": "How can I change language or accessibility options?",
+    "answer": "Use the profile/settings options for language and accessibility preferences available in the app.",
+    "keywords": ["language", "accessibility", "font size", "translation", "locale"]
+  },
+  {
+    "id": "support_emergency",
+    "question": "How do I contact support or get emergency help?",
+    "answer": "For platform issues, contact admin/support through in-app support channels. For immediate danger, contact local emergency services first.",
+    "keywords": ["support", "contact admin", "help desk", "emergency", "urgent"]
+  }
+]

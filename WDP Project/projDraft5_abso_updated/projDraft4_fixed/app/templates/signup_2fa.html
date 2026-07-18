@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Signup - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/auth.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .auth-box .btn-full {
+      display: block;
+      width: 100%;
+      max-width: 360px;
+      margin: 12px auto 0;
+      text-align: center;
+    }
+    #verifySignup2faForm .btn.btn-orange.btn-full {
+      border: 2px solid #f97316;
+      border-radius: 14px;
+      box-shadow: 0 12px 24px rgba(249, 115, 22, 0.25), 0 0 0 3px rgba(249, 115, 22, 0.12);
+    }
+    .resend-timer {
+      margin-top: 0.25rem;
+      font-size: 0.9rem;
+      color: #64748b;
+    }
+    .link-disabled {
+      pointer-events: none;
+      opacity: 0.45;
+      text-decoration: none;
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-box">
+      <div class="auth-header">
+        <a href="/signup" class="auth-back-link">&larr; Back</a>
+        <div class="logo-large">
+          <div class="logo-circle-large"></div>
+        </div>
+        <h1>Verify Signup</h1>
+        <p>Enter the 6-digit code sent to <strong>{{ pending_email or 'your email' }}</strong>.</p>
+      </div>
+
+      <form class="auth-form" id="verifySignup2faForm">
+        <div class="form-group">
+          <label for="code">Verification Code</label>
+          <input type="text" id="code" name="code" placeholder="123456" maxlength="6" inputmode="numeric" required>
+        </div>
+        <button type="submit" class="btn btn-orange btn-lg btn-full">Verify and Continue</button>
+      </form>
+
+      <div class="auth-footer">
+        <p><a href="#" id="resendCode" class="link-orange">Resend code</a></p>
+        <p id="resendTimer" class="resend-timer"></p>
+        <p id="dev-signup-code" style="{% if delivery == 'dev' and dev_code %}display:block;{% else %}display:none;{% endif %} color:#b45309; font-weight:700;">
+          {% if delivery == 'dev' and dev_code %}DEV signup code: {{ dev_code }}{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById('verifySignup2faForm');
+      var resend = document.getElementById('resendCode');
+      var resendTimer = document.getElementById('resendTimer');
+      var codeInput = document.getElementById('code');
+      var devCode = document.getElementById('dev-signup-code');
+      var resendRemaining = {{ resend_available_in|default(0)|int }};
+      var resendInterval = null;
+      if (!form || !codeInput) return;
+
+      function setResendState() {
+        if (!resend) return;
+        if (resendRemaining > 0) {
+          resend.classList.add('link-disabled');
+          if (resendTimer) resendTimer.textContent = 'Resend available in ' + resendRemaining + 's';
+        } else {
+          resend.classList.remove('link-disabled');
+          if (resendTimer) resendTimer.textContent = '';
+        }
+      }
+
+      function startResendTimer(seconds) {
+        resendRemaining = Math.max(0, Number(seconds) || 0);
+        if (resendInterval) clearInterval(resendInterval);
+        setResendState();
+        if (resendRemaining <= 0) return;
+        resendInterval = setInterval(function () {
+          resendRemaining = Math.max(0, resendRemaining - 1);
+          setResendState();
+          if (resendRemaining <= 0 && resendInterval) {
+            clearInterval(resendInterval);
+            resendInterval = null;
+          }
+        }, 1000);
+      }
+
+      setResendState();
+      if (resendRemaining > 0) startResendTimer(resendRemaining);
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var code = (codeInput.value || '').trim();
+        if (!/^\d{6}$/.test(code)) {
+          alert('Enter a valid 6-digit code');
+          return;
+        }
+        try {
+          var res = await fetch('/api/signup/2fa/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code })
+          });
+          var out = await res.json().catch(function () { return {}; });
+          if (!res.ok || !out.ok) {
+            alert(out.error || 'Verification failed');
+            return;
+          }
+          window.location.href = out.next || '/signup-avatar';
+        } catch (err) {
+          alert('Could not reach the server. Please try again.');
+        }
+      });
+
+      if (resend) {
+        resend.addEventListener('click', async function (e) {
+          e.preventDefault();
+          if (resendRemaining > 0) return;
+          try {
+            var res = await fetch('/api/signup/2fa/resend', { method: 'POST' });
+            var out = await res.json().catch(function () { return {}; });
+            if (!res.ok || !out.ok) {
+              if (out && out.retry_after) startResendTimer(out.retry_after);
+              alert(out.error || 'Could not resend code');
+              return;
+            }
+            startResendTimer(out.retry_after || 120);
+            if (out.delivery === 'dev' && out.dev_code) {
+              if (devCode) {
+                devCode.textContent = 'DEV signup code: ' + out.dev_code;
+                devCode.style.display = 'block';
+              }
+            } else {
+              if (devCode) devCode.style.display = 'none';
+              alert('A new code was sent to your email.');
+            }
+          } catch (err) {
+            alert('Could not resend code. Please try again.');
+          }
+        });
+      }
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

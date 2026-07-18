@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "style": {
+    "flat_only": true,
+    "outline_px": [3, 4],
+    "proportion": "big_head_small_body",
+    "eye_style": ["dot", "curve"],
+    "allow_gradients": false,
+    "allow_textures": false
+  },
+  "layer_order": [
+    "bg",
+    "animal_base",
+    "fur",
+    "eyes",
+    "mouth",
+    "outfit",
+    "accessory",
+    "effects"
+  ],
+  "animals": {
+    "panda": {
+      "label": "Panda",
+      "meaning": "Friendly default",
+      "fur_colors": ["#FFFFFF", "#2A2A2A"]
+    },
+    "cat": {
+      "label": "Cat",
+      "meaning": "Youth / playful",
+      "fur_colors": ["#F4A261", "#2A2A2A", "#F6F1E9"]
+    },
+    "otter": {
+      "label": "Otter",
+      "meaning": "Social connector",
+      "fur_colors": ["#C68642", "#A47148"]
+    },
+    "rabbit": {
+      "label": "Rabbit",
+      "meaning": "Gentle learner",
+      "fur_colors": ["#EADBC8", "#D8C4B6"]
+    },
+    "bear": {
+      "label": "Bear",
+      "meaning": "Mentor / senior",
+      "fur_colors": ["#8B5E3C", "#5C3A21"]
+    }
+  },
+  "assets": {
+    "animals": [
+      "cat_base",
+      "panda_base",
+      "otter_base",
+      "rabbit_base",
+      "bear_base"
+    ],
+    "fur": [
+      "cat_fur_01",
+      "cat_fur_02",
+      "cat_fur_03",
+      "panda_fur_01",
+      "otter_fur_01",
+      "otter_fur_02",
+      "otter_fur_03",
+      "rabbit_fur_01",
+      "rabbit_fur_02",
+      "rabbit_fur_03",
+      "bear_fur_01",
+      "bear_fur_02",
+      "bear_fur_03"
+    ],
+    "eyes": [
+      "eyes_dot",
+      "eyes_curve",
+      "eyes_closed",
+      "eyes_sparkle",
+      "eyes_sleepy"
+    ],
+    "mouth": [
+      "mouth_smile",
+      "mouth_bigsmile",
+      "mouth_openlaugh",
+      "mouth_tiny",
+      "mouth_o"
+    ],
+    "outfits": [
+      "outfit_tshirt",
+      "outfit_hoodie",
+      "outfit_varsity",
+      "outfit_polo",
+      "outfit_cardigan",
+      "outfit_batik"
+    ],
+    "accessories": [
+      "acc_glasses_round",
+      "acc_glasses_halfrim",
+      "acc_hat_cap",
+      "acc_hat_beanie",
+      "acc_headphones",
+      "acc_scarf",
+      "acc_flowerpin",
+      "acc_hearingaid"
+    ],
+    "effects": [
+      "fx_blush",
+      "fx_stars",
+      "fx_heart"
+    ],
+    "bg": [
+      "bg_solid",
+      "bg_gradientsoft",
+      "bg_dots",
+      "bg_stripes",
+      "bg_check",
+      "bg_confetti"
+    ]
+  },
+  "outfits": {
+    "youth": ["hoodie", "tshirt", "varsity"],
+    "elder": ["cardigan", "polo", "batik"]
+  },
+  "brand_colors": {
+    "orange": "#F97316",
+    "teal": "#14B8A6",
+    "blue": "#60A5FA",
+    "yellow": "#FACC15",
+    "green": "#4ADE80"
+  },
+  "db_shape": {
+    "animal": "string",
+    "fur": "string",
+    "eyes": "string",
+    "mouth": "string",
+    "outfit": "string",
+    "accessory": "string",
+    "bg": "string",
+    "outfit_color": "string",
+    "effects": "string[]"
+  }
+}

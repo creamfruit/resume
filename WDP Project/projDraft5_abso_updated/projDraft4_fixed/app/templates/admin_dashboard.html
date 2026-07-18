@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Re:Connect SG</title>
+
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <link rel="stylesheet" href="/static/css/messages.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    .admin-wrap { padding: 24px 0 60px; min-height: calc(100vh - 72px); }
+    .admin-shell { display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: start; height: calc(100vh - 140px); }
+    .admin-side {
+      position: sticky;
+      top: 88px;
+      align-self: start;
+      height: calc(100vh - 140px);
+      overflow: auto;
+      background: white;
+      border: 2px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 1rem;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    }
+    .admin-main {
+      overflow: auto;
+      max-height: calc(100vh - 140px);
+      padding-right: 6px;
+    }
+    .admin-side a {
+      display: block;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      border-radius: 0.6rem;
+      text-decoration: none;
+      color: var(--foreground);
+      font-weight: 600;
+    }
+    .admin-side a:hover { background: var(--muted); }
+    .admin-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .admin-header h1 { margin: 0; font-size: 1.6rem; }
+    .admin-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .card {
+      background: white;
+      border: 2px solid var(--border-color);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+      margin-top: 16px;
+    }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .stat { padding: 14px; border-radius: 1rem; background: var(--muted); border: 1px solid rgba(0,0,0,0.06); }
+    .stat .k { font-size: 0.85rem; color: var(--muted-foreground); }
+    .stat .v { font-size: 1.4rem; font-weight: 800; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { padding: 10px 10px; border-bottom: 1px solid rgba(0,0,0,0.08); text-align: left; vertical-align: top; }
+    th { font-size: 0.85rem; color: var(--muted-foreground); font-weight: 800; }
+    .muted { color: var(--muted-foreground); }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 800; font-size: 0.78rem; border: 1px solid rgba(0,0,0,0.12); background: white; }
+    .pill.login { border-color: rgba(22,163,165,0.35); }
+    .pill.signup { border-color: rgba(249,115,22,0.35); }
+    .section-title { margin: 0 0 10px; font-size: 1.15rem; }
+    .table-wrap { overflow-x: auto; }
+    .error { color: #b91c1c; font-weight: 700; }
+    .chart-wrap { height: 260px; }
+      .btn-xs { padding: 4px 10px; font-size: 0.8rem; border-radius: 0.5rem; }
+      .admin-actions .btn {
+        border-radius: 999px;
+        font-weight: 600;
+      }
+      .admin-actions .btn-xs {
+        padding: 6px 12px;
+      }
+    .post-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .post-preview { max-width: 420px; }
+
+    @media (max-width: 980px) {
+      .admin-shell { grid-template-columns: 1fr; }
+      .admin-side { position: static; height: auto; }
+      .admin-main { max-height: none; }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/admin-dashboard" class="active">Admin</a></li>
+        <li><a href="/dashboard">User Home</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="admin-wrap">
+    <div class="container" style="max-width: 1400px;">
+      <div class="admin-header">
+        <div>
+          <h1>Admin Dashboard</h1>
+          <div class="muted" style="margin-top: 6px;">All activity, combined database, exports, and audit logs.</div>
+        </div>
+        <div class="admin-actions">
+          <button class="btn btn-outline-teal" data-range="all">All Time</button>
+          <button class="btn btn-outline-teal" data-range="7">Last 7 Days</button>
+          <select id="audienceSelect" class="form-select form-select-sm" style="width: 210px;">
+            <option value="admin">Audience: Admin</option>
+            <option value="government">Audience: Government</option>
+            <option value="corporate">Audience: Corporate</option>
+          </select>
+          <button class="btn btn-outline-teal" id="refreshBtn">Refresh</button>
+          <button class="btn btn-outline-teal" id="adminChatBtn">Admin Chat</button>
+          <button class="btn btn-orange" id="logoutBtn">Logout</button>
+        </div>
+      </div>
+
+      <div class="admin-shell">
+        <aside class="admin-side">
+          <a href="#section-stats">Overview</a>
+          <a href="#section-charts">Analytics</a>
+          <a href="#section-recent">Recent Activity</a>
+          <a href="#section-auth">Logins & Signups</a>
+          <a href="#section-circles">Learning Circles</a>
+          <a href="#section-safety">Safety & Moderation</a>
+          <a href="#section-achievements">Achievements</a>
+          <a href="#section-audit">Audit Log</a>
+          <a href="#section-challenge-entries">Weekly Challenges</a>
+          <a href="#section-forum-posts">Forum Posts</a>
+          <a href="#section-exports">Export Data</a>
+          <a href="#section-maintenance">Maintenance</a>
+        </aside>
+
+        <div class="admin-main">
+          <div class="card" id="section-admin-chat" style="display:none;">
+            <div class="section-title">Admin Group Chat</div>
+            <div class="chat-window" style="height: 520px;">
+              <div class="chat-header">
+                <div class="chat-header-info">
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" alt="Admin" class="chat-avatar">
+                  <div>
+                    <h3>Admin Team</h3>
+                    <div class="muted">Internal coordination channel</div>
+                  </div>
+                </div>
+              </div>
+              <div class="chat-messages" id="admin-chat-messages"></div>
+              <div class="chat-input-container">
+                <div class="message-input-wrapper">
+                  <input type="text" id="admin-chat-input" class="message-input" placeholder="Type a message...">
+                  <button class="send-btn" id="admin-chat-send">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card" id="section-stats">
+            <div class="stats" id="stats"></div>
+          </div>
+
+          <div class="card" id="section-charts">
+            <h2 class="section-title">External Analytics (Power BI style)</h2>
+            <div id="audienceMetrics" class="stats" style="margin-bottom: 12px;"></div>
+            <div class="chart-wrap">
+              <canvas id="overviewChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card" id="section-recent">
+            <h2 class="section-title">Recent Activity (Combined DB)</h2>
+            <div class="muted" style="margin-bottom: 10px;">Shows latest actions across authentication, audits, and content.</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date/Time</th>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Summary</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody id="recentBody">
+                  <tr><td colspan="5" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="muted" id="dbSources" style="margin-top: 10px;"></div>
+          </div>
+
+          <div class="card" id="section-auth">
+            <h2 class="section-title">Logins and signups (latest 200)</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date/Time</th>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>IP</th>
+                  </tr>
+                </thead>
+                <tbody id="authBody">
+                  <tr><td colspan="5" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="section-circles">
+            <h2 class="section-title">Learning circle signups (latest 200)</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date/Time</th>
+                    <th>User</th>
+                    <th>Circle</th>
+                    <th>Time</th>
+                    <th>Duration</th>
+                    <th>IP</th>
+                  </tr>
+                </thead>
+                <tbody id="circleBody">
+                  <tr><td colspan="6" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="table-wrap" style="margin-top: 14px;">
+              <h3 class="section-title" style="margin-bottom: 8px;">Partner Circles (filtered)</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date/Time</th>
+                    <th>User</th>
+                    <th>Circle</th>
+                    <th>Partner</th>
+                  </tr>
+                </thead>
+                <tbody id="partnerCircleBody">
+                  <tr><td colspan="4" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="section-safety">
+            <h2 class="section-title">Safety & Moderation</h2>
+            <div class="muted" style="margin-bottom: 10px;">Low-score users, pending reports, and manual adjustments.</div>
+
+            <div class="table-wrap" style="margin-bottom: 16px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Score</th>
+                    <th>Last Updated</th>
+                  </tr>
+                </thead>
+                <tbody id="safetyLowBody">
+                  <tr><td colspan="4" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="table-wrap" style="margin-bottom: 16px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date/Time</th>
+                    <th>User</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="safetyReportsBody">
+                  <tr><td colspan="5" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="admin-actions">
+              <input type="number" id="safety-user-id" placeholder="User ID" style="padding:6px 10px; border-radius:8px; border:1px solid #e2e8f0;">
+              <input type="number" id="safety-points" placeholder="Points (+/-)" style="padding:6px 10px; border-radius:8px; border:1px solid #e2e8f0;">
+              <input type="text" id="safety-details" placeholder="Reason" style="padding:6px 10px; border-radius:8px; border:1px solid #e2e8f0; min-width:220px;">
+              <button class="btn btn-outline-teal btn-xs" id="safety-adjust-btn">Apply Adjustment</button>
+            </div>
+          </div>
+
+          <div class="card" id="section-audit">
+            <h2 class="section-title">Roles Audit Log (latest 200)</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date/Time</th>
+                    <th>Component</th>
+                    <th>Action</th>
+                    <th>User</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody id="auditBody">
+                  <tr><td colspan="5" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="section-challenge-entries">
+            <h2 class="section-title">Weekly Challenges</h2>
+            <div class="muted" style="margin-bottom: 10px;">Only admin can create, edit, and delete weekly challenges.</div>
+            <div class="admin-actions" style="margin-bottom: 10px;">
+              <button class="btn btn-outline-teal btn-xs" id="createWeeklyChallengeBtn">Create Weekly Challenge</button>
+            </div>
+            <div class="table-wrap" style="margin-bottom: 14px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Week Label</th>
+                    <th>Title</th>
+                    <th>Reward Points</th>
+                    <th>Submissions</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="weeklyChallengeBody">
+                  <tr><td colspan="6" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="section-title" style="margin-top: 8px;">Weekly Challenge Entries (latest 200)</h3>
+            <div class="muted" style="margin-bottom: 10px;">Update or delete user submissions directly.</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date/Time</th>
+                    <th>Author</th>
+                    <th>Challenge</th>
+                    <th>Content</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="challengeBody">
+                  <tr><td colspan="5" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="section-forum-posts">
+            <h2 class="section-title">Wisdom Forum Posts (latest 200)</h2>
+            <div class="muted" style="margin-bottom: 10px;">Update or delete posts directly from the admin console.</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date/Time</th>
+                    <th>Author</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Content</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="forumPostsBody">
+                  <tr><td colspan="6" class="muted">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card" id="section-achievements">
+            <h2 class="section-title">Achievements Management</h2>
+            <div class="muted" style="margin-bottom: 10px;">Create, edit, and delete rewards, badges, landmarks, quests, and achievement milestones.</div>
+
+            <div style="margin-top: 8px;">
+              <div class="admin-actions" style="margin-bottom: 8px;">
+                <button class="btn btn-outline-teal btn-xs" data-ach-create="rewards">Add Reward</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Icon</th>
+                      <th>Cost</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="achRewardsBody">
+                    <tr><td colspan="6" class="muted">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style="margin-top: 14px;">
+              <div class="admin-actions" style="margin-bottom: 8px;">
+                <button class="btn btn-outline-teal btn-xs" data-ach-create="badges">Add Badge</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Category</th>
+                      <th>Requirement</th>
+                      <th>Threshold</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="achBadgesBody">
+                    <tr><td colspan="6" class="muted">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style="margin-top: 14px;">
+              <div class="admin-actions" style="margin-bottom: 8px;">
+                <button class="btn btn-outline-teal btn-xs" data-ach-create="landmarks">Add Landmark</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Question</th>
+                      <th>Options</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="achLandmarksBody">
+                    <tr><td colspan="5" class="muted">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style="margin-top: 14px;">
+              <div class="admin-actions" style="margin-bottom: 8px;">
+                <button class="btn btn-outline-teal btn-xs" data-ach-create="quests">Add Quest</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Title</th>
+                      <th>Reward</th>
+                      <th>Total Required</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="achQuestsBody">
+                    <tr><td colspan="5" class="muted">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style="margin-top: 14px;">
+              <div class="admin-actions" style="margin-bottom: 8px;">
+                <button class="btn btn-outline-teal btn-xs" data-ach-create="achievements">Add Achievement Milestone</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Streak Days</th>
+                      <th>Reward Points</th>
+                      <th>Description</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="achMilestonesBody">
+                    <tr><td colspan="5" class="muted">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" id="section-exports">
+            <h2 class="section-title">Export Data (Excel/CSV)</h2>
+            <div class="admin-actions">
+              <button class="btn btn-outline-teal btn-xs" data-export="overview" data-format="xls">Export Overview (Excel)</button>
+              <button class="btn btn-outline-teal btn-xs" data-export="auth_events">Export Auth Events</button>
+              <button class="btn btn-outline-teal btn-xs" data-export="circle_signups">Export Circle Signups</button>
+              <button class="btn btn-outline-teal btn-xs" data-export="audit_logs">Export Audit Logs</button>
+              <button class="btn btn-outline-teal btn-xs" data-export="reports">Export Reports</button>
+              <button class="btn btn-outline-teal btn-xs" data-export="challenge_entries">Export Challenge Entries</button>
+            </div>
+            <div class="muted" style="margin-top: 8px;">CSV downloads are compatible with Excel.</div>
+          </div>
+
+          <div class="card" id="section-maintenance">
+            <h2 class="section-title">Reconnect Dashboard Maintenance</h2>
+            <div class="muted" style="margin-bottom: 8px;">Bulk update/delete actions for data cleanup.</div>
+            <div class="admin-actions">
+              <button class="btn btn-outline-teal btn-xs" data-bulk="clear_matches">Clear Matches & Messages</button>
+              <button class="btn btn-outline-teal btn-xs" data-bulk="clear_forum">Clear Forum Posts</button>
+              <button class="btn btn-outline-teal btn-xs" data-bulk="clear_reports">Clear Reports</button>
+              <button class="btn btn-outline-teal btn-xs" data-bulk="clear_challenges">Clear Challenge Entries</button>
+            </div>
+          </div>
+
+          <div id="errorBox" class="error" style="margin-top: 14px;"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    window.adminId = sessionStorage.getItem('admin_id') || '';
+    function esc(s) {
+      return (s || '').toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function pill(type) {
+      var cls = type === 'signup' ? 'signup' : 'login';
+      return '<span class="pill ' + cls + '">' + esc(type) + '</span>';
+    }
+
+    function fmtIso(iso) {
+      if (!iso) return '';
+      try {
+        var d = new Date(iso);
+        return d.toLocaleString();
+      } catch (e) {
+        return iso;
+      }
+    }
+
+    var currentDays = null;
+    var currentAudience = 'admin';
+    var chart;
+
+    function truncateText(text, max) {
+      var value = (text || '').toString();
+      if (value.length <= max) return value;
+      return value.slice(0, max) + '...';
+    }
+
+    function isPartnerCircle(title) {
+      var t = (title || '').toLowerCase();
+      return t.includes('dbs') || t.includes('singtel') || t.includes('scam') || t.includes('govtech') || t.includes('spf');
+    }
+
+    function partnerName(title) {
+      var t = (title || '').toLowerCase();
+      if (t.includes('dbs')) return 'DBS';
+      if (t.includes('singtel')) return 'Singtel';
+      if (t.includes('govtech')) return 'GovTech';
+      if (t.includes('spf')) return 'SPF';
+      return 'Partner';
+    }
+
+    async function loadOverview() {
+      var errorBox = document.getElementById('errorBox');
+      errorBox.textContent = '';
+
+      try {
+        var params = new URLSearchParams();
+        if (currentDays) params.set('days', currentDays);
+        if (currentAudience) params.set('audience', currentAudience);
+        var url = '/api/admin/overview' + (params.toString() ? ('?' + params.toString()) : '');
+        var res = await fetch(url);
+        var out = await res.json().catch(function () { return {}; });
+
+        if (!res.ok || !out.ok) {
+          errorBox.textContent = out.error || 'Not authorised. Please log in again.';
+          document.getElementById('authBody').innerHTML = '<tr><td colspan="5" class="muted">-</td></tr>';
+          document.getElementById('circleBody').innerHTML = '<tr><td colspan="6" class="muted">-</td></tr>';
+          document.getElementById('auditBody').innerHTML = '<tr><td colspan="5" class="muted">-</td></tr>';
+          return;
+        }
+
+        var stats = out.stats || {};
+        document.getElementById('stats').innerHTML = [
+          '<div class="stat"><div class="k">Total users</div><div class="v">' + esc(stats.total_users) + '</div></div>',
+          '<div class="stat"><div class="k">Auth events</div><div class="v">' + esc(stats.total_auth_events) + '</div></div>',
+          '<div class="stat"><div class="k">Circle signups</div><div class="v">' + esc(stats.total_circle_signups) + '</div></div>',
+          '<div class="stat"><div class="k">Forum posts</div><div class="v">' + esc(stats.total_posts) + '</div></div>',
+          '<div class="stat"><div class="k">Challenge entries</div><div class="v">' + esc(stats.total_challenge_entries) + '</div></div>',
+          '<div class="stat"><div class="k">Messages</div><div class="v">' + esc(stats.total_messages) + '</div></div>',
+          '<div class="stat"><div class="k">Reports</div><div class="v">' + esc(stats.total_reports) + '</div></div>'
+        ].join('');
+
+        var authRows = (out.auth_events || []).map(function (e) {
+          return '<tr>' +
+            '<td>' + esc(fmtIso(e.created_at)) + '</td>' +
+            '<td>' + pill(e.event_type) + '</td>' +
+            '<td>' + esc(e.user_name || ('User #' + e.user_id)) + '</td>' +
+            '<td>' + esc(e.email) + '</td>' +
+            '<td class="muted">' + esc(e.ip_address) + '</td>' +
+          '</tr>';
+        }).join('');
+
+        document.getElementById('authBody').innerHTML = authRows || '<tr><td colspan="5" class="muted">No records yet</td></tr>';
+
+        var circleRows = (out.circle_signups || []).map(function (s) {
+          return '<tr>' +
+            '<td>' + esc(fmtIso(s.created_at)) + '</td>' +
+            '<td>' + esc(s.user_name || ('User #' + s.user_id)) + '</td>' +
+            '<td>' + esc(s.circle_title) + '</td>' +
+            '<td>' + esc(s.circle_time) + '</td>' +
+            '<td>' + esc(s.circle_duration) + '</td>' +
+            '<td class="muted">' + esc(s.ip_address) + '</td>' +
+          '</tr>';
+        }).join('');
+
+        document.getElementById('circleBody').innerHTML = circleRows || '<tr><td colspan="6" class="muted">No records yet</td></tr>';
+
+        var partnerRows = (out.circle_signups || []).filter(function (s) {
+          return isPartnerCircle(s.circle_title);
+        }).map(function (s) {
+          return '<tr>' +
+            '<td>' + esc(fmtIso(s.created_at)) + '</td>' +
+            '<td>' + esc(s.user_name || ('User #' + s.user_id)) + '</td>' +
+            '<td>' + esc(s.circle_title) + '</td>' +
+            '<td>' + esc(partnerName(s.circle_title)) + '</td>' +
+          '</tr>';
+        }).join('');
+        var partnerBody = document.getElementById('partnerCircleBody');
+        if (partnerBody) {
+          partnerBody.innerHTML = partnerRows || '<tr><td colspan="4" class="muted">No partner signups yet</td></tr>';
+        }
+
+        var auditRows = (out.audit_logs || []).map(function (a) {
+          return '<tr>' +
+            '<td>' + esc(fmtIso(a.created_at)) + '</td>' +
+            '<td>' + esc(a.component) + '</td>' +
+            '<td>' + esc(a.action) + '</td>' +
+            '<td>' + esc(a.user_id || '-') + '</td>' +
+            '<td class="muted">' + esc(a.meta_json || '') + '</td>' +
+          '</tr>';
+        }).join('');
+
+        document.getElementById('auditBody').innerHTML = auditRows || '<tr><td colspan="5" class="muted">No records yet</td></tr>';
+
+        var recentRows = (out.recent_activity || []).map(function (r) {
+          return '<tr>' +
+            '<td>' + esc(fmtIso(r.created_at)) + '</td>' +
+            '<td>' + esc(r.type || '-') + '</td>' +
+            '<td>' + esc(r.user_name || (r.user_id ? ('User #' + r.user_id) : '-')) + '</td>' +
+            '<td>' + esc(r.summary || '-') + '</td>' +
+            '<td class="muted">' + esc((r.source_table || '-') + ' #' + (r.source_id || '-')) + '</td>' +
+          '</tr>';
+        }).join('');
+        document.getElementById('recentBody').innerHTML = recentRows || '<tr><td colspan="5" class="muted">No recent activity</td></tr>';
+
+        var dbSources = out.db_sources || [];
+        var dbSourcesEl = document.getElementById('dbSources');
+        if (dbSourcesEl) {
+          dbSourcesEl.textContent = dbSources.length ? ('DB sources: ' + dbSources.join(', ')) : 'DB sources: -';
+        }
+
+        var audienceSelectEl = document.getElementById('audienceSelect');
+        if (audienceSelectEl && (out.audience || currentAudience)) {
+          audienceSelectEl.value = out.audience || currentAudience;
+        }
+        renderAudienceMetrics(out.audience || currentAudience, out.audience_metrics || {});
+        renderChart(stats, out.audience || currentAudience, out.audience_metrics || {});
+      } catch (err) {
+        errorBox.textContent = 'Could not load admin data. Please try again.';
+      }
+    }
+
+    async function loadSafety() {
+      var lowBody = document.getElementById('safetyLowBody');
+      var reportBody = document.getElementById('safetyReportsBody');
+      if (!lowBody || !reportBody) return;
+      try {
+        var res = await fetch('/api/admin/safety');
+        var out = await res.json().catch(function () { return {}; });
+        if (!res.ok || !out.ok) {
+          lowBody.innerHTML = '<tr><td colspan="4" class="muted">Not authorised</td></tr>';
+          reportBody.innerHTML = '<tr><td colspan="5" class="muted">Not authorised</td></tr>';
+          return;
+        }
+        var lowRows = (out.low_scores || []).map(function (u) {
+          return '<tr>' +
+            '<td>' + esc(u.full_name || ('User #' + u.user_id)) + '</td>' +
+            '<td>' + esc(u.email || '-') + '</td>' +
+            '<td>' + esc(u.score) + '</td>' +
+            '<td>' + esc(fmtIso(u.last_updated)) + '</td>' +
+          '</tr>';
+        }).join('');
+        lowBody.innerHTML = lowRows || '<tr><td colspan="4" class="muted">No low-score users</td></tr>';
+
+        var reportRows = (out.reports || []).map(function (r) {
+          var actions = [
+            '<button class="btn btn-outline-teal btn-xs" data-report-status="' + r.id + '" data-status="confirmed">Confirm</button>',
+            '<button class="btn btn-outline-teal btn-xs" data-report-status="' + r.id + '" data-status="resolved">Resolve</button>'
+          ].join(' ');
+          return '<tr>' +
+            '<td>' + esc(fmtIso(r.created_at)) + '</td>' +
+            '<td>' + esc(r.user_id) + '</td>' +
+            '<td>' + esc(r.reason) + '</td>' +
+            '<td>' + esc(r.status) + '</td>' +
+            '<td>' + actions + '</td>' +
+          '</tr>';
+        }).join('');
+        reportBody.innerHTML = reportRows || '<tr><td colspan="5" class="muted">No reports</td></tr>';
+      } catch (e) {
+        lowBody.innerHTML = '<tr><td colspan="4" class="muted">Failed to load</td></tr>';
+        reportBody.innerHTML = '<tr><td colspan="5" class="muted">Failed to load</td></tr>';
+      }
+    }
+
+    async function loadForumPosts() {
+      var body = document.getElementById('forumPostsBody');
+      if (!body) return;
+      body.innerHTML = '<tr><td colspan="6" class="muted">Loading...</td></tr>';
+      try {
+        var res = await fetch('/api/admin/posts');
+        var out = await res.json().catch(function () { return {}; });
+        if (!res.ok || !out.ok) {
+          body.innerHTML = '<tr><td colspan="6" class="muted">' + esc(out.error || 'Not authorised') + '</td></tr>';
+          return;
+        }
+        var rows = (out.posts || []).map(function (post) {
+          return '<tr>' +
+            '<td>' + esc(fmtIso(post.created_at)) + '</td>' +
+            '<td>' + esc(post.author || '-') + '</td>' +
+            '<td>' + esc(post.title || '-') + '</td>' +
+            '<td>' + esc(post.category || '-') + '</td>' +
+            '<td class="post-preview">' + esc(truncateText(post.content, 120)) + '</td>' +
+            '<td>' +
+              '<div class="post-actions">' +
+                '<button class="btn btn-outline-teal btn-xs" data-post-edit="' + esc(post.id) + '" data-post-content="' + esc(post.content || '') + '">Update</button>' +
+                '<button class="btn btn-outline-teal btn-xs" data-post-delete="' + esc(post.id) + '">Delete</button>' +
+              '</div>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+        body.innerHTML = rows || '<tr><td colspan="6" class="muted">No forum posts yet</td></tr>';
+      } catch (e) {
+        body.innerHTML = '<tr><td colspan="6" class="muted">Failed to load posts</td></tr>';
+      }
+    }
+
+    async function loadChallengeEntries() {
+      var body = document.getElementById('challengeBody');
+      if (!body) return;
+      body.innerHTML = '<tr><td colspan="5" class="muted">Loading...</td></tr>';
+      try {
+        var res = await fetch('/api/admin/challenge_entries');
+        var out = await res.json().catch(function () { return {}; });
+        if (!res.ok || !out.ok) {
+          body.innerHTML = '<tr><td colspan="5" class="muted">' + esc(out.error || 'Not authorised') + '</td></tr>';
+          return;
+        }
+        var rows = (out.entries || []).map(function (entry) {
+          return '<tr>' +
+            '<td>' + esc(fmtIso(entry.created_at)) + '</td>' +
+            '<td>' + esc(entry.author_name || ('User #' + entry.user_id)) + '</td>' +
+            '<td>' + esc(entry.challenge_id || '-') + '</td>' +
+            '<td class="post-preview">' + esc(truncateText(entry.content, 120)) + '</td>' +
+            '<td>' +
+              '<div class="post-actions">' +
+                '<button class="btn btn-outline-teal btn-xs" data-entry-edit="' + esc(entry.id) + '" data-entry-content="' + esc(entry.content || '') + '" data-entry-image="' + esc(entry.image_url || '') + '">Update</button>' +
+                '<button class="btn btn-outline-teal btn-xs" data-entry-delete="' + esc(entry.id) + '">Delete</button>' +
+              '</div>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+        body.innerHTML = rows || '<tr><td colspan="5" class="muted">No challenge entries yet</td></tr>';
+      } catch (e) {
+        body.innerHTML = '<tr><td colspan="5" class="muted">Failed to load challenge entries</td></tr>';
+      }
+    }
+
+    async function loadAdminWeeklyChallenges() {
+      var body = document.getElementById('weeklyChallengeBody');
+      if (!body) return;
+      body.innerHTML = '<tr><td colspan="6" class="muted">Loading...</td></tr>';
+      try {
+        var res = await fetch('/api/admin/weekly_challenges');
+        var out = await res.json().catch(function () { return {}; });
+        if (!res.ok || !out.ok) {
+          body.innerHTML = '<tr><td colspan="6" class="muted">' + esc(out.error || 'Not authorised') + '</td></tr>';
+          return;
+        }
+        var rows = (out.weekly_challenges || []).map(function (c) {
+          return '<tr>' +
+            '<td>' + esc(c.id) + '</td>' +
+            '<td>' + esc(c.week_label || '-') + '</td>' +
+            '<td>' + esc(c.title || '-') + '</td>' +
+            '<td>' + esc(c.reward_points || 0) + '</td>' +
+            '<td>' + esc(c.submissions || 0) + '</td>' +
+            '<td>' +
+              '<div class="post-actions">' +
+                '<button class="btn btn-outline-teal btn-xs" data-weekly-edit="' + esc(c.id) + '" data-weekly-title="' + esc(c.title || '') + '" data-weekly-description="' + esc(c.description || '') + '" data-weekly-reward="' + esc(c.reward_points || 0) + '" data-weekly-label="' + esc(c.week_label || '') + '">Edit</button>' +
+                '<button class="btn btn-outline-teal btn-xs" data-weekly-delete="' + esc(c.id) + '">Delete</button>' +
+              '</div>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+        body.innerHTML = rows || '<tr><td colspan="6" class="muted">No weekly challenges yet</td></tr>';
+      } catch (e) {
+        body.innerHTML = '<tr><td colspan="6" class="muted">Failed to load weekly challenges</td></tr>';
+      }
+    }
+
+    async function loadAdminAchievements() {
+      var rewardsBody = document.getElementById('achRewardsBody');
+      var badgesBody = document.getElementById('achBadgesBody');
+      var landmarksBody = document.getElementById('achLandmarksBody');
+      var questsBody = document.getElementById('achQuestsBody');
+      var milestonesBody = document.getElementById('achMilestonesBody');
+      if (!rewardsBody || !badgesBody || !landmarksBody || !questsBody || !milestonesBody) return;
+
+      try {
+        var res = await fetch('/api/admin/achievements/catalog');
+        var out = await res.json().catch(function () { return {}; });
+        if (!res.ok || !out.ok) {
+          var err = esc(out.error || 'Not authorised');
+          rewardsBody.innerHTML = '<tr><td colspan="6" class="muted">' + err + '</td></tr>';
+          badgesBody.innerHTML = '<tr><td colspan="6" class="muted">' + err + '</td></tr>';
+          landmarksBody.innerHTML = '<tr><td colspan="5" class="muted">' + err + '</td></tr>';
+          questsBody.innerHTML = '<tr><td colspan="5" class="muted">' + err + '</td></tr>';
+          milestonesBody.innerHTML = '<tr><td colspan="5" class="muted">' + err + '</td></tr>';
+          return;
+        }
+
+        rewardsBody.innerHTML = (out.rewards || []).map(function (r) {
+          var actions = [
+            '<button class="btn btn-outline-teal btn-xs" data-ach-edit="rewards" data-id="' + esc(r.id) + '" data-name="' + esc(r.name || '') + '" data-icon="' + esc(r.icon || '') + '" data-cost="' + esc(r.cost || 0) + '" data-description="' + esc(r.description || '') + '" data-is-active="' + esc(r.is_active || 0) + '">Edit</button>',
+            '<button class="btn btn-outline-teal btn-xs" data-ach-delete="rewards" data-id="' + esc(r.id) + '">Delete</button>'
+          ].join(' ');
+          return '<tr>' +
+            '<td>' + esc(r.id) + '</td>' +
+            '<td>' + esc(r.name || '-') + '</td>' +
+            '<td>' + esc(r.icon || '-') + '</td>' +
+            '<td>' + esc(r.cost || 0) + '</td>' +
+            '<td>' + (r.is_active ? 'Active' : 'Inactive') + '</td>' +
+            '<td>' + actions + '</td>' +
+          '</tr>';
+        }).join('') || '<tr><td colspan="6" class="muted">No rewards</td></tr>';
+
+        badgesBody.innerHTML = (out.badges || []).map(function (b) {
+          var actions = [
+            '<button class="btn btn-outline-teal btn-xs" data-ach-edit="badges" data-id="' + esc(b.id) + '" data-name="' + esc(b.name || '') + '" data-icon="' + esc(b.icon || '') + '" data-description="' + esc(b.description || '') + '" data-category="' + esc(b.category || '') + '" data-threshold="' + esc(b.threshold || 0) + '" data-requirement-type="' + esc(b.requirement_type || '') + '">Edit</button>',
+            '<button class="btn btn-outline-teal btn-xs" data-ach-delete="badges" data-id="' + esc(b.id) + '">Delete</button>'
+          ].join(' ');
+          return '<tr>' +
+            '<td>' + esc(b.id) + '</td>' +
+            '<td>' + esc(b.name || '-') + '</td>' +
+            '<td>' + esc(b.category || '-') + '</td>' +
+            '<td>' + esc(b.requirement_type || '-') + '</td>' +
+            '<td>' + esc(b.threshold || 0) + '</td>' +
+            '<td>' + actions + '</td>' +
+          '</tr>';
+        }).join('') || '<tr><td colspan="6" class="muted">No badges</td></tr>';
+
+        landmarksBody.innerHTML = (out.landmarks || []).map(function (l) {
+          var optionsText = Array.isArray(l.options) ? l.options.join(' | ') : '';
+          var actions = [
+            '<button class="btn btn-outline-teal btn-xs" data-ach-edit="landmarks" data-id="' + esc(l.id) + '" data-name="' + esc(l.name || '') + '" data-icon="' + esc(l.icon || '') + '" data-story="' + esc(l.story || '') + '" data-question="' + esc(l.question || '') + '" data-correct-answer="' + esc(l.correct_answer || 0) + '" data-x="' + esc(l.x || 0) + '" data-y="' + esc(l.y || 0) + '" data-options="' + esc(optionsText) + '">Edit</button>',
+            '<button class="btn btn-outline-teal btn-xs" data-ach-delete="landmarks" data-id="' + esc(l.id) + '">Delete</button>'
+          ].join(' ');
+          return '<tr>' +
+            '<td>' + esc(l.id) + '</td>' +
+            '<td>' + esc(l.name || '-') + '</td>' +
+            '<td>' + esc(truncateText(l.question || '', 80)) + '</td>' +
+            '<td>' + esc(truncateText(optionsText, 70)) + '</td>' +
+            '<td>' + actions + '</td>' +
+          '</tr>';
+        }).join('') || '<tr><td colspan="5" class="muted">No landmarks</td></tr>';
+
+        questsBody.innerHTML = (out.quests || []).map(function (q) {
+          var actions = [
+            '<button class="btn btn-outline-teal btn-xs" data-ach-edit="quests" data-id="' + esc(q.id) + '" data-title="' + esc(q.title || '') + '" data-description="' + esc(q.description || '') + '" data-reward="' + esc(q.reward || 0) + '" data-total-required="' + esc(q.total_required || 1) + '">Edit</button>',
+            '<button class="btn btn-outline-teal btn-xs" data-ach-delete="quests" data-id="' + esc(q.id) + '">Delete</button>'
+          ].join(' ');
+          return '<tr>' +
+            '<td>' + esc(q.id) + '</td>' +
+            '<td>' + esc(q.title || '-') + '</td>' +
+            '<td>' + esc(q.reward || 0) + '</td>' +
+            '<td>' + esc(q.total_required || 1) + '</td>' +
+            '<td>' + actions + '</td>' +
+          '</tr>';
+        }).join('') || '<tr><td colspan="5" class="muted">No quests</td></tr>';
+
+        milestonesBody.innerHTML = (out.achievements || []).map(function (a) {
+          var actions = [
+            '<button class="btn btn-outline-teal btn-xs" data-ach-edit="achievements" data-id="' + esc(a.id) + '" data-streak-days="' + esc(a.streak_days || 0) + '" data-reward-points="' + esc(a.reward_points || 0) + '" data-description="' + esc(a.description || '') + '">Edit</button>',
+            '<button class="btn btn-outline-teal btn-xs" data-ach-delete="achievements" data-id="' + esc(a.id) + '">Delete</button>'
+          ].join(' ');
+          return '<tr>' +
+            '<td>' + esc(a.id) + '</td>' +
+            '<td>' + esc(a.streak_days || 0) + '</td>' +
+            '<td>' + esc(a.reward_points || 0) + '</td>' +
+            '<td>' + esc(a.description || '-') + '</td>' +
+            '<td>' + actions + '</td>' +
+          '</tr>';
+        }).join('') || '<tr><td colspan="5" class="muted">No achievement milestones</td></tr>';
+      } catch (e) {
+        rewardsBody.innerHTML = '<tr><td colspan="6" class="muted">Failed to load</td></tr>';
+        badgesBody.innerHTML = '<tr><td colspan="6" class="muted">Failed to load</td></tr>';
+        landmarksBody.innerHTML = '<tr><td colspan="5" class="muted">Failed to load</td></tr>';
+        questsBody.innerHTML = '<tr><td colspan="5" class="muted">Failed to load</td></tr>';
+        milestonesBody.innerHTML = '<tr><td colspan="5" class="muted">Failed to load</td></tr>';
+      }
+    }
+
+    function renderAudienceMetrics(audience, metrics) {
+      var box = document.getElementById('audienceMetrics');
+      if (!box) return;
+
+      function fmtValue(val, suffix) {
+        if (val === null || val === undefined || val === '') return '-';
+        var num = Number(val);
+        if (!Number.isNaN(num)) {
+          if ((suffix || '') === '%') return num.toFixed(1) + '%';
+          if (Math.abs(num % 1) > 0.0001) return num.toFixed(1) + (suffix || '');
+          return String(num) + (suffix || '');
+        }
+        return String(val);
+      }
+
+      var cards = [];
+      if (audience === 'government') {
+        cards = [
+          { k: 'Senior Engagement Rate', v: fmtValue(metrics.senior_engagement_rate, '%') },
+          { k: 'Meetup Success Rate', v: fmtValue(metrics.meetup_success_rate, '%') },
+          { k: 'Loneliness Indicator', v: fmtValue(metrics.loneliness_indicator_pct, '%') },
+          { k: 'Volunteer Hours Total', v: fmtValue(metrics.volunteer_hours_total, 'h') }
+        ];
+      } else if (audience === 'corporate') {
+        cards = [
+          { k: 'Employee Volunteer Hours', v: fmtValue(metrics.employee_volunteer_hours, 'h') },
+          { k: 'Events Sponsored', v: fmtValue(metrics.events_sponsored, '') },
+          { k: 'Seniors Impacted', v: fmtValue(metrics.seniors_impacted, '') }
+        ];
+      } else {
+        cards = [
+          { k: 'Audience', v: 'Admin' },
+          { k: 'Tip', v: 'Switch audience for Gov/Corporate KPIs' }
+        ];
+      }
+      box.innerHTML = cards.map(function (c) {
+        return '<div class="stat"><div class="k">' + esc(c.k) + '</div><div class="v">' + esc(c.v) + '</div></div>';
+      }).join('');
+    }
+
+    function renderChart(stats, audience, metrics) {
+      var ctx = document.getElementById('overviewChart');
+      if (!ctx) return;
+      var labels;
+      var values;
+      var palette;
+      var chartLabel = 'Totals';
+
+      if (audience === 'government') {
+        labels = ['Engagement %', 'Meetup Success %', 'Loneliness %', 'Volunteer Hours'];
+        values = [
+          Number(metrics.senior_engagement_rate || 0),
+          Number(metrics.meetup_success_rate || 0),
+          Number(metrics.loneliness_indicator_pct || 0),
+          Number(metrics.volunteer_hours_total || 0),
+        ];
+        palette = ['#2CB6A5', '#60a5fa', '#f59e0b', '#f47c20'];
+        chartLabel = 'Government KPIs';
+      } else if (audience === 'corporate') {
+        labels = ['Volunteer Hours', 'Events Sponsored', 'Seniors Impacted'];
+        values = [
+          Number(metrics.employee_volunteer_hours || 0),
+          Number(metrics.events_sponsored || 0),
+          Number(metrics.seniors_impacted || 0),
+        ];
+        palette = ['#0ea5e9', '#f97316', '#22c55e'];
+        chartLabel = 'Corporate KPIs';
+      } else {
+        labels = ['Users', 'Auth', 'Circles', 'Posts', 'Messages', 'Reports'];
+        values = [
+          stats.total_users || 0,
+          stats.total_auth_events || 0,
+          stats.total_circle_signups || 0,
+          stats.total_posts || 0,
+          stats.total_messages || 0,
+          stats.total_reports || 0
+        ];
+        palette = ['#2CB6A5','#F47C20','#94a3b8','#60a5fa','#f59e0b','#ef4444'];
+        chartLabel = 'Admin Totals';
+      }
+
+      var data = {
+        labels: labels,
+        datasets: [{
+          label: chartLabel,
+          data: values,
+          backgroundColor: palette
+        }]
+      };
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, { type: 'bar', data: data, options: { responsive: true, maintainAspectRatio: false } });
+    }
+
+    // Admin chat
+    var adminChatBtn = document.getElementById('adminChatBtn');
+    var adminChatSection = document.getElementById('section-admin-chat');
+    var adminChatMessages = document.getElementById('admin-chat-messages');
+    var adminChatInput = document.getElementById('admin-chat-input');
+    var adminChatSend = document.getElementById('admin-chat-send');
+    var adminChatTimer = null;
+
+    function renderAdminMessages(list) {
+      if (!adminChatMessages) return;
+      adminChatMessages.innerHTML = '';
+      if (!list || list.length === 0) {
+        adminChatMessages.innerHTML = '<div style="padding:1rem; color: var(--muted-foreground);">No messages yet.</div>';
+        return;
+      }
+      list.forEach(function (msg) {
+        var row = document.createElement('div');
+        var isMe = (msg.sender || '').toString() === (window.adminId || '');
+        row.className = 'message ' + (isMe ? 'sent' : 'received');
+        row.innerHTML = isMe
+          ? '<div class="message-content"><p>' + esc(msg.text) + '</p><span class="message-time">' + esc(fmtIso(msg.created_at)) + '</span></div>'
+          : '<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(msg.sender || 'Admin') + '" class="message-avatar" alt="Admin">' +
+            '<div class="message-content"><p>' + esc(msg.text) + '</p><span class="message-time">' + esc(fmtIso(msg.created_at)) + '</span></div>';
+        adminChatMessages.appendChild(row);
+      });
+      adminChatMessages.scrollTop = adminChatMessages.scrollHeight;
+    }
+
+    async function loadAdminMessages() {
+      try {
+        var res = await fetch('/api/admin/chat/messages');
+        var out = await res.json().catch(function () { return []; });
+        if (!res.ok) return;
+        renderAdminMessages(out);
+      } catch (e) {}
+    }
+
+    async function sendAdminMessage() {
+      if (!adminChatInput) return;
+      var text = (adminChatInput.value || '').trim();
+      if (!text) return;
+      try {
+        var res = await fetch('/api/admin/chat/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text })
+        });
+        if (!res.ok) return;
+        adminChatInput.value = '';
+        await loadAdminMessages();
+      } catch (e) {}
+    }
+
+    function startAdminChatPolling() {
+      if (adminChatTimer) return;
+      adminChatTimer = setInterval(loadAdminMessages, 3000);
+    }
+
+    if (adminChatBtn) {
+      adminChatBtn.addEventListener('click', function () {
+        if (!adminChatSection) return;
+        adminChatSection.style.display = adminChatSection.style.display === 'none' ? '' : 'none';
+        if (adminChatSection.style.display !== 'none') {
+          loadAdminMessages();
+          startAdminChatPolling();
+          adminChatSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
+
+    if (adminChatSend) {
+      adminChatSend.addEventListener('click', sendAdminMessage);
+    }
+    if (adminChatInput) {
+      adminChatInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          sendAdminMessage();
+        }
+      });
+    }
+
+    document.querySelectorAll('[data-range]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var val = btn.getAttribute('data-range');
+        currentDays = val === 'all' ? null : val;
+        loadOverview();
+      });
+    });
+
+    var audienceSelect = document.getElementById('audienceSelect');
+    if (audienceSelect) {
+      audienceSelect.addEventListener('change', function () {
+        currentAudience = audienceSelect.value || 'admin';
+        loadOverview();
+      });
+    }
+
+    async function refreshAll() {
+      await loadOverview();
+      await loadAdminWeeklyChallenges();
+      await loadForumPosts();
+      await loadChallengeEntries();
+      await loadSafety();
+      await loadAdminAchievements();
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+
+    document.getElementById('logoutBtn').addEventListener('click', async function () {
+      try {
+        await fetch('/api/admin/logout', { method: 'POST' });
+      } catch (e) {}
+      window.location.href = '/admin-login';
+    });
+
+    document.querySelectorAll('[data-export]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var type = btn.getAttribute('data-export');
+        var format = btn.getAttribute('data-format') || '';
+        var url = '/api/admin/export?type=' + encodeURIComponent(type);
+        if (format) url += '&format=' + encodeURIComponent(format);
+        window.location.href = url;
+      });
+    });
+
+    document.querySelectorAll('[data-bulk]').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var action = btn.getAttribute('data-bulk');
+        if (!confirm('Run bulk action: ' + action + '?')) return;
+        try {
+          var res = await fetch('/api/admin/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action })
+          });
+          var out = await res.json().catch(function () { return {}; });
+          if (!res.ok) return alert(out.error || 'Bulk action failed.');
+          alert('Bulk action completed.');
+          refreshAll();
+        } catch (e) {
+          alert('Bulk action failed.');
+        }
+      });
+    });
+
+    var safetyAdjustBtn = document.getElementById('safety-adjust-btn');
+    if (safetyAdjustBtn) {
+      safetyAdjustBtn.addEventListener('click', async function () {
+        var userId = document.getElementById('safety-user-id')?.value;
+        var points = document.getElementById('safety-points')?.value;
+        var details = document.getElementById('safety-details')?.value || '';
+        if (!userId || !points) return alert('Enter user id and points.');
+        try {
+          var res = await fetch('/api/admin/safety/adjust', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: Number(userId), points: Number(points), details: details })
+          });
+          var out = await res.json().catch(function () { return {}; });
+          if (!res.ok || !out.ok) return alert(out.error || 'Adjustment failed.');
+          alert('Safety score updated.');
+          loadSafety();
+        } catch (e) {
+          alert('Adjustment failed.');
+        }
+      });
+    }
+
+    var createWeeklyChallengeBtn = document.getElementById('createWeeklyChallengeBtn');
+    if (createWeeklyChallengeBtn) {
+      createWeeklyChallengeBtn.addEventListener('click', async function () {
+        var title = (prompt('Challenge title:') || '').trim();
+        if (!title) return;
+        var description = (prompt('Challenge description:') || '').trim();
+        if (!description) return alert('Description is required.');
+        var rewardRaw = prompt('Reward points:', '20');
+        var rewardPoints = parseInt(rewardRaw || '0', 10);
+        if (Number.isNaN(rewardPoints) || rewardPoints < 0) return alert('Reward points must be a valid number.');
+        var weekLabel = (prompt('Week label:', 'Week ' + (new Date()).toLocaleDateString()) || '').trim();
+        try {
+          var resCreate = await fetch('/api/admin/weekly_challenges', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: title,
+              description: description,
+              reward_points: rewardPoints,
+              week_label: weekLabel
+            })
+          });
+          var outCreate = await resCreate.json().catch(function () { return {}; });
+          if (!resCreate.ok || !outCreate.ok) return alert(outCreate.error || 'Create failed.');
+          await loadAdminWeeklyChallenges();
+        } catch (e) {
+          alert('Create failed.');
+        }
+      });
+    }
+
+    document.addEventListener('click', async function (event) {
+      var achCreateBtn = event.target.closest('[data-ach-create]');
+      if (achCreateBtn) {
+        var entity = achCreateBtn.getAttribute('data-ach-create');
+        var payload = null;
+
+        if (entity === 'rewards') {
+          var rewardName = (prompt('Reward name:') || '').trim();
+          if (!rewardName) return;
+          var rewardIcon = (prompt('Icon key (e.g. gift, cup, book):', 'gift') || '').trim() || 'gift';
+          var rewardCost = parseInt(prompt('Cost:', '500') || '0', 10);
+          if (!rewardCost || rewardCost < 0) return alert('Cost must be a valid number.');
+          var rewardDesc = (prompt('Description (optional):', '') || '').trim();
+          var rewardActive = (prompt('Active? (yes/no):', 'yes') || 'yes').trim().toLowerCase() !== 'no';
+          payload = { name: rewardName, icon: rewardIcon, cost: rewardCost, description: rewardDesc, is_active: rewardActive };
+        } else if (entity === 'badges') {
+          var badgeName = (prompt('Badge name:') || '').trim();
+          if (!badgeName) return;
+          var badgeIcon = (prompt('Icon key:', 'badge') || '').trim() || 'badge';
+          var badgeDesc = (prompt('Description:', '') || '').trim();
+          var badgeCategory = (prompt('Category (Journey/Community/Progress/Skills):', 'Progress') || 'Progress').trim();
+          var badgeReq = (prompt('Requirement type (landmarks/quests/points/tier/skills):', 'points') || 'points').trim().toLowerCase();
+          var badgeThreshold = parseInt(prompt('Threshold:', '1000') || '0', 10);
+          if (!badgeThreshold || badgeThreshold < 0) return alert('Threshold must be a valid number.');
+          payload = { name: badgeName, icon: badgeIcon, description: badgeDesc, category: badgeCategory, requirement_type: badgeReq, threshold: badgeThreshold };
+        } else if (entity === 'landmarks') {
+          var lmName = (prompt('Landmark name:') || '').trim();
+          if (!lmName) return;
+          var lmIcon = (prompt('Icon key:', 'pin') || '').trim() || 'pin';
+          var lmStory = (prompt('Story:', '') || '').trim();
+          var lmQuestion = (prompt('Question:', '') || '').trim();
+          var lmOptions = (prompt('Options separated by | (at least 2):', 'Option 1 | Option 2 | Option 3 | Option 4') || '').split('|').map(function (x) { return x.trim(); }).filter(Boolean);
+          if (lmOptions.length < 2) return alert('Please provide at least 2 options.');
+          var lmAnswer = parseInt(prompt('Correct answer index (0-based):', '0') || '0', 10);
+          if (Number.isNaN(lmAnswer) || lmAnswer < 0 || lmAnswer >= lmOptions.length) return alert('Correct answer index is invalid.');
+          var lmX = parseInt(prompt('Map X coordinate:', '400') || '0', 10);
+          var lmY = parseInt(prompt('Map Y coordinate:', '300') || '0', 10);
+          if (Number.isNaN(lmX) || Number.isNaN(lmY)) return alert('Coordinates must be valid numbers.');
+          payload = { name: lmName, icon: lmIcon, story: lmStory, question: lmQuestion, options: lmOptions, correct_answer: lmAnswer, x: lmX, y: lmY };
+        } else if (entity === 'quests') {
+          var questTitle = (prompt('Quest title:') || '').trim();
+          if (!questTitle) return;
+          var questDesc = (prompt('Quest description:', '') || '').trim();
+          var questReward = parseInt(prompt('Reward points:', '100') || '0', 10);
+          var questTotal = parseInt(prompt('Total required:', '1') || '1', 10);
+          if (Number.isNaN(questReward) || questReward < 0 || Number.isNaN(questTotal) || questTotal < 1) return alert('Reward/total is invalid.');
+          payload = { title: questTitle, description: questDesc, reward: questReward, total_required: questTotal };
+        } else if (entity === 'achievements') {
+          var streakDays = parseInt(prompt('Streak days:', '7') || '0', 10);
+          var rewardPoints = parseInt(prompt('Reward points:', '100') || '0', 10);
+          var milestoneDesc = (prompt('Description:', '') || '').trim();
+          if (Number.isNaN(streakDays) || streakDays < 1 || Number.isNaN(rewardPoints) || rewardPoints < 0) return alert('Streak days/reward points are invalid.');
+          payload = { streak_days: streakDays, reward_points: rewardPoints, description: milestoneDesc };
+        }
+
+        if (!payload) return;
+        try {
+          var createRes = await fetch('/api/admin/achievements/' + encodeURIComponent(entity), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          var createOut = await createRes.json().catch(function () { return {}; });
+          if (!createRes.ok || !createOut.ok) return alert(createOut.error || 'Create failed.');
+          await loadAdminAchievements();
+        } catch (e) {
+          alert('Create failed.');
+        }
+        return;
+      }
+
+      var achEditBtn = event.target.closest('[data-ach-edit]');
+      if (achEditBtn) {
+        var editEntity = achEditBtn.getAttribute('data-ach-edit');
+        var editId = achEditBtn.getAttribute('data-id');
+        var editPayload = null;
+
+        if (editEntity === 'rewards') {
+          var eRewardName = (prompt('Reward name:', achEditBtn.getAttribute('data-name') || '') || '').trim();
+          if (!eRewardName) return;
+          var eRewardIcon = (prompt('Icon key:', achEditBtn.getAttribute('data-icon') || 'gift') || '').trim() || 'gift';
+          var eRewardCost = parseInt(prompt('Cost:', achEditBtn.getAttribute('data-cost') || '0') || '0', 10);
+          if (Number.isNaN(eRewardCost) || eRewardCost < 0) return alert('Cost must be a valid number.');
+          var eRewardDesc = (prompt('Description:', achEditBtn.getAttribute('data-description') || '') || '').trim();
+          var eRewardActive = (prompt('Active? (yes/no):', String((achEditBtn.getAttribute('data-is-active') || '0') === '1' ? 'yes' : 'no')) || 'yes').trim().toLowerCase() !== 'no';
+          editPayload = { name: eRewardName, icon: eRewardIcon, cost: eRewardCost, description: eRewardDesc, is_active: eRewardActive };
+        } else if (editEntity === 'badges') {
+          var eBadgeName = (prompt('Badge name:', achEditBtn.getAttribute('data-name') || '') || '').trim();
+          if (!eBadgeName) return;
+          var eBadgeIcon = (prompt('Icon key:', achEditBtn.getAttribute('data-icon') || 'badge') || '').trim() || 'badge';
+          var eBadgeDesc = (prompt('Description:', achEditBtn.getAttribute('data-description') || '') || '').trim();
+          var eBadgeCategory = (prompt('Category:', achEditBtn.getAttribute('data-category') || 'Progress') || 'Progress').trim();
+          var eBadgeReq = (prompt('Requirement type:', achEditBtn.getAttribute('data-requirement-type') || 'points') || 'points').trim().toLowerCase();
+          var eBadgeThreshold = parseInt(prompt('Threshold:', achEditBtn.getAttribute('data-threshold') || '0') || '0', 10);
+          if (Number.isNaN(eBadgeThreshold) || eBadgeThreshold < 0) return alert('Threshold must be a valid number.');
+          editPayload = { name: eBadgeName, icon: eBadgeIcon, description: eBadgeDesc, category: eBadgeCategory, requirement_type: eBadgeReq, threshold: eBadgeThreshold };
+        } else if (editEntity === 'landmarks') {
+          var eLmName = (prompt('Landmark name:', achEditBtn.getAttribute('data-name') || '') || '').trim();
+          if (!eLmName) return;
+          var eLmIcon = (prompt('Icon key:', achEditBtn.getAttribute('data-icon') || 'pin') || '').trim() || 'pin';
+          var eLmStory = (prompt('Story:', achEditBtn.getAttribute('data-story') || '') || '').trim();
+          var eLmQuestion = (prompt('Question:', achEditBtn.getAttribute('data-question') || '') || '').trim();
+          var eLmOptions = (prompt('Options separated by |:', achEditBtn.getAttribute('data-options') || '') || '').split('|').map(function (x) { return x.trim(); }).filter(Boolean);
+          if (eLmOptions.length < 2) return alert('Please provide at least 2 options.');
+          var eLmAnswer = parseInt(prompt('Correct answer index (0-based):', achEditBtn.getAttribute('data-correct-answer') || '0') || '0', 10);
+          if (Number.isNaN(eLmAnswer) || eLmAnswer < 0 || eLmAnswer >= eLmOptions.length) return alert('Correct answer index is invalid.');
+          var eLmX = parseInt(prompt('Map X coordinate:', achEditBtn.getAttribute('data-x') || '0') || '0', 10);
+          var eLmY = parseInt(prompt('Map Y coordinate:', achEditBtn.getAttribute('data-y') || '0') || '0', 10);
+          if (Number.isNaN(eLmX) || Number.isNaN(eLmY)) return alert('Coordinates must be valid numbers.');
+          editPayload = { name: eLmName, icon: eLmIcon, story: eLmStory, question: eLmQuestion, options: eLmOptions, correct_answer: eLmAnswer, x: eLmX, y: eLmY };
+        } else if (editEntity === 'quests') {
+          var eQuestTitle = (prompt('Quest title:', achEditBtn.getAttribute('data-title') || '') || '').trim();
+          if (!eQuestTitle) return;
+          var eQuestDesc = (prompt('Quest description:', achEditBtn.getAttribute('data-description') || '') || '').trim();
+          var eQuestReward = parseInt(prompt('Reward points:', achEditBtn.getAttribute('data-reward') || '0') || '0', 10);
+          var eQuestTotal = parseInt(prompt('Total required:', achEditBtn.getAttribute('data-total-required') || '1') || '1', 10);
+          if (Number.isNaN(eQuestReward) || eQuestReward < 0 || Number.isNaN(eQuestTotal) || eQuestTotal < 1) return alert('Reward/total is invalid.');
+          editPayload = { title: eQuestTitle, description: eQuestDesc, reward: eQuestReward, total_required: eQuestTotal };
+        } else if (editEntity === 'achievements') {
+          var eStreakDays = parseInt(prompt('Streak days:', achEditBtn.getAttribute('data-streak-days') || '7') || '0', 10);
+          var eRewardPoints = parseInt(prompt('Reward points:', achEditBtn.getAttribute('data-reward-points') || '100') || '0', 10);
+          var eMilestoneDesc = (prompt('Description:', achEditBtn.getAttribute('data-description') || '') || '').trim();
+          if (Number.isNaN(eStreakDays) || eStreakDays < 1 || Number.isNaN(eRewardPoints) || eRewardPoints < 0) return alert('Streak days/reward points are invalid.');
+          editPayload = { streak_days: eStreakDays, reward_points: eRewardPoints, description: eMilestoneDesc };
+        }
+
+        if (!editPayload) return;
+        try {
+          var editRes = await fetch('/api/admin/achievements/' + encodeURIComponent(editEntity) + '/' + encodeURIComponent(editId), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(editPayload)
+          });
+          var editOut = await editRes.json().catch(function () { return {}; });
+          if (!editRes.ok || !editOut.ok) return alert(editOut.error || 'Update failed.');
+          await loadAdminAchievements();
+        } catch (e) {
+          alert('Update failed.');
+        }
+        return;
+      }
+
+      var achDeleteBtn = event.target.closest('[data-ach-delete]');
+      if (achDeleteBtn) {
+        var delEntity = achDeleteBtn.getAttribute('data-ach-delete');
+        var delId = achDeleteBtn.getAttribute('data-id');
+        if (!confirm('Delete this ' + delEntity.slice(0, -1) + ' item?')) return;
+        try {
+          var delRes = await fetch('/api/admin/achievements/' + encodeURIComponent(delEntity) + '/' + encodeURIComponent(delId), { method: 'DELETE' });
+          var delOut = await delRes.json().catch(function () { return {}; });
+          if (!delRes.ok || !delOut.ok) return alert(delOut.error || 'Delete failed.');
+          await loadAdminAchievements();
+        } catch (e) {
+          alert('Delete failed.');
+        }
+        return;
+      }
+
+      var weeklyEditBtn = event.target.closest('[data-weekly-edit]');
+      if (weeklyEditBtn) {
+        var weeklyId = weeklyEditBtn.getAttribute('data-weekly-edit');
+        var weeklyTitle = (prompt('Challenge title:', weeklyEditBtn.getAttribute('data-weekly-title') || '') || '').trim();
+        if (!weeklyTitle) return;
+        var weeklyDesc = (prompt('Challenge description:', weeklyEditBtn.getAttribute('data-weekly-description') || '') || '').trim();
+        if (!weeklyDesc) return alert('Description is required.');
+        var weeklyReward = parseInt(prompt('Reward points:', weeklyEditBtn.getAttribute('data-weekly-reward') || '0') || '0', 10);
+        if (Number.isNaN(weeklyReward) || weeklyReward < 0) return alert('Reward points must be a valid number.');
+        var weeklyLabel = (prompt('Week label:', weeklyEditBtn.getAttribute('data-weekly-label') || '') || '').trim();
+        if (!weeklyLabel) return alert('Week label is required.');
+        try {
+          var resWeeklyUpdate = await fetch('/api/admin/weekly_challenges/' + encodeURIComponent(weeklyId), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: weeklyTitle,
+              description: weeklyDesc,
+              reward_points: weeklyReward,
+              week_label: weeklyLabel
+            })
+          });
+          var outWeeklyUpdate = await resWeeklyUpdate.json().catch(function () { return {}; });
+          if (!resWeeklyUpdate.ok || !outWeeklyUpdate.ok) return alert(outWeeklyUpdate.error || 'Update failed.');
+          await loadAdminWeeklyChallenges();
+        } catch (e) {
+          alert('Update failed.');
+        }
+        return;
+      }
+
+      var weeklyDeleteBtn = event.target.closest('[data-weekly-delete]');
+      if (weeklyDeleteBtn) {
+        var weeklyDeleteId = weeklyDeleteBtn.getAttribute('data-weekly-delete');
+        if (!confirm('Delete this weekly challenge and all its entries?')) return;
+        try {
+          var resWeeklyDelete = await fetch('/api/admin/weekly_challenges/' + encodeURIComponent(weeklyDeleteId), { method: 'DELETE' });
+          var outWeeklyDelete = await resWeeklyDelete.json().catch(function () { return {}; });
+          if (!resWeeklyDelete.ok || !outWeeklyDelete.ok) return alert(outWeeklyDelete.error || 'Delete failed.');
+          await loadAdminWeeklyChallenges();
+          await loadChallengeEntries();
+          await loadOverview();
+        } catch (e) {
+          alert('Delete failed.');
+        }
+        return;
+      }
+
+      var reportBtn = event.target.closest('[data-report-status]');
+      if (reportBtn) {
+        var reportId = reportBtn.getAttribute('data-report-status');
+        var status = reportBtn.getAttribute('data-status');
+        try {
+          var resReport = await fetch('/api/admin/reports/' + encodeURIComponent(reportId) + '/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status })
+          });
+          var outReport = await resReport.json().catch(function () { return {}; });
+          if (!resReport.ok || !outReport.ok) return alert(outReport.error || 'Update failed.');
+          loadSafety();
+        } catch (e) {
+          alert('Update failed.');
+        }
+        return;
+      }
+
+      var editBtn = event.target.closest('[data-post-edit]');
+      if (editBtn) {
+        var postId = editBtn.getAttribute('data-post-edit');
+        var current = editBtn.getAttribute('data-post-content') || '';
+        var next = prompt('Update post content:', current);
+        if (next === null) return;
+        next = next.trim();
+        if (!next) return alert('Content is required.');
+        try {
+          var res = await fetch('/api/admin/posts/' + encodeURIComponent(postId), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: next })
+          });
+          var out = await res.json().catch(function () { return {}; });
+          if (!res.ok || !out.ok) return alert(out.error || 'Update failed.');
+          await loadForumPosts();
+        } catch (e) {
+          alert('Update failed.');
+        }
+        return;
+      }
+
+      var deleteBtn = event.target.closest('[data-post-delete]');
+      if (deleteBtn) {
+        var delId = deleteBtn.getAttribute('data-post-delete');
+        if (!confirm('Delete this post?')) return;
+        try {
+          var resDel = await fetch('/api/admin/posts/' + encodeURIComponent(delId), { method: 'DELETE' });
+          var outDel = await resDel.json().catch(function () { return {}; });
+          if (!resDel.ok || !outDel.ok) return alert(outDel.error || 'Delete failed.');
+          await loadForumPosts();
+          await loadOverview();
+        } catch (e) {
+          alert('Delete failed.');
+        }
+      }
+
+      var entryEdit = event.target.closest('[data-entry-edit]');
+      if (entryEdit) {
+        var entryId = entryEdit.getAttribute('data-entry-edit');
+        var currentContent = entryEdit.getAttribute('data-entry-content') || '';
+        var currentImage = entryEdit.getAttribute('data-entry-image') || '';
+        var nextContent = prompt('Update entry content:', currentContent);
+        if (nextContent === null) return;
+        nextContent = nextContent.trim();
+        if (!nextContent) return alert('Content is required.');
+        var nextImage = prompt('Update image URL (optional):', currentImage || '') || '';
+        try {
+          var resEntry = await fetch('/api/admin/challenge_entries/' + encodeURIComponent(entryId), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: nextContent, image_url: nextImage })
+          });
+          var outEntry = await resEntry.json().catch(function () { return {}; });
+          if (!resEntry.ok || !outEntry.ok) return alert(outEntry.error || 'Update failed.');
+          await loadChallengeEntries();
+        } catch (e) {
+          alert('Update failed.');
+        }
+        return;
+      }
+
+      var entryDelete = event.target.closest('[data-entry-delete]');
+      if (entryDelete) {
+        var entryDelId = entryDelete.getAttribute('data-entry-delete');
+        if (!confirm('Delete this entry?')) return;
+        try {
+          var resEntryDel = await fetch('/api/admin/challenge_entries/' + encodeURIComponent(entryDelId), { method: 'DELETE' });
+          var outEntryDel = await resEntryDel.json().catch(function () { return {}; });
+          if (!resEntryDel.ok || !outEntryDel.ok) return alert(outEntryDel.error || 'Delete failed.');
+          await loadChallengeEntries();
+          await loadOverview();
+        } catch (e) {
+          alert('Delete failed.');
+        }
+      }
+    });
+
+    refreshAll();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+</html>
+

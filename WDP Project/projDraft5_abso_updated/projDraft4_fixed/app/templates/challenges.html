@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Re:Challenges - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <style>
+    html, body {
+      overflow-y: auto !important;
+      overflow-x: hidden;
+      height: auto !important;
+      min-height: 100%;
+    }
+    .challenge-wrap {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .challenge-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--orange);
+      font-weight: 700;
+    }
+    .challenge-header a {
+      color: var(--orange);
+      text-decoration: none;
+    }
+    .challenge-subtitle {
+      color: var(--muted-foreground);
+      margin: 0.25rem 0 1.5rem;
+    }
+    .challenge-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .challenge-stat {
+      border: 2px solid #f6c59a;
+      border-radius: 1rem;
+      padding: 1rem;
+      background: #fff;
+    }
+    .challenge-stat.primary {
+      background: var(--orange);
+      color: #fff;
+      border-color: var(--orange);
+    }
+    .challenge-stat .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    .challenge-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      background: #fff7ed;
+      border-radius: 0.75rem;
+      padding: 0.5rem;
+    }
+    .challenge-tab {
+      border: none;
+      background: transparent;
+      padding: 0.6rem 1rem;
+      border-radius: 0.6rem;
+      font-weight: 700;
+      color: var(--orange);
+      cursor: pointer;
+    }
+    .challenge-tab.active {
+      background: var(--orange);
+      color: #fff;
+    }
+    .challenge-card {
+      border: 2px solid #f6c59a;
+      border-radius: 1.25rem;
+      padding: 1.5rem;
+      background: #fff7ed;
+    }
+    .challenge-card h3 {
+      margin: 0 0 0.5rem;
+    }
+    .challenge-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+      margin: 1.25rem 0;
+    }
+    .metric {
+      background: #fff;
+      border: 1px solid #f6c59a;
+      border-radius: 0.75rem;
+      padding: 0.75rem;
+    }
+    .metric .value { font-weight: 700; color: var(--orange); }
+    .challenge-actions {
+      margin-top: 1rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .challenge-actions .btn {
+      flex: 1;
+      justify-content: center;
+    }
+    .challenge-submissions {
+      margin-top: 2rem;
+    }
+    @media (max-width: 900px) {
+      .challenge-stats, .challenge-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .challenge-actions { flex-direction: column; }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+<body style="background:#fff;">
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="challenge-wrap">
+    <div class="challenge-header">
+      <a href="javascript:history.back()">&larr;</a>
+      <div>Re:Challenges</div>
+    </div>
+    <div class="challenge-subtitle">Weekly activities to connect and have fun</div>
+
+    <div class="challenge-stats">
+      <div class="challenge-stat primary">
+        <div class="value" id="challenge-completed-count">0</div>
+        <div>Challenges Completed</div>
+      </div>
+      <div class="challenge-stat">
+        <div class="value" id="challenge-points-earned">0</div>
+        <div>Points Earned</div>
+      </div>
+      <div class="challenge-stat">
+        <div class="value" id="challenge-total-participants">0</div>
+        <div>Total Participants</div>
+      </div>
+    </div>
+
+    <div class="challenge-tabs" id="challengeTabs">
+      <button class="challenge-tab active" data-panel="active">Active Challenges</button>
+      <button class="challenge-tab" data-panel="submissions">Submissions</button>
+      <button class="challenge-tab" data-panel="past">Past Challenges</button>
+    </div>
+
+    <div id="panel-active" class="challenge-panel">
+      <div class="challenge-card">
+        <div class="badge" style="background: var(--orange); color:#fff; padding:0.3rem 0.7rem; border-radius:999px; font-weight:700;">This Week</div>
+        <h3 id="weekly-title">Recreate Your Childhood Snack</h3>
+        <p id="weekly-description">Cook or buy a snack from your childhood and share the story behind it!</p>
+        <div class="challenge-metrics">
+          <div class="metric"><div class="value" id="weekly-deadline">3 days left</div><div>Deadline</div></div>
+          <div class="metric"><div class="value" id="weekly-participants">156</div><div>Participating</div></div>
+          <div class="metric"><div class="value" id="weekly-submissions">89</div><div>Submissions</div></div>
+          <div class="metric"><div class="value" id="weekly-reward">20</div><div>Re:Points</div></div>
+        </div>
+        <div class="challenge-actions">
+          <button id="weekly-submit-btn" class="btn btn-orange">Join Challenge & Upload</button>
+        </div>
+
+        <div id="challenge-entry-form" style="display:none; margin-top: 1rem; background: #fff; border-radius: 0.75rem; padding: 0.85rem; border: 1px solid #f6c59a;">
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <textarea id="challenge-entry-text" placeholder="Share your story..." rows="4" style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #ddd;"></textarea>
+            <input id="challenge-entry-image" type="text" placeholder="Optional image URL" style="width: 100%; padding: 0.65rem; border-radius: 0.5rem; border: 1px solid #ddd;">
+            <input id="challenge-entry-file" type="file" accept="image/*" style="width: 100%; padding: 0.65rem; border-radius: 0.5rem; border: 1px solid #ddd;">
+            <div style="display: flex; gap: 0.75rem;">
+              <button type="button" id="challenge-entry-cancel" class="btn btn-outline-teal">Cancel</button>
+              <button type="button" id="challenge-entry-post" class="btn btn-orange">Post Entry</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-submissions" class="challenge-panel" style="display:none;">
+      <div class="challenge-card" id="submissions">
+        <h3>Community Submissions</h3>
+        <div id="weekly-entries"></div>
+      </div>
+    </div>
+
+    <div id="panel-past" class="challenge-panel" style="display:none;">
+      <div class="challenge-card">
+        <h3>Past Challenges</h3>
+        <p>Your previous challenge submissions will appear here.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('#challengeTabs .challenge-tab').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        document.querySelectorAll('#challengeTabs .challenge-tab').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        var key = btn.getAttribute('data-panel');
+        document.querySelectorAll('.challenge-panel').forEach(p=>p.style.display='none');
+        var panel = document.getElementById('panel-' + key);
+        if (panel) panel.style.display = '';
+      });
+    });
+  </script>
+  <script src="/static/js/challenges.js?v=20260215d"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+</html>
+
+

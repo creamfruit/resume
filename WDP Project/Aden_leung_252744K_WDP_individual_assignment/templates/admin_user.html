@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Detail</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="{{ request.script_root }}/static/css/global_navbar.css">
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+<body class="bg-light" data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+<div class="global-topbar" id="reconnect-global-navbar">
+  <div class="brand">Re:Connect Global</div>
+  <div class="actions">
+    <button type="button" id="global-notif-btn">Notifications <span class="badge" id="global-notif-badge">0</span></button>
+    <button type="button" id="global-chatbot-btn">Chatbot</button>
+    <button type="button" id="global-access-btn">Accessibility</button>
+  </div>
+  <div class="panel" id="global-notif-panel">
+    <header>Notifications</header>
+    <div class="panel-body" id="global-notif-list">
+      <div class="item">No notifications yet.</div>
+    </div>
+  </div>
+  <div class="panel" id="global-chatbot-panel">
+    <header>FAQ Chatbot</header>
+    <div class="panel-body">
+      <div id="global-chatbot-log" style="max-height:160px; overflow:auto;"></div>
+      <form id="global-chatbot-form" class="chatbot-input">
+        <input id="global-chatbot-input" type="text" placeholder="Ask a question...">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+  <div class="panel" id="global-access-panel">
+    <header>Accessibility</header>
+    <div class="panel-body">
+      <div class="item">Use browser zoom for text size.</div>
+      <div class="item">High contrast mode: Alt + Shift + H.</div>
+      <div class="item">Keyboard navigation supported.</div>
+    </div>
+  </div>
+</div>
+
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-1">{{ user.username }}</h1>
+                <div class="text-muted small">{{ user.email }}</div>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_dashboard') }}">Back to Admin</a>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Total Points</div>
+                        <div class="h4 mb-0">{{ user.total_points }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Tier</div>
+                        <div class="h4 mb-0">{{ user.current_tier }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Active Days</div>
+                        <div class="h4 mb-0">{{ user.active_days }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Available Points</div>
+                        <div class="h4 mb-0">{{ user.available_points }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Adjust User</h5>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <form method="post" action="{{ url_for('admin.admin_adjust_points', user_id=user.id) }}">
+                            <label class="form-label">Set Points</label>
+                            <div class="input-group">
+                                <input class="form-control" name="points" type="number" min="0" step="1" value="{{ user.total_points }}">
+                                <button class="btn btn-orange" type="submit">Update</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="post" action="{{ url_for('admin.admin_reset_user', user_id=user.id) }}">
+                            <label class="form-label">Reset Progress</label>
+                            <button class="btn btn-outline-danger w-100" type="submit">Reset All Progress</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Quest Progress</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Quest</th>
+                                <th>Progress</th>
+                                <th>Completed</th>
+                                <th>Completed At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for quest in quests %}
+                            <tr>
+                                <td>{{ quest.title }}</td>
+                                <td>{{ quest.progress }}/{{ quest.total_required }}</td>
+                                <td>{{ 'Yes' if quest.completed else 'No' }}</td>
+                                <td>{{ quest.completed_at }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Landmarks</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Landmark</th>
+                                <th>Unlocked</th>
+                                <th>Completed</th>
+                                <th>Completed At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for landmark in landmarks %}
+                            <tr>
+                                <td>{{ landmark.name }}</td>
+                                <td>{{ 'Yes' if landmark.unlocked else 'No' }}</td>
+                                <td>{{ 'Yes' if landmark.completed else 'No' }}</td>
+                                <td>{{ landmark.completed_at }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Badges</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Badge</th>
+                                <th>Category</th>
+                                <th>Requirement</th>
+                                <th>Earned</th>
+                                <th>Earned At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for badge in badges %}
+                            <tr>
+                                <td>{{ badge.name }}</td>
+                                <td>{{ badge.category }}</td>
+                                <td>{{ badge.requirement_type }} {{ badge.threshold }}</td>
+                                <td>{{ 'Yes' if badge.earned else 'No' }}</td>
+                                <td>{{ badge.earned_at }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Rewards Redeemed</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Reward</th>
+                                <th>Cost</th>
+                                <th>Redeemed At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reward in rewards %}
+                            <tr>
+                                <td>{{ reward.name }}</td>
+                                <td>{{ reward.cost }}</td>
+                                <td>{{ reward.redeemed_at }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ request.script_root }}/static/js/global_navbar.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+</html>

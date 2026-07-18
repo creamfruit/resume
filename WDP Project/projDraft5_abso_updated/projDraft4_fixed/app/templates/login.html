@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/auth.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+  <style>
+    /* Centre the main action buttons (visually centred, not full-bleed) */
+    .auth-box .btn-full {
+      display: block;
+      width: 100%;
+      max-width: 360px;
+      margin: 12px auto 0;
+      text-align: center;
+    }
+
+    .auth-box #loginForm .btn.btn-orange.btn-full {
+      background: linear-gradient(135deg, #f97316, #fb923c);
+      color: #fff !important;
+      border: 2px solid #f97316;
+      border-radius: 14px;
+      font-weight: 700;
+      box-shadow: 0 12px 24px rgba(249, 115, 22, 0.28), 0 0 0 3px rgba(249, 115, 22, 0.12);
+    }
+
+    .auth-box #loginForm .btn.btn-orange.btn-full:hover {
+      filter: brightness(1.02);
+      transform: translateY(-1px);
+    }
+
+    /* Keep the divider aligned with the centred buttons */
+    .auth-box .auth-divider {
+      width: 100%;
+      max-width: 360px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  
+    /* Admin login button (bottom-right) */
+    .admin-login-fab {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 2px solid var(--teal);
+      background: white;
+      color: var(--teal);
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.10);
+      text-decoration: none;
+      z-index: 999;
+    }
+    .admin-login-fab:hover { filter: brightness(0.98); }
+
+  </style>
+
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+
+<body>
+  <div class="auth-container">
+    <div class="auth-box">
+      <div class="auth-header">
+        <a href="/" class="auth-back-link">&larr; Back</a>
+        <div class="logo-large">
+          <div class="logo-circle-large"></div>
+        </div>
+        <h1>Welcome Back!</h1>
+        <p>Sign in to continue connecting</p>
+      </div>
+
+      <form class="auth-form" id="loginForm">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="your.email@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Enter your password" minlength="8" required>
+        </div>
+
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remember">
+            <span>Remember me</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-orange btn-lg btn-full glow">Log In</button>
+        <p id="dev-2fa-code" style="display:none; margin-top:10px; color:#b45309; font-weight:700;"></p>
+      </form>
+
+      <div class="auth-footer">
+        <p>Don't have an account? <a href="/signup" class="link-orange">Sign Up</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById('loginForm');
+      if (!form) return;
+      var submitBtn = form.querySelector('button[type=\"submit\"]');
+
+        form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (submitBtn && submitBtn.disabled) return;
+
+        var email = document.getElementById('email').value.trim();
+        var at = email.indexOf('@');
+        var dot = at >= 0 ? email.indexOf('.', at + 1) : -1;
+        if (at <= 0 || dot === -1) {
+          alert('Email must be a valid email address');
+          return;
+        }
+
+        var pw = document.getElementById('password').value || '';
+        if (pw.length < 8) {
+          alert('Password must be at least 8 characters');
+          return;
+        }
+        var payload = {
+          email: (document.getElementById('email').value || '').trim(),
+          password: pw,
+          accept_terms: true
+        };
+
+        try {
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.dataset.originalText = submitBtn.textContent || 'Log In';
+            submitBtn.textContent = 'Sending code...';
+          }
+          var res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          var out = await res.json().catch(function () { return {}; });
+
+          if (!res.ok) {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = submitBtn.dataset.originalText || 'Log In';
+            }
+            alert(out.error || 'Login failed');
+            return;
+          }
+
+          if (out.requires_2fa) {
+            if (out.delivery === 'dev' && out.dev_code) {
+              var codeEl = document.getElementById('dev-2fa-code');
+              if (codeEl) {
+                codeEl.textContent = 'DEV 2FA code: ' + out.dev_code;
+                codeEl.style.display = 'block';
+              }
+            }
+            window.location.href = '/login-2fa';
+            return;
+          }
+
+          window.location.href = '/dashboard';
+        } catch (err) {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = submitBtn.dataset.originalText || 'Log In';
+          }
+          alert('Could not reach the server. Please try again.');
+        }
+      });
+    })();
+  </script>
+
+
+  <a href="/admin-login" class="admin-login-fab">Admin Login</a>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+
+</html>
+

@@ -1,0 +1,215 @@
+/* Activities Page */
+
+.activities-main {
+  padding: 2rem 0 6rem;
+  min-height: calc(100vh - 64px);
+}
+
+/* Header */
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-dark);
+}
+
+.page-header p {
+  font-size: 1.125rem;
+  color: var(--text-muted);
+}
+
+/* Filters */
+.filters-bar {
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.filter-group {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: 999px;
+  border: 2px solid var(--border-color);
+  background: white;
+  color: var(--text-dark);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.filter-btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.filter-btn.active {
+  background-color: var(--orange);
+  border-color: var(--orange);
+  color: white;
+}
+
+/* Activities Grid */
+.activities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Activity Card */
+.activity-card {
+  background: white;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.activity-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: var(--orange);
+}
+
+.activity-image {
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.activity-image.orange {
+  background-color: var(--orange);
+}
+
+.activity-image.teal {
+  background-color: var(--teal);
+}
+
+.activity-emoji {
+  font-size: 4rem;
+}
+
+.activity-content {
+  padding: 1.5rem;
+}
+
+/* Tags */
+.activity-tags {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.tag.orange {
+  background-color: rgba(255, 159, 67, 0.15);
+  color: var(--orange-dark);
+}
+
+.tag.teal {
+  background-color: rgba(18, 184, 166, 0.15);
+  color: var(--teal-dark);
+}
+
+.tag.success {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+.tag.info {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: var(--info);
+}
+
+.tag.warning {
+  background-color: rgba(249, 115, 22, 0.15);
+  color: var(--warning);
+}
+
+.activity-content h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--text-dark);
+}
+
+.activity-content p {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+  font-size: 0.9375rem;
+}
+
+/* Meta Info */
+.activity-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.meta-icon {
+  font-size: 1rem;
+}
+
+/* Buttons for activities */
+.activity-card .btn-orange {
+  margin-top: 0.5rem;
+}
+
+.activity-card .btn-teal {
+  background-color: var(--teal);
+  color: white;
+  border: none;
+}
+
+.activity-card .btn-teal:hover {
+  background-color: var(--teal-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(18, 184, 166, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .activities-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header h1 {
+    font-size: 2rem;
+  }
+
+  .filter-btn {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+  }
+}

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feed - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .feed-wrap { padding: 1.5rem 0 3rem; }
+    .feed-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .feed-toggle {
+      display: inline-flex;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .feed-toggle button {
+      border: none;
+      background: transparent;
+      padding: 0.5rem 0.95rem;
+      font-weight: 700;
+      color: #334155;
+    }
+    .feed-toggle button.active {
+      background: linear-gradient(135deg, #2cb6a5, #f47c20);
+      color: #fff;
+    }
+    .feed-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+    .feed-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+      overflow: hidden;
+    }
+    .feed-card-head {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.75rem 0.9rem;
+    }
+    .feed-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #f97316;
+    }
+    .feed-meta { line-height: 1.2; min-width: 0; }
+    .feed-meta strong { display: block; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .feed-meta a { color: inherit; text-decoration: none; }
+    .feed-meta a:hover { text-decoration: underline; }
+    .feed-meta span { color: #64748b; font-size: 0.78rem; }
+    .feed-media-btn { border: none; width: 100%; display: block; padding: 0; background: transparent; }
+    .feed-media {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      background: #f8fafc;
+      object-fit: cover;
+      border-top: 1px solid #e2e8f0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .feed-body { padding: 0.85rem 0.9rem; }
+    .feed-title { margin: 0 0 0.3rem; font-size: 1rem; }
+    .feed-text { margin: 0; color: #475569; font-size: 0.92rem; white-space: pre-wrap; }
+    .feed-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.75rem;
+      font-weight: 700;
+      color: #475569;
+      font-size: 0.85rem;
+    }
+    .feed-like-btn {
+      border: none;
+      background: #fff7ed;
+      color: #c2410c;
+      border-radius: 999px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .feed-empty {
+      border: 1px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 1.5rem;
+      text-align: center;
+      color: #64748b;
+      background: #ffffff;
+    }
+    .feed-post-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1200;
+      padding: 1rem;
+    }
+    .feed-post-modal.show { display: flex; }
+    .feed-post-card {
+      width: min(860px, 96vw);
+      max-height: 92vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      display: grid;
+      grid-template-columns: minmax(280px, 1fr) minmax(240px, 320px);
+      gap: 0;
+    }
+    .feed-post-card img { width: 100%; height: 100%; object-fit: cover; }
+    .feed-post-side { padding: 0.9rem; display: grid; gap: 0.6rem; align-content: start; }
+    .feed-post-close { border: none; background: #f1f5f9; width: 34px; height: 34px; border-radius: 999px; justify-self: end; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+      <ul class="nav-links icon-nav">
+        <li class="icon-nav-item">
+          <a href="/dashboard" class="icon-nav-link" title="Notifications" aria-label="Notifications">&#x1F514;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/discover" class="icon-nav-link" title="Discover Matches" aria-label="Discover Matches">&#x2764;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/explore" class="icon-nav-link" title="Search" aria-label="Search">&#x1F50D;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/messages" class="icon-nav-link" title="Messages" aria-label="Messages">&#x1F4AC;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/profile" class="icon-nav-link" title="Profile" aria-label="Profile">&#x1F464;</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="feed-wrap">
+    <div class="container" style="max-width: 980px;">
+      <div class="feed-header">
+        <div>
+          <h1 style="margin:0;">Community Feed</h1>
+          <p style="margin:0.2rem 0 0; color:#64748b;">Scrapbook memories shared by friends and community members.</p>
+        </div>
+        <div class="feed-toggle" role="tablist" aria-label="Feed scope">
+          <button type="button" class="active" data-scope="community">Community Feed</button>
+          <button type="button" data-scope="friends">Friends Feed</button>
+        </div>
+      </div>
+      <div id="featured-feed-wrap" style="margin-bottom:1rem;"></div>
+      <div id="feed-list" class="feed-grid"></div>
+    </div>
+  </main>
+
+  <div id="feed-post-modal" class="feed-post-modal" aria-hidden="true">
+    <div class="feed-post-card" role="dialog" aria-modal="true" aria-labelledby="feed-post-user">
+      <div><img id="feed-post-media" alt="Post media"></div>
+      <div class="feed-post-side">
+        <button id="feed-post-close" class="feed-post-close" type="button" aria-label="Close">&times;</button>
+        <a id="feed-post-user" href="#" style="font-weight:800;color:#0f172a;text-decoration:none;"></a>
+        <p id="feed-post-caption" style="margin:0;color:#334155;"></p>
+        <div id="feed-post-stats" style="font-size:0.88rem;color:#64748b;"></div>
+        <div id="feed-post-comments" style="display:grid;gap:0.4rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>window.CSRF_TOKEN = {{ csrf_token|tojson }};</script>
+  <script src="/static/js/feed.js"></script>
+</body>
+</html>

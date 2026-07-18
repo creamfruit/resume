@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circle Confirmed - Re:Connect SG</title>
+
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <link rel="stylesheet" href="/static/css/dashboard.css" />
+  <link rel="stylesheet" href="/static/css/messages.css" />
+
+  <style>
+    .confirm-wrap { min-height: calc(100vh - 80px); display: flex; align-items: center; }
+    .confirm-card {
+      background: white;
+      border-radius: 1.5rem;
+      padding: 2rem;
+      border: 2px solid var(--border-color);
+      max-width: 720px;
+      width: 100%;
+      margin: 0 auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+    .confirm-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      font-weight: 700;
+      background: rgba(22, 163, 165, 0.12);
+      color: var(--teal);
+      margin-bottom: 1rem;
+    }
+    .confirm-title { font-size: 1.75rem; font-weight: 800; margin: 0 0 0.5rem; }
+    .confirm-sub { color: var(--muted-foreground); margin: 0 0 1.25rem; line-height: 1.6; }
+    .confirm-details {
+      background: var(--muted);
+      border-radius: 1rem;
+      padding: 1rem;
+      margin: 1.25rem 0 1.5rem;
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    .detail-row { display: flex; gap: 0.75rem; margin: 0.25rem 0; color: var(--foreground); }
+    .detail-row span:first-child { width: 110px; color: var(--muted-foreground); }
+    .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    .actions a { text-decoration: none; }
+    .circle-chat { margin-top: 1.5rem; }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/dashboard" class="active">Dashboard</a></li>
+        <li><a href="/messages">Messages</a></li>
+        <li><a href="/profile">Profile</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="confirm-wrap">
+    <div class="container" style="max-width: 900px;">
+      <div class="confirm-card">
+        <div class="confirm-badge">✅ Joined</div>
+
+        <h1 class="confirm-title" id="circle-title">Learning Circle Confirmed</h1>
+        <p class="confirm-sub" id="circle-sub">
+          You’re all set. We’ll keep your spot and show this session in your dashboard.
+        </p>
+
+        <div class="confirm-details">
+          <div class="detail-row"><span>Circle</span><strong id="d-title">-</strong></div>
+          <div class="detail-row"><span>Date/Time</span><strong id="d-time">-</strong></div>
+          <div class="detail-row"><span>Duration</span><strong id="d-duration">-</strong></div>
+        </div>
+
+        <div class="confirm-details" id="partner-info" style="display:none;">
+          <div class="detail-row"><span>Partner</span><strong id="partner-name">-</strong></div>
+          <div class="detail-row"><span>Program</span><strong id="partner-program">-</strong></div>
+          <div class="detail-row"><span>Curriculum</span><a id="partner-curriculum" href="#" target="_blank" rel="noopener">View syllabus</a></div>
+          <div class="detail-row"><span>Certificate</span><strong>Complete all sessions to earn a certificate</strong></div>
+        </div>
+
+        <div class="confirm-details" id="partner-sessions" style="display:none;">
+          <div class="detail-row"><span>Sessions</span><strong>Upcoming Schedule</strong></div>
+          <ul id="partner-session-list" style="margin:0; padding-left: 1.2rem;"></ul>
+        </div>
+
+        <p class="confirm-sub" style="margin-bottom: 0;">
+          Want to say hello before it starts?
+        </p>
+
+        <div class="actions">
+          <a href="/dashboard#tab-learning-circles" class="btn btn-orange btn-lg">Back to Learning Circles</a>
+          <a href="/messages" class="btn btn-outline-teal btn-lg">Open Messages</a>
+          <button type="button" class="btn btn-outline-teal btn-lg" id="leave-circle-btn">Leave Circle</button>
+        </div>
+
+        <div class="circle-chat">
+          <h2 class="section-title" style="margin-top: 1.5rem;">Circle Group Chat</h2>
+          <div class="chat-window" style="height: 360px;">
+            <div class="chat-header">
+              <div class="chat-header-info">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Circle" class="chat-avatar" alt="Circle">
+                <div>
+                  <h3 id="circle-chat-title">Learning Circle</h3>
+                  <div class="muted">Chat with everyone in this circle</div>
+                </div>
+              </div>
+            </div>
+            <div class="chat-messages" id="circle-chat-messages"></div>
+            <div class="chat-input-container">
+              <div class="message-input-wrapper">
+                <input type="text" id="circle-chat-input" class="message-input" placeholder="Type a message...">
+                <button class="send-btn" id="circle-chat-send">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      function getParam(name) {
+        var params = new URLSearchParams(window.location.search);
+        return params.get(name) || "";
+      }
+
+      var title = decodeURIComponent(getParam("title") || "");
+      var time = decodeURIComponent(getParam("time") || "");
+      var duration = decodeURIComponent(getParam("duration") || "");
+
+      var partnerMap = {
+        "DBS Scam Awareness 101": {
+          name: "DBS",
+          program: "Verified CSR Program",
+          curriculum: "https://example.com/dbs-curriculum",
+          sessions: ["Feb 15, 2:00 PM - 4:00 PM (20 seats)", "Feb 22, 2:00 PM - 4:00 PM (12 seats)"]
+        },
+        "Singtel Digital Safety Basics": {
+          name: "Singtel",
+          program: "Verified CSR Program",
+          curriculum: "https://example.com/singtel-curriculum",
+          sessions: ["Feb 18, 3:00 PM - 4:30 PM (15 seats)", "Feb 25, 3:00 PM - 4:30 PM (10 seats)"]
+        }
+      };
+
+      document.getElementById("d-title").textContent = title || "Learning Circle";
+      document.getElementById("d-time").textContent = time || "To be confirmed";
+      document.getElementById("d-duration").textContent = duration || "To be confirmed";
+
+      if (title) {
+        document.getElementById("circle-title").textContent = "Joined: " + title;
+      }
+      var chatTitle = document.getElementById("circle-chat-title");
+      if (chatTitle) chatTitle.textContent = title || "Learning Circle";
+
+      var partner = partnerMap[title];
+      if (partner) {
+        var info = document.getElementById("partner-info");
+        var sessions = document.getElementById("partner-sessions");
+        if (info) info.style.display = "";
+        if (sessions) sessions.style.display = "";
+        document.getElementById("partner-name").textContent = partner.name;
+        document.getElementById("partner-program").textContent = partner.program;
+        var link = document.getElementById("partner-curriculum");
+        if (link) link.href = partner.curriculum;
+        var list = document.getElementById("partner-session-list");
+        if (list) {
+          list.innerHTML = partner.sessions.map(function (s) {
+            return "<li>" + s + "</li>";
+          }).join("");
+        }
+      }
+
+      var currentUserName = "";
+      fetch("/api/session")
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (data) {
+          if (data && data.logged_in && data.name) currentUserName = data.name;
+        })
+        .catch(function () {});
+
+      var chatMessages = document.getElementById("circle-chat-messages");
+      var chatInput = document.getElementById("circle-chat-input");
+      var chatSend = document.getElementById("circle-chat-send");
+      var chatTimer = null;
+
+      function esc(s) {
+        return (s || "").toString()
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function renderCircleMessages(list) {
+        if (!chatMessages) return;
+        chatMessages.innerHTML = "";
+        if (!list || list.length === 0) {
+          chatMessages.innerHTML = '<div style="padding:1rem; color: var(--muted-foreground);">No messages yet.</div>';
+          return;
+        }
+        list.forEach(function (msg) {
+          var isMe = currentUserName && msg.sender === currentUserName;
+          var row = document.createElement("div");
+          row.className = "message " + (isMe ? "sent" : "received");
+          if (isMe) {
+            row.innerHTML = '<div class="message-content"><p>' + esc(msg.text) + '</p><span class="message-time">' + esc(msg.sender) + '</span></div>';
+          } else {
+            row.innerHTML =
+              '<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(msg.sender || "User") + '" class="message-avatar" alt="Avatar">' +
+              '<div class="message-content"><p>' + esc(msg.text) + '</p><span class="message-time">' + esc(msg.sender) + '</span></div>';
+          }
+          chatMessages.appendChild(row);
+        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      function loadCircleMessages() {
+        if (!title) return;
+        return fetch("/api/circle/chat/messages?title=" + encodeURIComponent(title))
+          .then(function (res) { return res.ok ? res.json() : []; })
+          .then(function (out) { renderCircleMessages(out); })
+          .catch(function () {});
+      }
+
+      function sendCircleMessage() {
+        if (!title || !chatInput) return;
+        var text = (chatInput.value || "").trim();
+        if (!text) return;
+        fetch("/api/circle/chat/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: title, text: text })
+        })
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function () {
+          chatInput.value = "";
+          loadCircleMessages();
+        })
+        .catch(function () {});
+      }
+
+      if (chatSend) chatSend.addEventListener("click", sendCircleMessage);
+      if (chatInput) {
+        chatInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            sendCircleMessage();
+          }
+        });
+      }
+
+      function startChatPolling() {
+        if (chatTimer) return;
+        chatTimer = setInterval(loadCircleMessages, 3000);
+      }
+
+      loadCircleMessages();
+      startChatPolling();
+
+      var leaveBtn = document.getElementById("leave-circle-btn");
+      function demoHeaders(extra) {
+        var headers = extra ? Object.assign({}, extra) : {};
+        try {
+          var demoId = sessionStorage.getItem('demo_user_id');
+          if (demoId) headers['X-Demo-User'] = demoId;
+        } catch (e) {}
+        return headers;
+      }
+
+      if (leaveBtn) {
+        leaveBtn.addEventListener("click", function () {
+          if (!confirm("Leave this learning circle?")) return;
+          fetch("/api/circle_leave", {
+            method: "POST",
+            headers: demoHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ title: title, time: time, duration: duration })
+          })
+          .then(function (res) {
+            if (!res.ok) return res.json().then(function (d) { throw new Error(d.error || "Failed"); });
+            return res.json();
+          })
+          .then(function () {
+            window.location.href = "/dashboard#tab-learning-circles";
+          })
+          .catch(function () {
+            alert("Could not leave the circle. Please try again.");
+          });
+        });
+      }
+    })();
+  </script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+</html>
+
+

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/ryan/css/styles.css">
+  <link rel="stylesheet" href="/static/ryan/css/messages.css">
+  <link rel="stylesheet" href="/static/ryan/css/profile.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+  <style>
+    /* Page-specific tweaks requested */
+    .profile-main .interest-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .profile-main .interest-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.6rem 0.85rem;
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+      border-radius: 12px;
+      background: var(--card, #ffffff);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      line-height: 1.1;
+    }
+
+    .profile-avatar-large {
+      background: #ffffff;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+
+    .profile-avatar-large img {
+      background: #ffffff;
+      border-radius: 50%;
+    }
+  </style>
+
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+
+<body>
+  <!-- Accessibility Controls -->
+  <div class="accessibility-fab">
+    <button class="accessibility-orb" id="accessibility-toggle" aria-expanded="false" aria-controls="accessibility-panel" title="Accessibility options">
+      ♿
+    </button>
+    <div class="accessibility-panel" id="accessibility-panel">
+      <button class="accessibility-btn" id="font-size-btn" title="Adjust Text Size">
+        <span>A</span><span style="font-size: 1.1em;">A</span>
+      </button>
+      <button class="accessibility-btn" id="contrast-btn" title="Toggle High Contrast">◐</button>
+      <button class="accessibility-btn" id="lang-btn" title="Change Language">🌐</button>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect SG</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/ryan/dashboard">Home</a></li>
+        <li class="notification-menu">
+          <button class="notification-btn" id="notif-btn">
+            <span class="notification-icon">🔔</span>
+            <span class="notification-badge">0</span>
+          </button>
+        </li>
+        <li><a href="/ryan/messages">Messages</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Notifications Dropdown -->
+  <div class="notifications-dropdown" id="notifications-dropdown">
+    <div class="notifications-header">
+      <h3>Notifications</h3>
+      <button class="mark-read-btn">Mark all as read</button>
+    </div>
+    <div class="notifications-list">
+      <div class="notification-item unread">
+        <div class="notif-icon orange">💬</div>
+        <div class="notif-content">
+          <p><strong>Mdm Chen</strong> sent you a message</p>
+          <span class="notif-time">5 minutes ago</span>
+        </div>
+      </div>
+      <div class="notification-item unread">
+        <div class="notif-icon teal">🤝</div>
+        <div class="notif-content">
+          <p><strong>New match found!</strong> You have a 95% match with Uncle Tan</p>
+          <span class="notif-time">1 hour ago</span>
+        </div>
+      </div>
+      <div class="notification-item unread">
+        <div class="notif-icon success">🏆</div>
+        <div class="notif-content">
+          <p><strong>Badge unlocked:</strong> Hello There</p>
+          <span class="notif-time">2 hours ago</span>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="view-all-notif">View All Notifications</a>
+  </div>
+
+  <!-- Profile Content -->
+  <main class="profile-main">
+    <div class="container" style="max-width: 900px;">
+      <div class="page-back-row">
+        <button type="button" class="page-back-btn" id="page-back-btn" onclick="window.location.href='/dashboard'">← Back to Dashboard</button>
+      </div>
+
+      <!-- Profile Header -->
+      <div class="profile-header-card">
+        <div class="profile-cover"></div>
+        <div class="profile-header-content">
+          <div class="profile-avatar-large">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ user.full_name|urlencode }}" alt="{{ user.full_name }}">
+            <button class="edit-avatar-btn">📷</button>
+          </div>
+          <div class="profile-header-info">
+            <div class="profile-name-section">
+              <h1>{{ user.full_name }}</h1>
+              <span class="verification-badge">✓ Verified</span>
+            </div>
+            {% set member_type = (user.member_type or "Youth") %}
+            {% set member_label = "Elderly Member" if "elderly" in member_type|lower else "Youth Member" %}
+            <p class="profile-type">{{ member_label }} • Joined {{ user.created_at.strftime("%b %Y") }}</p>
+            <div class="profile-stats">
+              <div class="stat-item">
+                <span class="stat-number">8</span>
+                <span class="stat-label">Connections</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-number">12</span>
+                <span class="stat-label">Memories</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-number">350</span>
+                <span class="stat-label">Re:Points</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Tabs -->
+      <div class="profile-tabs">
+        <button class="profile-tab-btn active" data-tab="about">About</button>
+        <button class="profile-tab-btn" data-tab="interests">Interests & Skills</button>
+        <button class="profile-tab-btn" data-tab="safety">Safety & Verification</button>
+        <button class="profile-tab-btn" data-tab="settings">Settings</button>
+      </div>
+
+      <!-- Tab: About -->
+      <div class="profile-tab-content active" id="tab-about">
+        <div class="profile-section">
+          <h3>About Me</h3>
+          <p class="bio-text" id="bio-text"></p>
+          <button class="btn-edit" id="edit-bio-btn">Edit Bio</button>
+        </div>
+
+        <div class="profile-section">
+          <h3>Location</h3>
+          <p>📍 Bishan, Singapore</p>
+        </div>
+
+        <div class="profile-section">
+          <h3>Languages</h3>
+          <div class="lang-badges">
+            <span class="lang-badge">🇬🇧 English</span>
+            <span class="lang-badge">🇨🇳 Chinese (Mandarin)</span>
+            <span class="lang-badge">🇲🇾 Malay (Basic)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Interests & Skills -->
+      <div class="profile-tab-content" id="tab-interests">
+        <div class="profile-section">
+          <h3>My Interests</h3>
+          <div class="interest-tags">
+            {% set interest_map = {
+              "technology": "💻 Technology",
+              "cooking": "🍳 Cooking",
+              "gardening": "🌱 Gardening",
+              "music": "🎵 Music",
+              "art": "🎨 Arts & Crafts",
+              "reading": "📚 Reading",
+              "fitness": "💪 Fitness",
+              "photography": "📷 Photography",
+              "travel": "✈️ Travel",
+              "games": "🎮 Games",
+              "language": "🗣️ Languages",
+              "volunteering": "🤝 Volunteering"
+            } %}
+            {% for interest in onboarding.get('interests', []) %}
+              <span class="interest-tag">{{ interest_map.get(interest, interest|title) }}</span>
+            {% endfor %}
+          </div>
+          <button class="btn-edit" id="edit-interests">Edit Interests</button>
+        </div>
+
+        <div class="profile-section">
+          <h3>Skills I Can Teach</h3>
+          <ul class="skills-list">
+            <li>📱 Smartphone & Social Media (Instagram, WhatsApp, TikTok)</li>
+            <li>💻 Basic Computer Skills</li>
+            <li>📷 Photography & Photo Editing</li>
+            <li>🍳 Modern Cooking Techniques</li>
+          </ul>
+        </div>
+
+        <div class="profile-section">
+          <h3>Skills I Want to Learn</h3>
+          <ul class="skills-list">
+            <li>🧵 Traditional Crafts (Batik, Embroidery)</li>
+            <li>🍜 Peranakan & Traditional Recipes</li>
+            <li>🗣️ Hokkien & Teochew Dialects</li>
+            <li>📖 Singapore History & Heritage</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Tab: Safety & Verification -->
+      <div class="profile-tab-content" id="tab-safety">
+        <div class="profile-section">
+          <h3>🔒 Identity Verification</h3>
+          <div class="verification-status verified">
+            <div class="verification-icon">✓</div>
+            <div>
+              <p class="verification-title">Account Verified</p>
+              <p class="verification-desc">Your identity has been verified with NRIC</p>
+              <p class="verification-date">Verified on: 15 Nov 2024</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>🛡️ Safety Features</h3>
+          <div class="safety-features">
+            <div class="safety-feature-item">
+              <input type="checkbox" id="chat-filter" checked>
+              <label for="chat-filter">
+                <strong>Enable Safe Chat Filters</strong>
+                <p>Automatically filter inappropriate content in messages</p>
+              </label>
+            </div>
+            <div class="safety-feature-item">
+              <input type="checkbox" id="activity-monitoring" checked>
+              <label for="activity-monitoring">
+                <strong>Activity Monitoring</strong>
+                <p>Allow Re:Connect to monitor for suspicious behavior</p>
+              </label>
+            </div>
+            <div class="safety-feature-item">
+              <input type="checkbox" id="public-profile">
+              <label for="public-profile">
+                <strong>Public Profile</strong>
+                <p>Allow other users to view your profile</p>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>⚠️ Report & Block</h3>
+          <p style="color: var(--muted-foreground); margin-bottom: 1rem;">
+            If you encounter any inappropriate behavior or content, please report it immediately.
+          </p>
+          <button class="btn-report">Report a User or Content</button>
+        </div>
+
+        <div class="profile-section">
+          <h3>👤 Emergency Contact</h3>
+          <p style="margin-bottom: 0.5rem;"><strong>Name:</strong> Mrs. Tan (Mother)</p>
+          <p style="margin-bottom: 1rem;"><strong>Phone:</strong> +65 9XXX XXXX</p>
+          <button class="btn-edit">Edit Emergency Contact</button>
+        </div>
+
+        <div class="profile-section safety-tips">
+          <h3>💡 Safety Tips</h3>
+          <ul>
+            <li>Never share personal information (NRIC, bank details, address) in chats</li>
+            <li>Meet in public places for in-person activities</li>
+            <li>Report suspicious behavior immediately</li>
+            <li>Use Re:Connect's messaging system for all communications</li>
+            <li>Trust your instincts - if something feels wrong, report it</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Tab: Settings -->
+      <div class="profile-tab-content" id="tab-settings">
+        <div class="profile-section">
+          <h3>🔔 Notification Preferences</h3>
+          <div class="settings-list">
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" checked>
+                <span>New Messages</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" checked>
+                <span>New Matches</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" checked>
+                <span>Learning Circle Reminders</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox">
+                <span>Weekly Challenge Announcements</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" checked>
+                <span>Badge Unlocks</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>🔐 Privacy Settings</h3>
+          <div class="settings-list">
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" checked>
+                <span>Show my age</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" checked>
+                <span>Show my location (area only)</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox">
+                <span>Show my badges publicly</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" checked>
+                <span>Allow direct messages from matches</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>🌐 Language & Accessibility</h3>
+          <div class="settings-list">
+            <div class="setting-item">
+              <label>
+                <span>Interface Language:</span>
+                <select class="setting-select">
+                  <option value="en">English</option>
+                  <option value="zh">中文 (Chinese)</option>
+                  <option value="ms">Bahasa Melayu</option>
+                  <option value="ta">தமிழ் (Tamil)</option>
+                </select>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox">
+                <span>Enable screen reader support</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox">
+                <span>Simplified navigation mode</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section danger-zone">
+          <h3>⚠️ Account Management</h3>
+          <button class="btn-secondary">Change Password</button>
+          <button class="btn-secondary">Download My Data</button>
+          <button class="btn-danger" id="delete-account-btn" type="button">Delete Account</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Language Modal -->
+  <div class="modal" id="lang-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Select Language / 选择语言</h3>
+        <button class="close-modal" id="close-lang-modal">×</button>
+      </div>
+      <div class="lang-options">
+        <button class="lang-option-big" data-lang="en">
+          <span class="lang-flag">🇬🇧</span>
+          <span class="lang-name">English</span>
+        </button>
+        <button class="lang-option-big" data-lang="zh">
+          <span class="lang-flag">🇨🇳</span>
+          <span class="lang-name">中文 (Chinese)</span>
+        </button>
+        <button class="lang-option-big" data-lang="ms">
+          <span class="lang-flag">🇲🇾</span>
+          <span class="lang-name">Bahasa Melayu</span>
+        </button>
+        <button class="lang-option-big" data-lang="ta">
+          <span class="lang-flag">🇮🇳</span>
+          <span class="lang-name">தமிழ் (Tamil)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/ryan/js/messages.js"></script>
+  <script src="/static/ryan/js/accessibility.js"></script>
+  <script src="/static/ryan/js/profile.js"></script>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('delete-account-btn');
+      if (!btn) return;
+
+      btn.addEventListener('click', function () {
+        var ok = window.confirm('Delete your account? This cannot be undone.');
+        if (!ok) return;
+
+        try {
+          // Demo behaviour: clear local/session storage that may represent a "signed-in" state
+          localStorage.removeItem('reconnect_user');
+          localStorage.removeItem('reconnect_auth');
+          localStorage.removeItem('reconnect_profile');
+          localStorage.removeItem('reconnect_messages');
+          localStorage.removeItem('reconnect_matches');
+          localStorage.removeItem('loggedIn');
+          localStorage.setItem('reconnect_account_deleted', 'true');
+          sessionStorage.clear();
+        } catch (e) { }
+
+        window.alert('Account deleted (demo). Returning to home page.');
+        window.location.href = '/';
+      });
+    })();
+  </script>
+
+
+  <script>
+    (function () {
+      function editInterests() {
+        // Redirect to onboarding to reselect interests
+        window.location.href = '/onboarding';
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        var btn = document.getElementById('edit-interests');
+        if (btn) btn.addEventListener('click', editInterests);
+      });
+    })();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+
+</html>

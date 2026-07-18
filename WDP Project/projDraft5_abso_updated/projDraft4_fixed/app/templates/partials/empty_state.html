@@ -1,0 +1,8 @@
+<div class="empty-state">
+  <div class="empty-state-icon">{{ empty_icon or "ℹ️" }}</div>
+  <h4 class="empty-state-title">{{ empty_title or "Nothing here yet" }}</h4>
+  <p class="empty-state-text">{{ empty_text or "Content will appear when data is available." }}</p>
+  {% if empty_cta_href and empty_cta_label %}
+  <a href="{{ empty_cta_href }}" class="btn-secondary">{{ empty_cta_label }}</a>
+  {% endif %}
+</div>

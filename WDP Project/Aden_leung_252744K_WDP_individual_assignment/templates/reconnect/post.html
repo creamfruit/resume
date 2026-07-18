@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ post.title }} - Wisdom Forum</title>
+  <link rel="stylesheet" href="/static/reconnect/css/styles.css">
+  <link rel="stylesheet" href="/static/reconnect/css/dashboard.css">
+  <link rel="stylesheet" href="/static/reconnect/css/global_navbar.css">
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+<body data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+<div class="global-topbar" id="reconnect-global-navbar">
+  <div class="brand">Re:Connect Global</div>
+  <div class="actions">
+    <button type="button" id="global-notif-btn">Notifications <span class="badge" id="global-notif-badge">0</span></button>
+    <button type="button" id="global-chatbot-btn">Chatbot</button>
+    <button type="button" id="global-access-btn">Accessibility</button>
+  </div>
+  <div class="panel" id="global-notif-panel">
+    <header>Notifications</header>
+    <div class="panel-body" id="global-notif-list">
+      <div class="item">No notifications yet.</div>
+    </div>
+  </div>
+  <div class="panel" id="global-chatbot-panel">
+    <header>FAQ Chatbot</header>
+    <div class="panel-body">
+      <div id="global-chatbot-log" style="max-height:160px; overflow:auto;"></div>
+      <form id="global-chatbot-form" class="chatbot-input">
+        <input id="global-chatbot-input" type="text" placeholder="Ask a question...">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+  <div class="panel" id="global-access-panel">
+    <header>Accessibility</header>
+    <div class="panel-body">
+      <div class="item">Use browser zoom for text size.</div>
+      <div class="item">High contrast mode: Alt + Shift + H.</div>
+      <div class="item">Keyboard navigation supported.</div>
+    </div>
+  </div>
+</div>
+
+<main class="forum-post-page">
+  <div class="forum-post-wrap">
+    <a href="{{ url_for('reconnect.dashboard') }}#tab-wisdom-forum" class="forum-back">← Back to Wisdom Forum</a>
+
+    <article class="forum-post-card">
+      <div class="forum-post-tag">WISDOM POST</div>
+      <h1>{{ post.title }}</h1>
+      <div class="forum-post-meta">By <strong>{{ post.author }}</strong> · {{ post.created_at }}</div>
+      <p class="forum-post-content">{{ post.content }}</p>
+    </article>
+
+    <section class="forum-comments">
+      <h3>Comments ({{ comments|length }})</h3>
+
+      <form method="post" class="forum-comment-form">
+        <textarea name="comment" placeholder="Add your wisdom to this conversation..." required></textarea>
+        <button type="submit" class="btn btn-auth">Post Comment</button>
+      </form>
+
+      <div class="forum-comment-list">
+        {% for c in comments %}
+        <div class="forum-comment-card">
+          <div class="forum-comment-header">
+            <div class="forum-comment-author">{{ c.author }}</div>
+            <div class="forum-comment-time">{{ c.created_at }}</div>
+          </div>
+          <div class="forum-comment-body">{{ c.content }}</div>
+          {% if session['role'] == 'admin' or session['user'] == c.author %}
+          <form action="{{ url_for('reconnect.delete_comment', comment_id=c.id, post_id=post.id) }}" method="POST">
+            <button type="submit" class="forum-admin-btn danger">Delete</button>
+          </form>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="empty-state">No comments yet. Be the first to share!</div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="/static/reconnect/js/global_navbar.js"></script>
+<script src="/static/shared/dialogs.js"></script>
+</body>
+</html>
+
+

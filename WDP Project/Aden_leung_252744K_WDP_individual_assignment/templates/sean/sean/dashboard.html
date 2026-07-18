@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Re:Connect SG</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tabs.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/messages.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/matching.css') }}" />
+  <link rel="stylesheet" href="/static/sean/css/global_navbar.css">
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+
+<body data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+<div class="global-topbar" id="reconnect-global-navbar">
+  <div class="brand">Re:Connect Global</div>
+  <div class="actions">
+    <button type="button" id="global-notif-btn">Notifications <span class="badge" id="global-notif-badge">0</span></button>
+    <button type="button" id="global-chatbot-btn">Chatbot</button>
+    <button type="button" id="global-access-btn">Accessibility</button>
+  </div>
+  <div class="panel" id="global-notif-panel">
+    <header>Notifications</header>
+    <div class="panel-body" id="global-notif-list">
+      <div class="item">No notifications yet.</div>
+    </div>
+  </div>
+  <div class="panel" id="global-chatbot-panel">
+    <header>FAQ Chatbot</header>
+    <div class="panel-body">
+      <div id="global-chatbot-log" style="max-height:160px; overflow:auto;"></div>
+      <form id="global-chatbot-form" class="chatbot-input">
+        <input id="global-chatbot-input" type="text" placeholder="Ask a question...">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+  <div class="panel" id="global-access-panel">
+    <header>Accessibility</header>
+    <div class="panel-body">
+      <div class="item">Use browser zoom for text size.</div>
+      <div class="item">High contrast mode: Alt + Shift + H.</div>
+      <div class="item">Keyboard navigation supported.</div>
+    </div>
+  </div>
+</div>
+
+<div class="accessibility-bar">
+    <div class="container d-flex align-items-center">
+      <button id="back-btn" class="back-btn btn-auth" onclick="window.location.href='/'">← Back to Home</button>
+      <div class="accessibility-controls d-flex align-items-center">
+        {% if session.get('is_admin') %}
+        <a class="accessibility-btn admin-switch btn-auth" href="/sean/sean/admin">Admin</a>
+        {% endif %}
+        {% if session.get('user_id') %}
+        {% else %}
+        <a class="accessibility-btn admin-switch btn-auth" href="{{ url_for('login_page') }}">Sign In</a>
+        <a class="accessibility-btn admin-switch btn-auth" href="{{ url_for('signup_page') }}">Sign Up</a>
+        {% endif %}
+        <button class="accessibility-btn btn-auth" id="font-size-btn"><span>A</span><span style="font-size:1.2em;">A</span></button>
+        <button class="accessibility-btn btn-auth" id="contrast-btn">◐</button>
+        <button class="accessibility-btn btn-auth" id="lang-btn">🌐</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="main-dashboard" class="main-dashboard">
+    <nav class="navbar">
+      <div class="container d-flex align-items-center">
+        <a href="/" class="logo">
+          <div class="logo-circle"></div>
+          <span class="logo-text">Re:Connect SG</span>
+        </a>
+
+        <ul class="nav-links">
+          <li><a href="/sean/sean/dashboard" class="active">Home</a></li>
+          <li class="notification-menu">
+            <button class="notification-btn btn-auth" id="notif-btn" type="button">🔔 <span class="notification-badge">0</span></button>
+          </li>
+          <li><a href="/sean/sean/messages">Messages</a></li>
+          {% if session.get('is_admin') %}
+          <li><a href="/sean/sean/admin">Admin</a></li>
+          {% endif %}
+          <li><a href="{{ url_for('logout_page') }}">Sign Out</a></li>
+          {% if session.get('user_id') %}
+          {% else %}
+          <li><a href="{{ url_for('login_page') }}">Sign In</a></li>
+          <li><a href="{{ url_for('signup_page') }}">Sign Up</a></li>
+          {% endif %}
+          <li class="profile-menu">
+            <a href="#" class="profile-link">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" alt="Profile" class="nav-avatar" />
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <main class="dashboard-main">
+      <div class="container" style="max-width: 1200px;">
+        <div class="dashboard-tabs">
+          <div class="tabs-nav">
+            <button class="tab-button active" data-tab="matches">🤝 Matches</button>
+            <button class="tab-button" data-tab="learning-circles">📚 Learning Circles</button>
+            <button class="tab-button" data-tab="challenges">🏆 Weekly Challenges</button>
+            <button class="tab-button" data-tab="memory-tree">🌳 Memory Tree</button>
+            <button class="tab-button" data-tab="badges">⭐ Badges</button>
+          </div>
+        </div>
+
+        <div class="tab-content active" id="tab-matches">
+          <div class="matches-overview">
+            <div class="matches-overview-header">
+              <h3>Your Matches</h3>
+              <button class="btn btn-auth" id="discoverBtn">Discover</button>
+            </div>
+            <div id="matchesGrid" class="matches-grid"></div>
+          </div>
+          <div class="header matches-header hidden" id="matchesHeader">
+            <button class="header-btn btn-auth" id="matchesBtn">❤️ <span id="matchCount">0</span> Matches</button>
+            <button class="header-btn btn-auth" id="resetBtn">🔄 Reset</button>
+          </div>
+
+          <div class="main-content" id="discoverPanel" style="display:none;">
+            <div class="card" id="card">
+              <div class="card-header" id="cardHeader">
+                <img class="avatar" src="" alt="Profile Avatar" />
+                <div class="header-info">
+                  <h2 class="name"></h2>
+                  <div class="location-availability">
+                    <span>📍 <span class="location"></span></span>
+                    <span>🕐 Available now</span>
+                  </div>
+                </div>
+                <div class="match-badge">
+                  <span class="match-value"></span> Match
+                </div>
+              </div>
+
+              <div class="bio"></div>
+
+              <div class="card-content">
+                <div class="section">
+                  <div class="section-title">Why We Matched</div>
+                  <div class="tags" id="matchedTags"></div>
+                </div>
+
+                <div class="two-column">
+                  <div class="section interests-section">
+                    <div class="section-title">Interests</div>
+                    <div class="tags" id="interestTags"></div>
+                  </div>
+
+                  <div class="section goals-section">
+                    <div class="section-title">Goals</div>
+                    <ul class="goals-list" id="goalsList"></ul>
+                  </div>
+                </div>
+
+                <div class="two-column">
+                  <div class="section teach-section">
+                    <div class="section-title">Can Teach You</div>
+                    <div class="tags" id="teachTags"></div>
+                  </div>
+
+                  <div class="section learn-section">
+                    <div class="section-title">Wants to Learn</div>
+                    <div class="tags" id="learnTags"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button class="action-btn action-pass btn-auth" id="passBtn">✖ Pass</button>
+                <button class="action-btn action-connect btn-auth" id="connectBtn">❤️ Connect</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="match-modal" id="matchModal">
+            <div class="match-content">
+              <div class="match-icon">❤️</div>
+              <h2>It's a Match!</h2>
+              <p>You and <span id="matchedName"></span> want to connect!</p>
+              <div class="match-buttons">
+                <button class="modal-btn send-message-btn btn-auth" id="sendMessageBtn">💬 Send Message</button>
+                <button class="modal-btn keep-swiping-btn btn-auth" id="keepSwipingBtn">Keep Swiping</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="matches-modal" id="matchesModal">
+            <div class="matches-content">
+              <div class="matches-header">
+                <h2>Your Matches</h2>
+                <button class="close-btn btn-auth" id="closeMatchesBtn">✖</button>
+              </div>
+              <p class="matches-subtitle">
+                <span id="matchesCount">0</span> connections ready to chat
+              </p>
+              <div id="matchesList"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="tab-content" id="tab-learning-circles"></div>
+        <div class="tab-content" id="tab-challenges"></div>
+        <div class="tab-content" id="tab-memory-tree"></div>
+        <div class="tab-content" id="tab-badges"></div>
+      </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <a href="/sean/sean/dashboard" class="bottom-nav-item active">🏠 Home</a>
+      <a href="/sean/sean/messages" class="bottom-nav-item">💬 Messages</a>
+      {% if session.get('is_admin') %}
+      <a href="/sean/sean/admin" class="bottom-nav-item">Admin</a>
+      {% endif %}
+      {% if session.get('user_id') %}
+      <a href="{{ url_for('logout_page') }}" class="bottom-nav-item">Sign Out</a>
+      {% else %}
+      <a href="{{ url_for('login_page') }}" class="bottom-nav-item">Sign In</a>
+      <a href="{{ url_for('signup_page') }}" class="bottom-nav-item">Sign Up</a>
+      {% endif %}
+      <a href="#" class="bottom-nav-item">👤 Profile</a>
+    </nav>
+  </div>
+
+  <div class="ui-modal" id="ui-modal">
+    <div class="ui-modal-card">
+      <div class="ui-modal-header">
+        <h3 id="ui-modal-title">Title</h3>
+        <button class="ui-modal-close" id="ui-modal-close">✖</button>
+      </div>
+      <div class="ui-modal-body" id="ui-modal-body"></div>
+      <div class="ui-modal-actions" id="ui-modal-actions"></div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/messages.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/accessibility.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/matching.js') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/sean/js/global_navbar.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+</html>
+

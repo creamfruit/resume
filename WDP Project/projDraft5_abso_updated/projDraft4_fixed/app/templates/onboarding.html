@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/onboarding.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    /* Interests: centre the chips and prevent overflow beyond the container */
+    .interests-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: stretch;
+      gap: 12px;
+      max-width: 760px;
+      margin: 18px auto 0;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+
+    .interest-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      max-width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      flex: 0 1 auto;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .interest-chip span {
+      min-width: 0;
+    }
+
+    @media (max-width: 420px) {
+      .interests-grid {
+        gap: 10px;
+        padding: 4px;
+      }
+
+      .interest-chip {
+        max-width: calc(100vw - 72px);
+      }
+    }
+
+    .mrt-wireframe-layout {
+      align-items: stretch;
+    }
+
+    .mrt-left-panel, .mrt-right-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .language-grid {
+      display: grid;
+      gap: 0.65rem;
+      margin-top: 0.9rem;
+    }
+
+    .language-row {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 0.7rem;
+      align-items: center;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #ffffff;
+      padding: 0.7rem 0.8rem;
+      cursor: pointer;
+    }
+
+    .language-row label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    .language-row .language-checkbox {
+      width: 20px;
+      height: 20px;
+      accent-color: #0f766e;
+      cursor: pointer;
+      flex: 0 0 20px;
+    }
+
+    .language-row select {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .language-row select:disabled {
+      background: #f1f5f9;
+      color: #94a3b8;
+      border-color: #e2e8f0;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    @media (max-width: 640px) {
+      .language-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .button-group .btn {
+      min-height: 48px;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.1;
+      border-radius: 12px;
+    }
+
+    .button-group .btn[id^="back-"] {
+      background: #ffffff !important;
+      color: #111827 !important;
+      border: 2px solid #111827 !important;
+      box-shadow: none !important;
+    }
+
+    .button-group .btn[id^="next-"],
+    .button-group .btn#finish {
+      background: #f97316 !important;
+      color: #ffffff !important;
+      border: 2px solid #f97316 !important;
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+
+
+<body>
+  <div class="onboarding-container">
+    <!-- Progress Bar -->
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width: 33%"></div>
+      </div>
+      <p class="progress-text">Step <span id="current-step">1</span> of 8</p>
+    </div>
+
+    <!-- Step 1: User Type -->
+    <div class="onboarding-step active" id="step-1">
+      <div class="step-content">
+        <h1>I am a...</h1>
+        <p class="step-subtitle">Choose your role to get started</p>
+
+        <div class="user-type-grid">
+          <div class="user-type-card" data-type="youth">
+            <div class="user-type-icon">&#x1F466;</div>
+            <h3>Youth</h3>
+            <p>Ages 18-35. Connect with seniors and share your skills.</p>
+            <div class="check-circle"></div>
+          </div>
+
+          <div class="user-type-card" data-type="senior">
+            <div class="user-type-icon">&#x1F474;</div>
+            <h3>Senior</h3>
+            <p>Ages 55+. Learn new things and share your wisdom.</p>
+            <div class="check-circle"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-orange btn-lg btn-full glow" id="next-1" disabled>Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Interests -->
+    <div class="onboarding-step" id="step-2">
+      <div class="step-content">
+        <h1>What are your interests?</h1>
+        <p class="step-subtitle" id="interests-subtitle">Select at least 1 topic you enjoy</p>
+
+        <div class="interests-grid">
+          <div class="interest-chip" data-interest="technology">
+            <span class="interest-icon">&#x1F4BB;</span>
+            <span>Technology</span>
+          </div>
+          <div class="interest-chip" data-interest="cooking">
+            <span class="interest-icon">&#x1F373;</span>
+            <span>Cooking</span>
+          </div>
+          <div class="interest-chip" data-interest="gardening">
+            <span class="interest-icon">&#x1F331;</span>
+            <span>Gardening</span>
+          </div>
+          <div class="interest-chip" data-interest="music">
+            <span class="interest-icon">&#x1F3B5;</span>
+            <span>Music</span>
+          </div>
+          <div class="interest-chip" data-interest="art">
+            <span class="interest-icon">&#x1F3A8;</span>
+            <span>Arts & Crafts</span>
+          </div>
+          <div class="interest-chip" data-interest="reading">
+            <span class="interest-icon">&#x1F4DA;</span>
+            <span>Reading</span>
+          </div>
+          <div class="interest-chip" data-interest="fitness">
+            <span class="interest-icon">&#x1F4AA;</span>
+            <span>Fitness</span>
+          </div>
+          <div class="interest-chip" data-interest="photography">
+            <span class="interest-icon">&#x1F4F7;</span>
+            <span>Photography</span>
+          </div>
+          <div class="interest-chip" data-interest="travel">
+            <span class="interest-icon">&#x2708;&#xFE0F;</span>
+            <span>Travel</span>
+          </div>
+          <div class="interest-chip" data-interest="games">
+            <span class="interest-icon">&#x1F3AE;</span>
+            <span>Games</span>
+          </div>
+          <div class="interest-chip" data-interest="language">
+            <span class="interest-icon">&#x1F5E3;&#xFE0F;</span>
+            <span>Languages</span>
+          </div>
+          <div class="interest-chip" data-interest="volunteering">
+            <span class="interest-icon">&#x1F91D;</span>
+            <span>Volunteering</span>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-teal" id="back-2">Back</button>
+          <button class="btn btn-orange btn-lg glow" id="next-2" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Skills I Can Teach -->
+    <div class="onboarding-step" id="step-3">
+      <div class="step-content">
+        <h1>Skills I Can Teach</h1>
+        <p class="step-subtitle">Select any skills you can teach (optional)</p>
+
+        {% set skill_pool = [
+          "Smartphone Basics",
+          "WhatsApp Basics",
+          "Video Calling",
+          "Digital Safety Basics",
+          "Photo Sharing",
+          "Voice Notes",
+          "Cooking Tips",
+          "Photography",
+          "Language Practice",
+          "Hokkien Basics",
+          "Mandarin Conversation",
+          "Peranakan Culture",
+          "Stories from 1960s Singapore",
+          "Local Heritage Walks",
+          "Traditional Games",
+          "Gardening",
+          "Music Lessons",
+          "Crafts",
+          "Fitness Tips"
+        ] %}
+        <div class="interests-grid">
+          {% for skill in skill_pool %}
+          <div class="interest-chip" data-teach="{{ skill }}"><span>{{ skill }}</span></div>
+          {% endfor %}
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-teal" id="back-3">Back</button>
+          <button class="btn btn-orange btn-lg glow" id="next-3" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Skills I Want to Learn -->
+    <div class="onboarding-step" id="step-4">
+      <div class="step-content">
+        <h1>Skills I Want to Learn</h1>
+        <p class="step-subtitle">Select any skills you want to learn (optional)</p>
+
+        <div class="interests-grid">
+          {% for skill in skill_pool %}
+          <div class="interest-chip" data-learn="{{ skill }}"><span>{{ skill }}</span></div>
+          {% endfor %}
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-teal" id="back-4">Back</button>
+          <button class="btn btn-orange btn-lg glow" id="next-4" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Availability -->
+    <div class="onboarding-step" id="step-5">
+      <div class="step-content">
+        <h1>When are you available?</h1>
+        <p class="step-subtitle">Select your preferred times to connect</p>
+
+        <div class="availability-section">
+          <h3>Days of the Week</h3>
+          <div class="days-grid">
+            <div class="day-chip" data-day="monday">Mon</div>
+            <div class="day-chip" data-day="tuesday">Tue</div>
+            <div class="day-chip" data-day="wednesday">Wed</div>
+            <div class="day-chip" data-day="thursday">Thu</div>
+            <div class="day-chip" data-day="friday">Fri</div>
+            <div class="day-chip" data-day="saturday">Sat</div>
+            <div class="day-chip" data-day="sunday">Sun</div>
+          </div>
+        </div>
+
+        <div class="availability-section">
+          <h3>Preferred Time</h3>
+          <div class="time-grid">
+            <div class="time-chip" data-time="morning">
+              <span>&#x1F305;</span>
+              <span>Morning</span>
+              <small>8am - 12pm</small>
+            </div>
+            <div class="time-chip" data-time="afternoon">
+              <span>&#x2600;&#xFE0F;</span>
+              <span>Afternoon</span>
+              <small>12pm - 5pm</small>
+            </div>
+            <div class="time-chip" data-time="evening">
+              <span>&#x1F319;</span>
+              <span>Evening</span>
+              <small>5pm - 9pm</small>
+            </div>
+          </div>
+        </div>
+
+
+
+        <div class="button-group">
+          <button class="btn btn-teal" id="back-5">Back</button>
+          <button class="btn btn-orange btn-lg glow" id="next-5">Continue</button>
+        </div>
+      </div>
+    </div>
+
+        <!-- Step 6: Languages and Proficiency -->
+    <div class="onboarding-step" id="step-6">
+      <div class="step-content">
+        <h1>Languages and Proficiency</h1>
+        <p class="step-subtitle">Select your languages and your proficiency for each one.</p>
+
+        <div class="availability-section">
+          <div class="language-grid" id="language-grid">
+            {% set onboarding_languages = ["English", "Chinese (Mandarin)", "Malay", "Tamil", "Hokkien"] %}
+            {% for language in onboarding_languages %}
+            <div class="language-row">
+              <label>
+                <input type="checkbox" class="language-checkbox" data-language="{{ language }}">
+                <span>{{ language }}</span>
+              </label>
+              <select class="language-proficiency" data-language="{{ language }}" disabled>
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+                <option value="Native">Native</option>
+              </select>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-teal" id="back-6">Back</button>
+          <button class="btn btn-orange btn-lg glow" id="next-6" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 7: MRT Stations -->
+    <div class="onboarding-step" id="step-7">
+      <div class="step-content">
+        <div class="mrt-wireframe-header">
+          <div>
+            <h1>What is ur closest mrt?</h1>
+            <p class="step-subtitle">Select one MRT station closest to you.</p>
+          </div>
+        </div>
+
+        <div class="mrt-picker mrt-wireframe-layout">
+          <section class="mrt-left-panel">
+            <div class="mrt-selector-shell">
+              <h3>Choose MRT Line</h3>
+              <div class="mrt-line-chips" id="mrt-line-chips"></div>
+              <div class="mrt-station-buttons" id="mrt-station-buttons"></div>
+              <div class="mrt-selector-actions">
+                <button type="button" class="btn btn-outline-teal" id="mrt-clear-selection">Clear</button>
+              </div>
+            </div>
+          </section>
+
+          <aside class="mrt-right-panel">
+            <div class="selected-stations-bar" id="selected-stations-bar">
+              <div class="selected-stations-title">Your Preferred Meetup Areas</div>
+              <div class="selected-stations-tags" id="selected-stations-tags"></div>
+              <ul class="selected-stations-list" id="selected-stations-list"></ul>
+            </div>
+          </aside>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-teal" id="back-7">Back</button>
+          <button class="btn btn-orange btn-lg glow" id="next-7">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 8: Finish -->
+    <div class="onboarding-step" id="step-8">
+      <div class="step-content">
+        <h1>You're all set</h1>
+        <p class="step-subtitle">Review your selections and start connecting.</p>
+
+        <div class="button-group">
+          <button class="btn btn-teal" id="back-8">Back</button>
+          <button class="btn btn-orange btn-lg glow" id="finish">Get Started!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.preloadedOnboarding = {{ onboarding|tojson }};
+  </script>
+  <script src="/static/js/onboarding.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+
+</html>

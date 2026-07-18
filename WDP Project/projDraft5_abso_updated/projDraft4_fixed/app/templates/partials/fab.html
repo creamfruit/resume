@@ -1,0 +1,29 @@
+{% if session.get("user_id") and request.path == "/dashboard" %}
+  <div class="rc-fab-stack" id="rc-fab-stack" aria-label="Quick actions">
+    <button type="button" class="rc-fab rc-fab-settings" id="rc-fab-settings" aria-label="Open settings or customization" title="Settings">
+      ⚙
+    </button>
+    <button type="button" class="rc-fab rc-fab-faq" id="rc-fab-faq" aria-label="Open FAQ chatbot" title="FAQ chatbot">
+      <span>?</span>
+      <span class="rc-fab-dot" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <section class="rc-faq-pop" id="rc-faq-pop" aria-live="polite" aria-label="FAQ chatbot" hidden>
+    <header class="rc-faq-head">
+      <strong>Re:Connect FAQ</strong>
+      <button type="button" id="rc-faq-close" class="rc-faq-close" aria-label="Close FAQ">x</button>
+    </header>
+    <div class="rc-faq-body" id="rc-faq-body"></div>
+    <div class="rc-faq-chips" id="rc-faq-chips">
+      <button type="button" class="rc-chip" data-q="How matching works">How matching works</button>
+      <button type="button" class="rc-chip" data-q="Report someone">Report someone</button>
+      <button type="button" class="rc-chip" data-q="Join a circle">Join a circle</button>
+      <button type="button" class="rc-chip" data-q="Points and badges">Points &amp; badges</button>
+    </div>
+    <form class="rc-faq-form" id="rc-faq-form">
+      <input type="text" id="rc-faq-input" maxlength="240" placeholder="Ask a question..." autocomplete="off">
+      <button type="submit">Send</button>
+    </form>
+  </section>
+{% endif %}

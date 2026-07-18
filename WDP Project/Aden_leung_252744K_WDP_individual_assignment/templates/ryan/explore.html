@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explore - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/ryan/css/styles.css">
+  <link rel="stylesheet" href="/static/ryan/css/activities.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect SG</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/ryan/dashboard">Home</a></li>
+        <li><a href="connect.html">Connect</a></li>
+        <li><a href="/ryan/explore" class="active">Explore</a></li>
+        <li><a href="/ryan/messages">Messages</a></li>
+        <li><a href="perks.html">Perks</a></li>
+        <li class="profile-menu">
+          <a href="/ryan/profile" class="profile-link">
+            <span class="notification-dot"></span>
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aden" alt="Profile" class="nav-avatar">
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="activities-main">
+    <div class="container">
+      <!-- Header -->
+      <div class="page-header">
+        <h1>Explore Events & Activities</h1>
+        <p>Discover workshops, meetups, and community events</p>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <div class="filter-group">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="online">Online</button>
+          <button class="filter-btn" data-filter="in-person">In-Person</button>
+          <button class="filter-btn" data-filter="senior-friendly">Senior-Friendly</button>
+        </div>
+      </div>
+
+      <!-- Activities Grid -->
+      <div class="activities-grid">
+        <!-- Activity Card 1 -->
+        <div class="activity-card" data-type="online">
+          <div class="activity-image orange">
+            <span class="activity-emoji">💻</span>
+          </div>
+          <div class="activity-content">
+            <div class="activity-tags">
+              <span class="tag orange">Online</span>
+              <span class="tag teal">Tech</span>
+            </div>
+            <h3>Smartphone Basics Workshop</h3>
+            <p>Learn how to use your smartphone like a pro. Perfect for seniors!</p>
+
+            <div class="activity-meta">
+              <div class="meta-item">
+                <span class="meta-icon">📅</span>
+                <span>Tomorrow, 2:00 PM</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">👥</span>
+                <span>12 / 20 joined</span>
+              </div>
+            </div>
+
+            <button class="btn btn-orange btn-full">Join Activity</button>
+          </div>
+        </div>
+
+        <!-- Activity Card 2 -->
+        <div class="activity-card" data-type="in-person">
+          <div class="activity-image teal">
+            <span class="activity-emoji">🌱</span>
+          </div>
+          <div class="activity-content">
+            <div class="activity-tags">
+              <span class="tag teal">In-Person</span>
+              <span class="tag success">Gardening</span>
+            </div>
+            <h3>Community Garden Day</h3>
+            <p>Plant flowers and vegetables together at our community garden.</p>
+
+            <div class="activity-meta">
+              <div class="meta-item">
+                <span class="meta-icon">📅</span>
+                <span>Saturday, 9:00 AM</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">📍</span>
+                <span>Bishan Park</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">👥</span>
+                <span>8 / 15 joined</span>
+              </div>
+            </div>
+
+            <button class="btn btn-teal btn-full">Join Activity</button>
+          </div>
+        </div>
+
+        <!-- Activity Card 3 -->
+        <div class="activity-card" data-type="online">
+          <div class="activity-image orange">
+            <span class="activity-emoji">🍳</span>
+          </div>
+          <div class="activity-content">
+            <div class="activity-tags">
+              <span class="tag orange">Online</span>
+              <span class="tag warning">Cooking</span>
+            </div>
+            <h3>Cooking Class: Traditional Recipes</h3>
+            <p>Share and learn traditional family recipes from different cultures.</p>
+
+            <div class="activity-meta">
+              <div class="meta-item">
+                <span class="meta-icon">📅</span>
+                <span>Friday, 6:00 PM</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">👥</span>
+                <span>15 / 25 joined</span>
+              </div>
+            </div>
+
+            <button class="btn btn-orange btn-full">Join Activity</button>
+          </div>
+        </div>
+
+        <!-- Activity Card 4 -->
+        <div class="activity-card" data-type="in-person">
+          <div class="activity-image teal">
+            <span class="activity-emoji">🎨</span>
+          </div>
+          <div class="activity-content">
+            <div class="activity-tags">
+              <span class="tag teal">In-Person</span>
+              <span class="tag info">Arts</span>
+            </div>
+            <h3>Watercolor Painting Session</h3>
+            <p>Beginners welcome! Learn basic watercolor techniques together.</p>
+
+            <div class="activity-meta">
+              <div class="meta-item">
+                <span class="meta-icon">📅</span>
+                <span>Sunday, 3:00 PM</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">📍</span>
+                <span>Community Center</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">👥</span>
+                <span>6 / 10 joined</span>
+              </div>
+            </div>
+
+            <button class="btn btn-teal btn-full">Join Activity</button>
+          </div>
+        </div>
+
+        <!-- Activity Card 5 -->
+        <div class="activity-card" data-type="online">
+          <div class="activity-image orange">
+            <span class="activity-emoji">📚</span>
+          </div>
+          <div class="activity-content">
+            <div class="activity-tags">
+              <span class="tag orange">Online</span>
+              <span class="tag success">Reading</span>
+            </div>
+            <h3>Virtual Book Club</h3>
+            <p>Discuss this month's book and share your thoughts with the group.</p>
+
+            <div class="activity-meta">
+              <div class="meta-item">
+                <span class="meta-icon">📅</span>
+                <span>Next Wed, 7:00 PM</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">👥</span>
+                <span>18 / 30 joined</span>
+              </div>
+            </div>
+
+            <button class="btn btn-orange btn-full">Join Activity</button>
+          </div>
+        </div>
+
+        <!-- Activity Card 6 -->
+        <div class="activity-card" data-type="in-person">
+          <div class="activity-image teal">
+            <span class="activity-emoji">🚶</span>
+          </div>
+          <div class="activity-content">
+            <div class="activity-tags">
+              <span class="tag teal">In-Person</span>
+              <span class="tag success">Fitness</span>
+            </div>
+            <h3>Morning Walk & Talk</h3>
+            <p>Join us for a gentle morning walk and friendly conversation.</p>
+
+            <div class="activity-meta">
+              <div class="meta-item">
+                <span class="meta-icon">📅</span>
+                <span>Every Tuesday, 8:00 AM</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">📍</span>
+                <span>East Coast Park</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">👥</span>
+                <span>22 / 40 joined</span>
+              </div>
+            </div>
+
+            <button class="btn btn-teal btn-full">Join Activity</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation (Mobile) -->
+  <nav class="bottom-nav">
+    <a href="/ryan/dashboard" class="bottom-nav-item">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Home</span>
+    </a>
+    <a href="/ryan/explore" class="bottom-nav-item active">
+      <span class="nav-icon">🔍</span>
+      <span class="nav-label">Explore</span>
+    </a>
+    <a href="/ryan/messages" class="bottom-nav-item">
+      <span class="nav-icon">💬</span>
+      <span class="nav-label">Messages</span>
+    </a>
+    <a href="/ryan/profile" class="bottom-nav-item">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">Profile</span>
+    </a>
+  </nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+
+</html>

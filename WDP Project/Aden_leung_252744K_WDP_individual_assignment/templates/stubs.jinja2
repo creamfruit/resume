@@ -1,0 +1,21 @@
+{% set title = 'Stub Jinja2 Template' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+</head>
+<body data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+  <h1>{{ title }}</h1>
+  <p>Example variable: {{ example_value }}</p>
+  {% if items %}
+  <ul>
+    {% for item in items %}
+      <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No items provided.</p>
+  {% endif %}
+</body>
+</html>

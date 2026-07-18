@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ post.title }} - Wisdom Forum</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <style>
+    .forum-header-hero {
+      background: linear-gradient(120deg, #f97316, #5eead4);
+      color: white;
+      padding: 28px 24px;
+      border-radius: 18px;
+      margin-bottom: 24px;
+    }
+    .forum-header-hero a {
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .forum-header-hero h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+    .forum-header-hero p {
+      margin: 6px 0 0;
+      opacity: 0.9;
+    }
+    .question-card {
+      background: white;
+      padding: 24px;
+      border-radius: 18px;
+      border: 2px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      margin-bottom: 24px;
+    }
+    .question-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .question-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #fde68a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    .question-title {
+      font-size: 1.4rem;
+      margin: 0 0 6px;
+      color: #1e293b;
+    }
+    .question-body {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: #475569;
+      white-space: pre-wrap;
+    }
+    .response-card {
+      background: #fff7ed;
+      border: 2px solid #fed7aa;
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+    }
+    .response-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      color: #c2410c;
+      margin-bottom: 10px;
+    }
+    .response-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      color: #475569;
+      font-size: 0.85rem;
+    }
+    .response-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #fde68a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+    .comment-form {
+      background: white;
+      padding: 18px;
+      border-radius: 14px;
+      border: 2px solid #e2e8f0;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .comment-form textarea {
+      flex: 1;
+      min-height: 90px;
+      border: none;
+      outline: none;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .comment-submit {
+      background: var(--teal);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+<body style="background-color: #f8fafc; padding: 24px;">
+
+  <div style="max-width: 900px; margin: 20px auto 60px;">
+    <div class="forum-header-hero">
+      <a href="javascript:history.back()" aria-label="Go back"><span style="font-size: 1.1rem;">&#8592;</span> Back</a>
+      <h1>Wisdom Forum</h1>
+      <p>Ask life questions, get wisdom from those who've lived it.</p>
+    </div>
+
+    <article class="question-card">
+      <div class="question-meta">
+        <div class="question-avatar">&#x1F9D1;</div>
+        <div>
+          <div style="font-weight: 700;">{{ post.author }}</div>
+          <div style="font-size: 0.85rem; color: #94a3b8;">{{ post.created_at }}</div>
+        </div>
+      </div>
+      <h2 class="question-title">{{ post.title }}</h2>
+      <p class="question-body">{{ post.content }}</p>
+    </article>
+
+    <section>
+      <h3 style="font-size: 1.25rem; margin-bottom: 14px; color: #1e293b;">Responses ({{ comments|length }})</h3>
+
+      <form method="post" class="comment-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <textarea name="comment" placeholder="Share your wisdom or thoughts..." required></textarea>
+        <button type="submit" class="comment-submit" title="Post Comment">&#x1F4E9;</button>
+      </form>
+
+      {% for c in comments %}
+      <div class="response-card">
+        <div class="response-label">&#x1F4A1; Wisdom Response</div>
+        <div class="response-meta">
+          <div class="response-avatar">&#x1F9D3;</div>
+          <div><strong>{{ c.author }}</strong> &#x2022; {{ c.created_at }}</div>
+        </div>
+        <div style="color: #334155; line-height: 1.6;">{{ c.content }}</div>
+        {% if is_admin or forum_user_name == c.author %}
+        <form action="/forum/posts/{{ post.id }}/comments/{{ c.id }}/delete" method="POST" style="margin-top: 10px;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit"
+                  style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 4px 12px; border-radius: 8px; cursor: pointer;"
+                  onclick="return confirm('Are you sure you want to delete this comment?')">
+            &#x1F5D1;&#xFE0F; Delete
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      {% else %}
+      <p style="text-align: center; color: #64748b; font-style: italic;">No responses yet. Be the first to share!</p>
+      {% endfor %}
+    </section>
+  </div>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+</html>
+

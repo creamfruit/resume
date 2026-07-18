@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ club.name }} - Club Detail</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/ui-kit.css">
+  <link rel="stylesheet" href="/static/css/fab.css">
+  <style>
+    .club-main { margin-top: 90px; padding-bottom: 2rem; }
+    .club-shell { max-width: 940px; margin: 0 auto; }
+    .club-hero {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .club-hero-banner {
+      min-height: 160px;
+      background: linear-gradient(135deg, #ffe8d4, #d9faf7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+    }
+    .club-hero-body { padding: 1rem; display: grid; gap: 0.5rem; }
+    .club-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .club-card { border: 1px solid var(--border); border-radius: 14px; background:#fff; padding:0.95rem; }
+    .club-list { margin: 0; padding-left: 1.2rem; color:#374151; }
+    .club-announcements { display:grid; gap:0.55rem; }
+    .club-note { border:1px solid #e5e7eb; border-radius:10px; padding:0.65rem; background:#f9fafb; }
+    @media (max-width: 768px) { .club-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/dashboard" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+      <ul class="nav-links icon-nav">
+        <li class="icon-nav-item"><a href="/explore?type=clubs" class="icon-nav-link active" aria-label="Explore">&#x1F50D;</a></li>
+        <li class="icon-nav-item"><a href="/profile" class="icon-nav-link" aria-label="Profile">&#x1F464;</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="club-main">
+    <div class="container club-shell">
+      <div class="page-back-row"><a href="/explore?type=clubs" class="btn btn-secondary btn-pill-large">Back</a></div>
+      <section class="club-hero">
+        <div class="club-hero-banner">🏷️</div>
+        <div class="club-hero-body">
+          <h1 style="margin:0;">{{ club.name }}</h1>
+          <p style="margin:0; color:#64748b;">{{ club.category or 'Community' }} · {{ club.member_count or 0 }} members</p>
+          <p style="margin:0.2rem 0 0;">{{ club.description or 'Community club focused on meaningful peer activities.' }}</p>
+          <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+            <button type="button" id="club-join-btn" class="btn {{ 'btn-secondary' if is_member else 'btn-primary' }}" data-club-id="{{ club.id }}" data-joined="{{ '1' if is_member else '0' }}">{{ 'Leave Club' if is_member else 'Join Club' }}</button>
+            <a href="/profile" class="btn btn-secondary">View My Profile</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="club-grid">
+        <article class="club-card">
+          <h3>Upcoming Sessions</h3>
+          <ul class="club-list">
+            {% for s in sessions %}
+            <li><strong>{{ s.title }}</strong> - {{ s.when }}, {{ s.time }} ({{ s.location }})</li>
+            {% endfor %}
+          </ul>
+        </article>
+        <article class="club-card">
+          <h3>Announcements</h3>
+          <div class="club-announcements">
+            <div class="club-note">New members intro starts 15 minutes before each session.</div>
+            <div class="club-note">Share support resources respectfully in club chat.</div>
+            <div class="club-note">Session reminders are posted one day before each event.</div>
+          </div>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script>window.CSRF_TOKEN = {{ csrf_token|tojson }};</script>
+  <script>
+    (function () {
+      var btn = document.getElementById('club-join-btn');
+      if (!btn) return;
+      async function toggleMembership() {
+        var clubId = Number(btn.getAttribute('data-club-id') || 0);
+        if (!clubId) return;
+        var joined = btn.getAttribute('data-joined') === '1';
+        var endpoint = joined ? '/api/clubs/' + clubId + '/leave' : '/api/clubs/' + clubId + '/join';
+        var res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CSRF_TOKEN || ''
+          },
+          body: JSON.stringify({})
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || data.ok === false) {
+          alert(data.error || 'Action failed');
+          return;
+        }
+        var nextJoined = !!data.is_joined;
+        btn.setAttribute('data-joined', nextJoined ? '1' : '0');
+        btn.textContent = nextJoined ? 'Leave Club' : 'Join Club';
+        btn.className = 'btn ' + (nextJoined ? 'btn-secondary' : 'btn-primary');
+      }
+      btn.addEventListener('click', function () { toggleMembership().catch(function () {}); });
+    })();
+  </script>
+  {% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+</html>

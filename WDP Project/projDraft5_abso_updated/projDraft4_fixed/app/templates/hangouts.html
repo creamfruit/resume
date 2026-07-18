@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Senior-Friendly Spots - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/ui-kit.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    .page-wrap { margin-top: 72px; padding: 1.35rem 0 2.1rem; }
+    .layout { display:grid; grid-template-columns: 1.1fr 1fr; gap: 1rem; }
+    .panel { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:0.8rem; box-shadow:0 8px 18px rgba(15,23,42,0.08); }
+    #hangouts-map { height: 520px; border-radius: 10px; overflow: hidden; }
+    .spot-list { display:grid; gap:0.65rem; max-height:520px; overflow:auto; }
+    .spot-card { border:1px solid #e2e8f0; border-radius:10px; padding:0.6rem; }
+    .icon-heart-red { color: #ef4444; }
+    .icon-heart-red:hover { color: #dc2626; }
+    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } #hangouts-map { height: 360px; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/dashboard" class="logo"><div class="logo-circle"></div><span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span></a>
+      <ul class="nav-links icon-nav">
+        <li class="icon-nav-item"><a href="/dashboard" class="icon-nav-link" title="Notifications">&#x1F514;</a></li>
+        <li class="icon-nav-item"><a href="/discover" class="icon-nav-link icon-heart-red" title="Discover Matches">&#x2764;</a></li>
+        <li class="icon-nav-item"><a href="/explore" class="icon-nav-link" title="Search">&#x1F50D;</a></li>
+        <li class="icon-nav-item"><a href="/messages" class="icon-nav-link" title="Messages">&#x1F4AC;</a></li>
+        <li class="icon-nav-item"><a href="/profile" class="icon-nav-link" title="Profile">&#x1F464;</a></li>
+      </ul>
+    </div>
+  </nav>
+  <main class="page-wrap">
+    <div class="container">
+      <div class="page-back-row">
+        <button type="button" class="page-back-btn" onclick="window.history.back();">Back</button>
+      </div>
+      <h1 style="margin:0;">Senior-Friendly Spots</h1>
+      <div class="chip-row" id="hangouts-category-chips" style="margin-bottom:0.55rem;">
+        <button class="chip active" data-category="">All</button>
+        <button class="chip" data-category="cafe">Cafe</button>
+        <button class="chip" data-category="library">Library</button>
+        <button class="chip" data-category="park">Park</button>
+        <button class="chip" data-category="community_centre">Community Centre</button>
+      </div>
+      <div class="chip-row" id="hangouts-attr-chips" style="margin-bottom:0.9rem;">
+        <button class="chip" data-attr="seating">Seating</button>
+        <button class="chip" data-attr="toilets">Toilets</button>
+        <button class="chip" data-attr="accessible">Accessible</button>
+        <button class="chip" data-attr="quiet">Quiet</button>
+        <button class="chip" data-attr="well_lit">Well-lit</button>
+      </div>
+      <div class="layout">
+        <section class="panel"><div id="hangouts-map"></div></section>
+        <section class="panel">
+          <div id="hangouts-list" class="spot-list"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/static/js/hangouts.js"></script>
+</body>
+</html>

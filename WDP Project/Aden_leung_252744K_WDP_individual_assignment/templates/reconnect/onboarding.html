@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/reconnect/css/styles.css">
+  <link rel="stylesheet" href="/static/reconnect/css/onboarding.css">
+  <link rel="stylesheet" href="/static/reconnect/css/global_navbar.css">
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+<body data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+<div class="global-topbar" id="reconnect-global-navbar">
+  <div class="brand">Re:Connect Global</div>
+  <div class="actions">
+    <button type="button" id="global-notif-btn">Notifications <span class="badge" id="global-notif-badge">0</span></button>
+    <button type="button" id="global-chatbot-btn">Chatbot</button>
+    <button type="button" id="global-access-btn">Accessibility</button>
+  </div>
+  <div class="panel" id="global-notif-panel">
+    <header>Notifications</header>
+    <div class="panel-body" id="global-notif-list">
+      <div class="item">No notifications yet.</div>
+    </div>
+  </div>
+  <div class="panel" id="global-chatbot-panel">
+    <header>FAQ Chatbot</header>
+    <div class="panel-body">
+      <div id="global-chatbot-log" style="max-height:160px; overflow:auto;"></div>
+      <form id="global-chatbot-form" class="chatbot-input">
+        <input id="global-chatbot-input" type="text" placeholder="Ask a question...">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+  <div class="panel" id="global-access-panel">
+    <header>Accessibility</header>
+    <div class="panel-body">
+      <div class="item">Use browser zoom for text size.</div>
+      <div class="item">High contrast mode: Alt + Shift + H.</div>
+      <div class="item">Keyboard navigation supported.</div>
+    </div>
+  </div>
+</div>
+
+  <div class="onboarding-container">
+    <!-- Progress Bar -->
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width: 33%"></div>
+      </div>
+      <p class="progress-text">Step <span id="current-step">1</span> of 3</p>
+    </div>
+
+    <!-- Step 1: User Type -->
+    <div class="onboarding-step active" id="step-1">
+      <div class="step-content">
+        <h1>I am a...</h1>
+        <p class="step-subtitle">Choose your role to get started</p>
+
+        <div class="user-type-grid">
+          <div class="user-type-card" data-type="youth">
+            <div class="user-type-icon">👦</div>
+            <h3>Youth</h3>
+            <p>Ages 18-35. Connect with seniors and share your skills.</p>
+            <div class="check-circle"></div>
+          </div>
+
+          <div class="user-type-card" data-type="senior">
+            <div class="user-type-icon">👴</div>
+            <h3>Senior</h3>
+            <p>Ages 55+. Learn new things and share your wisdom.</p>
+            <div class="check-circle"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-orange btn-lg btn-full btn-auth" id="next-1" disabled>Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Interests -->
+    <div class="onboarding-step" id="step-2">
+      <div class="step-content">
+        <h1>What are your interests?</h1>
+        <p class="step-subtitle">Select at least 3 topics you enjoy</p>
+
+        <div class="interests-grid">
+          <div class="interest-chip" data-interest="technology">
+            <span class="interest-icon">💻</span>
+            <span>Technology</span>
+          </div>
+          <div class="interest-chip" data-interest="cooking">
+            <span class="interest-icon">🍳</span>
+            <span>Cooking</span>
+          </div>
+          <div class="interest-chip" data-interest="gardening">
+            <span class="interest-icon">🌱</span>
+            <span>Gardening</span>
+          </div>
+          <div class="interest-chip" data-interest="music">
+            <span class="interest-icon">🎵</span>
+            <span>Music</span>
+          </div>
+          <div class="interest-chip" data-interest="art">
+            <span class="interest-icon">🎨</span>
+            <span>Arts & Crafts</span>
+          </div>
+          <div class="interest-chip" data-interest="reading">
+            <span class="interest-icon">📚</span>
+            <span>Reading</span>
+          </div>
+          <div class="interest-chip" data-interest="fitness">
+            <span class="interest-icon">💪</span>
+            <span>Fitness</span>
+          </div>
+          <div class="interest-chip" data-interest="photography">
+            <span class="interest-icon">📷</span>
+            <span>Photography</span>
+          </div>
+          <div class="interest-chip" data-interest="travel">
+            <span class="interest-icon">✈️</span>
+            <span>Travel</span>
+          </div>
+          <div class="interest-chip" data-interest="games">
+            <span class="interest-icon">🎮</span>
+            <span>Games</span>
+          </div>
+          <div class="interest-chip" data-interest="language">
+            <span class="interest-icon">🗣️</span>
+            <span>Languages</span>
+          </div>
+          <div class="interest-chip" data-interest="volunteering">
+            <span class="interest-icon">🤝</span>
+            <span>Volunteering</span>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-outline-teal btn-auth" id="back-2">Back</button>
+          <button class="btn btn-orange btn-lg btn-auth" id="next-2" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Availability -->
+    <div class="onboarding-step" id="step-3">
+      <div class="step-content">
+        <h1>When are you available?</h1>
+        <p class="step-subtitle">Select your preferred times to connect</p>
+
+        <div class="availability-section">
+          <h3>Days of the Week</h3>
+          <div class="days-grid">
+            <div class="day-chip" data-day="monday">Mon</div>
+            <div class="day-chip" data-day="tuesday">Tue</div>
+            <div class="day-chip" data-day="wednesday">Wed</div>
+            <div class="day-chip" data-day="thursday">Thu</div>
+            <div class="day-chip" data-day="friday">Fri</div>
+            <div class="day-chip" data-day="saturday">Sat</div>
+            <div class="day-chip" data-day="sunday">Sun</div>
+          </div>
+        </div>
+
+        <div class="availability-section">
+          <h3>Preferred Time</h3>
+          <div class="time-grid">
+            <div class="time-chip" data-time="morning">
+              <span>🌅</span>
+              <span>Morning</span>
+              <small>8am - 12pm</small>
+            </div>
+            <div class="time-chip" data-time="afternoon">
+              <span>☀️</span>
+              <span>Afternoon</span>
+              <small>12pm - 5pm</small>
+            </div>
+            <div class="time-chip" data-time="evening">
+              <span>🌙</span>
+              <span>Evening</span>
+              <small>5pm - 9pm</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-outline-teal btn-auth" id="back-3">Back</button>
+          <button class="btn btn-orange btn-lg btn-auth" id="finish">Get Started!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/reconnect/js/onboarding.js"></script>
+  <script src="/static/reconnect/js/global_navbar.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+</html>
+

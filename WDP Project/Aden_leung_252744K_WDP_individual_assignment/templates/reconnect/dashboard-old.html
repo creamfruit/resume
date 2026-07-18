@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/reconnect/css/styles.css">
+  <link rel="stylesheet" href="/static/reconnect/css/dashboard.css">
+  <link rel="stylesheet" href="/static/reconnect/css/global_navbar.css">
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+<body data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+<div class="global-topbar" id="reconnect-global-navbar">
+  <div class="brand">Re:Connect Global</div>
+  <div class="actions">
+    <button type="button" id="global-notif-btn">Notifications <span class="badge" id="global-notif-badge">0</span></button>
+    <button type="button" id="global-chatbot-btn">Chatbot</button>
+    <button type="button" id="global-access-btn">Accessibility</button>
+  </div>
+  <div class="panel" id="global-notif-panel">
+    <header>Notifications</header>
+    <div class="panel-body" id="global-notif-list">
+      <div class="item">No notifications yet.</div>
+    </div>
+  </div>
+  <div class="panel" id="global-chatbot-panel">
+    <header>FAQ Chatbot</header>
+    <div class="panel-body">
+      <div id="global-chatbot-log" style="max-height:160px; overflow:auto;"></div>
+      <form id="global-chatbot-form" class="chatbot-input">
+        <input id="global-chatbot-input" type="text" placeholder="Ask a question...">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+  <div class="panel" id="global-access-panel">
+    <header>Accessibility</header>
+    <div class="panel-body">
+      <div class="item">Use browser zoom for text size.</div>
+      <div class="item">High contrast mode: Alt + Shift + H.</div>
+      <div class="item">Keyboard navigation supported.</div>
+    </div>
+  </div>
+</div>
+
+  <!-- Welcome Screen (fades after 1.5 seconds) -->
+  <div id="welcome-screen" class="welcome-screen">
+    <div class="welcome-content">
+      <h1>Welcome back, Aden 👋</h1>
+      <p>Ready to continue connecting?</p>
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Main Dashboard -->
+  <div id="main-dashboard" class="main-dashboard hidden">
+    <!-- Top Navbar -->
+    <nav class="navbar">
+      <div class="container">
+        <a href="/" class="logo">
+          <div class="logo-circle"></div>
+          <span class="logo-text">Re:Connect SG</span>
+        </a>
+
+        <ul class="nav-links">
+          <li><a href="dashboard.html" class="active">Home</a></li>
+          <li><a href="connect.html">Connect</a></li>
+          <li><a href="explore.html">Explore</a></li>
+          <li><a href="messages.html">Messages</a></li>
+          <li><a href="perks.html">Perks</a></li>
+          <li class="profile-menu">
+            <a href="profile.html" class="profile-link">
+              <span class="notification-dot"></span>
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aden" alt="Profile" class="nav-avatar">
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <main class="dashboard-main">
+      <div class="container">
+        <!-- Profile Panel -->
+        <section class="profile-panel">
+          <div class="profile-header">
+            <div class="profile-avatar">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aden" alt="Aden">
+            </div>
+            <div class="profile-info">
+              <h2>Aden</h2>
+              <span class="user-type youth">Youth</span>
+            </div>
+          </div>
+
+          <div class="profile-progress">
+            <div class="progress-header">
+              <span>Profile Completion</span>
+              <span class="progress-percent">60%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 60%"></div>
+            </div>
+          </div>
+
+          <a href="profile.html" class="btn btn-teal btn-full btn-auth">Complete Profile</a>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="quick-actions">
+          <h2 class="section-title">Quick Actions</h2>
+          <div class="actions-grid">
+            <a href="connect.html" class="action-card">
+              <div class="action-icon teal">🤝</div>
+              <h3>Find Connections</h3>
+              <p>Discover people who share your interests</p>
+            </a>
+
+            <a href="explore.html" class="action-card">
+              <div class="action-icon orange">🔍</div>
+              <h3>Explore Events</h3>
+              <p>2 activities happening today</p>
+            </a>
+
+            <a href="perks.html" class="action-card">
+              <div class="action-icon success">⭐</div>
+              <h3>View Perks</h3>
+              <p>You have 3 new badges to unlock</p>
+            </a>
+          </div>
+        </section>
+
+        <!-- Recent Updates -->
+        <section class="recent-updates">
+          <h2 class="section-title">Recent Updates</h2>
+          <div class="updates-list">
+            <div class="update-card">
+              <div class="update-icon orange">💬</div>
+              <div class="update-content">
+                <p class="update-text"><strong>Sarah</strong> replied to your message</p>
+                <span class="update-time">5 minutes ago</span>
+              </div>
+            </div>
+
+            <div class="update-card">
+              <div class="update-icon teal">🎨</div>
+              <div class="update-content">
+                <p class="update-text">New activity near you: <strong>Digital Art Workshop</strong></p>
+                <span class="update-time">1 hour ago</span>
+              </div>
+            </div>
+
+            <div class="update-card">
+              <div class="update-icon success">🏆</div>
+              <div class="update-content">
+                <p class="update-text">You unlocked the <strong>Helper Badge</strong>!</p>
+                <span class="update-time">2 hours ago</span>
+              </div>
+            </div>
+
+            <div class="update-card">
+              <div class="update-icon info">🤝</div>
+              <div class="update-content">
+                <p class="update-text"><strong>John</strong> accepted your connection request</p>
+                <span class="update-time">Yesterday</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav">
+      <a href="dashboard.html" class="bottom-nav-item active">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Home</span>
+      </a>
+      <a href="explore.html" class="bottom-nav-item">
+        <span class="nav-icon">🔍</span>
+        <span class="nav-label">Explore</span>
+      </a>
+      <a href="messages.html" class="bottom-nav-item">
+        <span class="nav-icon">💬</span>
+        <span class="nav-label">Messages</span>
+      </a>
+      <a href="profile.html" class="bottom-nav-item">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Profile</span>
+      </a>
+    </nav>
+  </div>
+
+  <script src="/static/reconnect/js/dashboard.js"></script>
+  <script src="/static/reconnect/js/global_navbar.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+</html>

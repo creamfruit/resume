@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wellbeing - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/messages.css" />
+  <style>
+    .wellbeing-wrap { padding: 1.5rem 0 3rem; }
+    .well-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 1rem; }
+    .well-card {
+      background: #fff;
+      border: 2px solid #d7f3ef;
+      border-radius: 18px;
+      padding: 1rem 1.1rem;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+      margin-bottom: 0.5rem;
+    }
+    .well-card h2 { margin: 0 0 0.35rem; font-size: 1.15rem; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+    .score-main { font-size: 2rem; font-weight: 800; color: #0f172a; line-height: 1.1; }
+    .score-sub { color: #64748b; font-weight: 600; }
+    .mood-buttons { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.6rem; }
+    .mood-btn {
+      border: 2px solid #c8ece7;
+      background: white;
+      padding: 0.42rem 0.75rem;
+      border-radius: 999px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .mood-btn.active { background: var(--teal); color: white; border-color: var(--teal); }
+    .trend-line { display: flex; gap: 4px; align-items: flex-end; height: 110px; margin-top: 0.7rem; }
+    .trend-line .bar { width: 100%; border-radius: 5px 5px 0 0; background: #bae6fd; min-height: 4px; }
+    .trend-line .bar.has-value { background: linear-gradient(180deg, #2cb6a5, #67e8f9); }
+    .trend-caption { margin-top: 0.5rem; color: #64748b; font-size: 0.84rem; }
+    .breakdown-list { display: grid; gap: 0.45rem; margin-top: 0.55rem; }
+    .breakdown-row { display: grid; grid-template-columns: 120px 1fr 48px; gap: 0.45rem; align-items: center; }
+    .breakdown-track { height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+    .breakdown-fill { height: 100%; background: linear-gradient(90deg, #f47c20, #2cb6a5); }
+    .insight-list, .reco-list, .risk-list, .journal-list, .badge-list { display: grid; gap: 0.55rem; margin-top: 0.6rem; }
+    .insight-item, .risk-item, .journal-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0.6rem 0.75rem;
+      background: #f8fafc;
+    }
+    .support-action {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.65rem 0.8rem;
+      border-radius: 12px;
+      background: rgba(44, 182, 165, 0.12);
+      border: 1px solid rgba(44, 182, 165, 0.25);
+      color: #0f766e;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .support-action .icon {
+      width: 26px; height: 26px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #ecfeff; border: 1px solid rgba(44, 182, 165, 0.35);
+    }
+    .badge-list { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .wb-badge {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0.6rem 0.75rem;
+      background: #fff;
+      font-weight: 700;
+    }
+    .wb-badge.locked { opacity: 0.6; }
+    .risk-banner {
+      margin-top: 0.65rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid #fecaca;
+      background: #fef2f2;
+      color: #991b1b;
+      font-weight: 700;
+      display: none;
+    }
+    .stats-inline { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.6rem; }
+    .stats-chip {
+      background: #f1f5f9; border: 1px solid #dbeafe; border-radius: 999px;
+      padding: 0.3rem 0.65rem; font-weight: 700; color: #0f172a; font-size: 0.83rem;
+    }
+    .muted { color: #64748b; }
+    @media (max-width: 900px) {
+      .span-4, .span-6, .span-8, .span-12 { grid-column: span 12; }
+    }
+  </style>
+  <style>
+    .navbar .nav-links .active {
+      color: var(--orange);
+      position: relative;
+      font-weight: 700;
+    }
+    .navbar .nav-links .active::after {
+      content: "";
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--orange);
+    }
+    .profile-menu {
+      position: relative;
+    }
+    .profile-link {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .nav-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--orange);
+      object-fit: cover;
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+
+      <ul class="nav-links icon-nav">
+        <li class="icon-nav-item">
+          <button class="icon-nav-btn" id="notif-btn" type="button" title="Notifications" aria-label="Notifications">
+            <span aria-hidden="true">&#x1F514;</span>
+            <span class="notification-badge">3</span>
+          </button>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/discover" class="icon-nav-link" title="Discover Matches" aria-label="Discover Matches">&#x2764;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/explore" class="icon-nav-link" title="Search" aria-label="Search">&#x1F50D;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/messages" class="icon-nav-link" title="Messages" aria-label="Messages">&#x1F4AC;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/profile" class="icon-nav-link" title="Profile" aria-label="Profile">&#x1F464;</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="wellbeing-wrap">
+    <div class="container" style="max-width: 1120px;">
+      <div class="well-card span-12">
+        <h2>Your Wellbeing Dashboard</h2>
+        <p class="muted">A proactive emotional support view with mood analytics, activity signals, and guided actions.</p>
+        <div class="stats-inline">
+          <span class="stats-chip" id="wb-current-chip">Current: 😐 Neutral</span>
+          <span class="stats-chip" id="wb-updated-chip">Last check-in: N/A</span>
+          <span class="stats-chip" id="wb-trend-chip">Trend: ➡ Stable</span>
+        </div>
+      </div>
+
+      <div class="well-grid">
+        <section class="well-card span-4">
+          <h2>Wellbeing Score</h2>
+          <div class="score-main"><span id="wb-score">0</span> / 100</div>
+          <div class="score-sub">Based on mood logs, social activity, and consistency.</div>
+          <div class="mood-buttons" id="wellbeing-actions">
+            <button class="mood-btn" data-mood="happy">😊</button>
+            <button class="mood-btn" data-mood="good">🙂</button>
+            <button class="mood-btn" data-mood="neutral">😐</button>
+            <button class="mood-btn" data-mood="stressed">😟</button>
+            <button class="mood-btn" data-mood="sad">😞</button>
+          </div>
+          <div class="risk-banner" id="wb-risk-banner"></div>
+        </section>
+
+        <section class="well-card span-8">
+          <h2>Mood Trend (30 Days)</h2>
+          <div class="trend-line" id="wb-trend-line"></div>
+          <div class="trend-caption">Each bar represents your average daily mood score.</div>
+        </section>
+
+        <section class="well-card span-6">
+          <h2>Emotional Breakdown</h2>
+          <div class="breakdown-list" id="wb-breakdown"></div>
+        </section>
+
+        <section class="well-card span-6">
+          <h2>Activity Correlation</h2>
+          <div class="stats-inline">
+            <span class="stats-chip">Circles this week: <strong id="wb-circles">0</strong></span>
+            <span class="stats-chip">Messages sent: <strong id="wb-messages">0</strong></span>
+            <span class="stats-chip">Challenges done: <strong id="wb-challenges">0</strong></span>
+          </div>
+          <div class="insight-list" id="wb-mini-nudge"></div>
+        </section>
+
+        <section class="well-card span-6">
+          <h2>AI Insights</h2>
+          <div class="insight-list" id="wb-insights"></div>
+        </section>
+
+        <section class="well-card span-6">
+          <h2>Support Recommendations</h2>
+          <div class="reco-list" id="wellbeing-recos"></div>
+        </section>
+
+        <section class="well-card span-6">
+          <h2>Reflection Journal</h2>
+          <div class="mb-2">
+            <label for="wb-journal-prompt" class="form-label">Prompt (optional)</label>
+            <input id="wb-journal-prompt" class="form-control" placeholder="What made today meaningful?">
+          </div>
+          <div class="mb-2">
+            <label for="wb-journal-gratitude" class="form-label">Gratitude</label>
+            <textarea id="wb-journal-gratitude" class="form-control" rows="2" placeholder="One thing I am grateful for..."></textarea>
+          </div>
+          <div class="mb-2">
+            <label for="wb-journal-reflection" class="form-label">Reflection</label>
+            <textarea id="wb-journal-reflection" class="form-control" rows="3" placeholder="Thoughts from today..."></textarea>
+          </div>
+          <button class="btn btn-orange btn-sm" id="wb-journal-save">Save Reflection</button>
+          <div class="journal-list" id="wb-journal-list"></div>
+        </section>
+
+        <section class="well-card span-6">
+          <h2>Rewards & Badges</h2>
+          <div class="badge-list" id="wb-badges"></div>
+        </section>
+
+        <section class="well-card span-12">
+          <h2>Risk Monitoring Panel</h2>
+          <p class="muted">Supportive actions are shown when repeated low mood patterns are detected.</p>
+          <div class="risk-list" id="wb-risk-list"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/js/wellbeing.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+</html>

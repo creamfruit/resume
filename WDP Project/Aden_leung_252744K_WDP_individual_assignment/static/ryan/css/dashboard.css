@@ -1,0 +1,489 @@
+/* Dashboard Styles */
+
+.main-dashboard {
+  margin-top: 72px;
+}
+
+/* Keep the top navbar fixed on the dashboard even with Bootstrap loaded last */
+body .navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 900;
+}
+
+/* Main Dashboard */
+.main-dashboard {
+  animation: fadeIn 0.35s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dashboard-main {
+  padding: 2rem 0 6rem;
+  min-height: calc(100vh - 64px);
+}
+
+.dashboard-main .container {
+  max-width: 900px;
+}
+
+/* Welcome + Stats */
+.welcome-section {
+  margin: 1rem 0 2rem;
+}
+
+.welcome-copy h1 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+  color: var(--text-dark);
+}
+
+.welcome-copy p {
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.welcome-wave {
+  display: inline-block;
+  transform: translateY(2px);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stat-card-primary {
+  background: var(--orange);
+  color: #fff;
+  border-color: transparent;
+}
+
+.stat-icon {
+  font-size: 1.4rem;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.stat-card-primary .stat-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.stat-icon-teal {
+  color: var(--teal);
+  background: rgba(18, 184, 166, 0.15);
+}
+
+.stat-icon-orange {
+  color: var(--orange);
+  background: rgba(255, 159, 67, 0.18);
+}
+
+.stat-card-primary .stat-icon-teal,
+.stat-card-primary .stat-icon-orange {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.stat-card-primary .stat-label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Profile Panel */
+.profile-panel {
+  background: white;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  margin-bottom: 2rem;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid var(--teal);
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-info h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.user-type {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.user-type.youth {
+  background-color: rgba(18, 184, 166, 0.15);
+  color: var(--teal-dark);
+}
+
+.user-type.senior {
+  background-color: rgba(255, 159, 67, 0.15);
+  color: var(--orange-dark);
+}
+
+.profile-progress {
+  margin-bottom: 1.5rem;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.progress-percent {
+  color: var(--teal);
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: var(--border-color);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--orange);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.btn-full {
+  width: 100%;
+  text-align: center;
+}
+
+/* Quick Actions */
+.quick-actions {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.action-card {
+  background: white;
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text-dark);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: var(--teal);
+}
+
+.action-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 1rem;
+}
+
+.action-icon.teal {
+  background-color: rgba(18, 184, 166, 0.15);
+}
+
+.action-icon.orange {
+  background-color: rgba(255, 159, 67, 0.15);
+}
+
+.action-icon.success {
+  background-color: rgba(34, 197, 94, 0.15);
+}
+
+.action-card h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.action-card p {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Recent Updates */
+.recent-updates {
+  margin-bottom: 2rem;
+}
+
+.updates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.update-card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s;
+}
+
+.update-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateX(4px);
+}
+
+.update-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.update-icon.teal {
+  background-color: rgba(18, 184, 166, 0.15);
+}
+
+.update-icon.orange {
+  background-color: rgba(255, 159, 67, 0.15);
+}
+
+.update-icon.success {
+  background-color: rgba(34, 197, 94, 0.15);
+}
+
+.update-icon.info {
+  background-color: rgba(59, 130, 246, 0.15);
+}
+
+.update-content {
+  flex: 1;
+}
+
+.update-text {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.9375rem;
+  color: var(--text-dark);
+}
+
+.update-time {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-around;
+  padding: 0.5rem 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  color: var(--text-muted);
+  transition: all 0.3s;
+  border-radius: 0.75rem;
+  min-width: 70px;
+}
+
+.bottom-nav-item.active {
+  background-color: rgba(18, 184, 166, 0.1);
+  color: var(--teal);
+}
+
+.nav-icon {
+  font-size: 1.5rem;
+}
+
+.nav-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.navbar .nav-links .active {
+  color: var(--orange);
+  position: relative;
+}
+
+.navbar .nav-links .active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--orange);
+  border-radius: 2px;
+}
+
+/* Profile Menu in Navbar */
+.profile-menu {
+  position: relative;
+}
+
+.profile-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nav-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--orange);
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.nav-avatar:hover {
+  transform: scale(1.1);
+}
+
+.notification-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background-color: var(--error);
+  border-radius: 50%;
+  border: 2px solid white;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .welcome-copy h1 {
+    font-size: 1.75rem;
+  }
+
+  .bottom-nav {
+    display: flex;
+  }
+}
+
+@media (max-width: 520px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 769px) {
+  .bottom-nav {
+    display: none;
+  }
+}

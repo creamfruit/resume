@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/ryan/css/styles.css">
+  <link rel="stylesheet" href="/static/ryan/css/onboarding.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    /* Interests: centre the chips and prevent overflow beyond the container */
+    .interests-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: stretch;
+      gap: 12px;
+      max-width: 760px;
+      margin: 18px auto 0;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+
+    .interest-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      max-width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      flex: 0 1 auto;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .interest-chip span {
+      min-width: 0;
+    }
+
+    @media (max-width: 420px) {
+      .interests-grid {
+        gap: 10px;
+        padding: 4px;
+      }
+
+      .interest-chip {
+        max-width: calc(100vw - 72px);
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+
+
+<body>
+  <div class="onboarding-container">
+    <!-- Progress Bar -->
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width: 33%"></div>
+      </div>
+      <p class="progress-text">Step <span id="current-step">1</span> of 3</p>
+    </div>
+
+    <!-- Step 1: User Type -->
+    <div class="onboarding-step active" id="step-1">
+      <div class="step-content">
+        <h1>I am a...</h1>
+        <p class="step-subtitle">Choose your role to get started</p>
+
+        <div class="user-type-grid">
+          <div class="user-type-card" data-type="youth">
+            <div class="user-type-icon">👦</div>
+            <h3>Youth</h3>
+            <p>Ages 18-35. Connect with seniors and share your skills.</p>
+            <div class="check-circle"></div>
+          </div>
+
+          <div class="user-type-card" data-type="senior">
+            <div class="user-type-icon">👴</div>
+            <h3>Senior</h3>
+            <p>Ages 55+. Learn new things and share your wisdom.</p>
+            <div class="check-circle"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-orange btn-lg btn-full" id="next-1" disabled>Continue</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Interests -->
+    <div class="onboarding-step" id="step-2">
+      <div class="step-content">
+        <h1>What are your interests?</h1>
+        <p class="step-subtitle">Select at least 3 topics you enjoy</p>
+
+        <div class="interests-grid">
+          <div class="interest-chip" data-interest="technology">
+            <span class="interest-icon">💻</span>
+            <span>Technology</span>
+          </div>
+          <div class="interest-chip" data-interest="cooking">
+            <span class="interest-icon">🍳</span>
+            <span>Cooking</span>
+          </div>
+          <div class="interest-chip" data-interest="gardening">
+            <span class="interest-icon">🌱</span>
+            <span>Gardening</span>
+          </div>
+          <div class="interest-chip" data-interest="music">
+            <span class="interest-icon">🎵</span>
+            <span>Music</span>
+          </div>
+          <div class="interest-chip" data-interest="art">
+            <span class="interest-icon">🎨</span>
+            <span>Arts & Crafts</span>
+          </div>
+          <div class="interest-chip" data-interest="reading">
+            <span class="interest-icon">📚</span>
+            <span>Reading</span>
+          </div>
+          <div class="interest-chip" data-interest="fitness">
+            <span class="interest-icon">💪</span>
+            <span>Fitness</span>
+          </div>
+          <div class="interest-chip" data-interest="photography">
+            <span class="interest-icon">📷</span>
+            <span>Photography</span>
+          </div>
+          <div class="interest-chip" data-interest="travel">
+            <span class="interest-icon">✈️</span>
+            <span>Travel</span>
+          </div>
+          <div class="interest-chip" data-interest="games">
+            <span class="interest-icon">🎮</span>
+            <span>Games</span>
+          </div>
+          <div class="interest-chip" data-interest="language">
+            <span class="interest-icon">🗣️</span>
+            <span>Languages</span>
+          </div>
+          <div class="interest-chip" data-interest="volunteering">
+            <span class="interest-icon">🤝</span>
+            <span>Volunteering</span>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-outline-teal" id="back-2">Back</button>
+          <button class="btn btn-orange btn-lg" id="next-2" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Availability -->
+    <div class="onboarding-step" id="step-3">
+      <div class="step-content">
+        <h1>When are you available?</h1>
+        <p class="step-subtitle">Select your preferred times to connect</p>
+
+        <div class="availability-section">
+          <h3>Days of the Week</h3>
+          <div class="days-grid">
+            <div class="day-chip" data-day="monday">Mon</div>
+            <div class="day-chip" data-day="tuesday">Tue</div>
+            <div class="day-chip" data-day="wednesday">Wed</div>
+            <div class="day-chip" data-day="thursday">Thu</div>
+            <div class="day-chip" data-day="friday">Fri</div>
+            <div class="day-chip" data-day="saturday">Sat</div>
+            <div class="day-chip" data-day="sunday">Sun</div>
+          </div>
+        </div>
+
+        <div class="availability-section">
+          <h3>Preferred Time</h3>
+          <div class="time-grid">
+            <div class="time-chip" data-time="morning">
+              <span>🌅</span>
+              <span>Morning</span>
+              <small>8am - 12pm</small>
+            </div>
+            <div class="time-chip" data-time="afternoon">
+              <span>☀️</span>
+              <span>Afternoon</span>
+              <small>12pm - 5pm</small>
+            </div>
+            <div class="time-chip" data-time="evening">
+              <span>🌙</span>
+              <span>Evening</span>
+              <small>5pm - 9pm</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="btn btn-outline-teal" id="back-3">Back</button>
+          <button class="btn btn-orange btn-lg" id="finish">Get Started!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/ryan/js/onboarding.js"></script>
+  <script>
+    // Pre-select user's previous interests
+    document.addEventListener('DOMContentLoaded', function() {
+      var onboarding = {{ onboarding|tojson }};
+      if (onboarding && onboarding.interests) {
+        onboarding.interests.forEach(function(interest) {
+          var chip = document.querySelector('.interest-chip[data-interest="' + interest + '"]');
+          if (chip) {
+            chip.classList.add('selected');
+          }
+        });
+      }
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+
+</html>

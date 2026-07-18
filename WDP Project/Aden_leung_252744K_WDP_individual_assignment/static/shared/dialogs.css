@@ -1,0 +1,70 @@
+/* Custom HTML/CSS dialogs to replace browser alert/confirm */
+.ui-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.ui-dialog-overlay.show { display: flex; }
+
+.ui-dialog {
+  width: min(520px, 92vw);
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(0,0,0,0.08);
+  overflow: hidden;
+  font-family: "Poppins", "Segoe UI", system-ui, sans-serif;
+}
+
+.ui-dialog-header {
+  padding: 18px 20px 10px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.ui-dialog-body {
+  padding: 0 20px 18px;
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.ui-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  background: #f8fafc;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+
+.ui-dialog-btn {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ui-dialog-btn.primary {
+  background: #F47C20;
+  color: #ffffff;
+  border-color: #F47C20;
+}
+
+.ui-dialog-btn.danger {
+  background: #d4183d;
+  color: #ffffff;
+  border-color: #d4183d;
+}
+
+.ui-dialog-btn:focus { outline: 2px solid rgba(244,124,32,0.25); }

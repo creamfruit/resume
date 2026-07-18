@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/reconnect/css/styles.css">
+  <link rel="stylesheet" href="/static/reconnect/css/messages.css">
+  <link rel="stylesheet" href="/static/reconnect/css/global_navbar.css">
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+<body data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+<div class="global-topbar" id="reconnect-global-navbar">
+  <div class="brand">Re:Connect Global</div>
+  <div class="actions">
+    <button type="button" id="global-notif-btn">Notifications <span class="badge" id="global-notif-badge">0</span></button>
+    <button type="button" id="global-chatbot-btn">Chatbot</button>
+    <button type="button" id="global-access-btn">Accessibility</button>
+  </div>
+  <div class="panel" id="global-notif-panel">
+    <header>Notifications</header>
+    <div class="panel-body" id="global-notif-list">
+      <div class="item">No notifications yet.</div>
+    </div>
+  </div>
+  <div class="panel" id="global-chatbot-panel">
+    <header>FAQ Chatbot</header>
+    <div class="panel-body">
+      <div id="global-chatbot-log" style="max-height:160px; overflow:auto;"></div>
+      <form id="global-chatbot-form" class="chatbot-input">
+        <input id="global-chatbot-input" type="text" placeholder="Ask a question...">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+  <div class="panel" id="global-access-panel">
+    <header>Accessibility</header>
+    <div class="panel-body">
+      <div class="item">Use browser zoom for text size.</div>
+      <div class="item">High contrast mode: Alt + Shift + H.</div>
+      <div class="item">Keyboard navigation supported.</div>
+    </div>
+  </div>
+</div>
+
+  <!-- Accessibility Controls -->
+  <div class="accessibility-bar">
+    <div class="container">
+      <button id="back-btn" class="back-btn btn-auth">← Back</button>
+      <div class="accessibility-controls">
+        <button class="accessibility-btn btn-auth" id="font-size-btn" title="Adjust Text Size">
+          <span>A</span><span style="font-size: 1.2em;">A</span>
+        </button>
+        <button class="accessibility-btn btn-auth" id="contrast-btn" title="Toggle High Contrast">
+          ◐
+        </button>
+        <button class="accessibility-btn btn-auth" id="lang-btn" title="Change Language">
+          🌐
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="/reconnect/dashboard" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect SG</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/reconnect/dashboard">Home</a></li>
+        <li class="notification-menu">
+          <button class="notification-btn btn-auth" id="notif-btn">
+            <span class="notification-icon">🔔</span>
+            <span class="notification-badge">0</span>
+          </button>
+        </li>
+        <li><a href="/reconnect/messages" class="active">Messages</a></li>
+        <li class="profile-menu">
+          <a href="/reconnect/profile" class="profile-link">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" alt="Profile" class="nav-avatar">
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Notifications Dropdown -->
+  <div class="notifications-dropdown" id="notifications-dropdown">
+    <div class="notifications-header">
+      <h3>Notifications</h3>
+      <button class="mark-read-btn btn-auth">Mark all as read</button>
+    </div>
+    <div class="notifications-list">
+      <div class="notification-item unread">
+        <div class="notif-icon orange">💬</div>
+        <div class="notif-content">
+          <p><strong>Mdm Chen</strong> sent you a message</p>
+          <span class="notif-time">5 minutes ago</span>
+        </div>
+      </div>
+      <div class="notification-item unread">
+        <div class="notif-icon teal">🤝</div>
+        <div class="notif-content">
+          <p><strong>New match found!</strong> You have a 95% match with Uncle Tan</p>
+          <span class="notif-time">1 hour ago</span>
+        </div>
+      </div>
+      <div class="notification-item unread">
+        <div class="notif-icon success">🏆</div>
+        <div class="notif-content">
+          <p><strong>Badge unlocked:</strong> Hello There</p>
+          <span class="notif-time">2 hours ago</span>
+        </div>
+      </div>
+      <div class="notification-item">
+        <div class="notif-icon orange">📚</div>
+        <div class="notif-content">
+          <p>Learning Circle starts in 30 minutes: <strong>WhatsApp Basics</strong></p>
+          <span class="notif-time">Yesterday</span>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="view-all-notif">View All Notifications</a>
+  </div>
+
+  <!-- Messages Layout -->
+  <main class="messages-layout">
+    <div class="container-fluid">
+      <div class="messages-grid">
+
+        <!-- Conversations List -->
+        <aside class="conversations-sidebar">
+          <div class="sidebar-header">
+            <h2>Re:Chat Messages</h2>
+            <button class="new-chat-btn btn-auth">+ New Chat</button>
+          </div>
+
+          <div class="search-box">
+            <input type="text" placeholder="Search conversations..." id="search-conversations">
+          </div>
+
+          <div class="conversations-list">
+            <div class="conversation-item active" data-chat="mdm-chen">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Chen" alt="Mdm Chen" class="conversation-avatar">
+              <div class="conversation-info">
+                <div class="conversation-header">
+                  <h4>Mdm Chen Wei Ling</h4>
+                  <span class="conversation-time">5m ago</span>
+                </div>
+                <p class="conversation-preview">Thank you so much! I finally...</p>
+                <span class="unread-badge">2</span>
+              </div>
+            </div>
+
+            <div class="conversation-item" data-chat="uncle-kumar">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Kumar" alt="Mr Kumar" class="conversation-avatar">
+              <div class="conversation-info">
+                <div class="conversation-header">
+                  <h4>Mr Kumar Raj</h4>
+                  <span class="conversation-time">1h ago</span>
+                </div>
+                <p class="conversation-preview">See you at the Learning Circle!</p>
+              </div>
+            </div>
+
+            <div class="conversation-item" data-chat="auntie-mary">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Mary" alt="Auntie Mary" class="conversation-avatar">
+              <div class="conversation-info">
+                <div class="conversation-header">
+                  <h4>Auntie Mary Lim</h4>
+                  <span class="conversation-time">Yesterday</span>
+                </div>
+                <p class="conversation-preview">The kueh recipe was wonderful!</p>
+              </div>
+            </div>
+
+            <div class="conversation-item" data-chat="uncle-tan">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tan" alt="Uncle Tan" class="conversation-avatar">
+              <div class="conversation-info">
+                <div class="conversation-header">
+                  <h4>Uncle Tan Ah Seng</h4>
+                  <span class="conversation-time">2 days ago</span>
+                </div>
+                <p class="conversation-preview">Can share my kopi secret...</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Chat Window -->
+        <section class="chat-window">
+          <div class="chat-header">
+            <div class="chat-header-info">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Chen" alt="Mdm Chen" class="chat-avatar">
+              <div>
+                <h3>Mdm Chen Wei Ling</h3>
+                <span class="online-status">● Online</span>
+              </div>
+            </div>
+            <div class="chat-actions">
+              <button class="translate-btn btn-auth" id="translate-btn" title="Translate Messages">
+                🌐 Translate
+              </button>
+              <button class="safety-btn btn-auth" title="Report/Block">⚠️</button>
+            </div>
+          </div>
+
+          <!-- Translation Language Selector -->
+          <div class="translation-panel" id="translation-panel" style="display: none;">
+            <button class="lang-option" data-lang="en">🇬🇧 English</button>
+            <button class="lang-option" data-lang="zh">🇨🇳 中文</button>
+            <button class="lang-option" data-lang="ms">🇲🇾 Bahasa Melayu</button>
+            <button class="lang-option" data-lang="ta">🇮🇳 தமிழ்</button>
+          </div>
+
+          <div class="chat-messages" id="chat-messages">
+            <!-- Conversation Starters -->
+            <div class="conversation-starters">
+              <p style="text-align: center; color: var(--muted-foreground); margin-bottom: 1rem;">
+                <strong>💡 Conversation Starters:</strong>
+              </p>
+              <button class="starter-btn btn-auth">What's your favorite childhood snack? 🍜</button>
+              <button class="starter-btn btn-auth">Tell me about your neighborhood 🏡</button>
+              <button class="starter-btn btn-auth">What song always makes you smile? 🎵</button>
+            </div>
+
+            <!-- Messages -->
+            <div class="message received">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Chen" alt="Mdm Chen" class="message-avatar">
+              <div class="message-content">
+                <p>Hello Sarah! I hope you're doing well. I wanted to thank you for helping me with WhatsApp yesterday! 😊</p>
+                <span class="message-time">10:30 AM</span>
+              </div>
+            </div>
+
+            <div class="message sent">
+              <div class="message-content">
+                <p>Hi Mdm Chen! I'm so happy I could help! How are you finding it so far?</p>
+                <span class="message-time">10:32 AM</span>
+              </div>
+            </div>
+
+            <div class="message received">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Chen" alt="Mdm Chen" class="message-avatar">
+              <div class="message-content">
+                <p>Thank you so much! I finally managed to send a voice message to my grandson in Australia! He was so surprised! 🎉</p>
+                <span class="message-time">10:35 AM</span>
+              </div>
+            </div>
+
+            <div class="message sent">
+              <div class="message-content">
+                <p>That's wonderful! I'm sure he loved hearing your voice! Would you like to learn how to make video calls next? 📱</p>
+                <span class="message-time">10:37 AM</span>
+              </div>
+            </div>
+
+            <div class="message received typing">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Chen" alt="Mdm Chen" class="message-avatar">
+              <div class="message-content">
+                <div class="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Message Input -->
+          <div class="chat-input-container">
+            <div class="message-input-wrapper">
+              <button class="input-icon-btn btn-auth" title="Attach Image">📷</button>
+              <button class="input-icon-btn btn-auth" title="Voice Message">🎤</button>
+              <input type="text" class="message-input" placeholder="Type your message..." id="message-input">
+              <button class="input-icon-btn btn-auth" title="Emoji">😊</button>
+              <button class="send-btn btn-auth" id="send-btn">Send</button>
+            </div>
+
+            <!-- Safety Notice -->
+            <div class="safety-notice">
+              <span>🔒 All messages are monitored for safety. Report inappropriate content.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Language Modal -->
+  <div class="modal" id="lang-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Select Language / 选择语言</h3>
+        <button class="close-modal" id="close-lang-modal">×</button>
+      </div>
+      <div class="lang-options">
+        <button class="lang-option-big" data-lang="en">
+          <span class="lang-flag">🇬🇧</span>
+          <span class="lang-name">English</span>
+        </button>
+        <button class="lang-option-big" data-lang="zh">
+          <span class="lang-flag">🇨🇳</span>
+          <span class="lang-name">中文 (Chinese)</span>
+        </button>
+        <button class="lang-option-big" data-lang="ms">
+          <span class="lang-flag">🇲🇾</span>
+          <span class="lang-name">Bahasa Melayu</span>
+        </button>
+        <button class="lang-option-big" data-lang="ta">
+          <span class="lang-flag">🇮🇳</span>
+          <span class="lang-name">தமிழ் (Tamil)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/reconnect/js/messages.js"></script>
+  <script src="/static/reconnect/js/accessibility.js"></script>
+  <script src="/static/reconnect/js/global_navbar.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+</html>
+

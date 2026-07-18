@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scrapbook - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/messages.css" />
+  <style>
+    .scrapbook-wrap { padding: 2rem 0 3.5rem; }
+    .scrapbook-stage { position: relative; }
+    .scrapbook-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.2rem;
+    }
+    .scrapbook-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+    .timeline-item {
+      background: #fffaf0;
+      border: 2px solid #fde2c7;
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+    }
+    .theme-minimal .book,
+    .theme-minimal .timeline-item { border-color: #e2e8f0; box-shadow: 0 16px 30px rgba(0,0,0,0.08); }
+    .theme-modern .book { background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%); }
+    .theme-kampung .book { background: #fff1dc; }
+    .theme-vintage .book { background: #fdf6ea; }
+    .book-wrapper {
+      position: relative;
+      margin-top: 1rem;
+    }
+    .book-stage {
+      position: relative;
+    }
+    .book-cover-panel {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.25), transparent 45%),
+        radial-gradient(circle at bottom right, rgba(0, 0, 0, 0.18), transparent 55%),
+        linear-gradient(135deg, #e07a2b 0%, #f0a14a 45%, #d66a1b 100%);
+      border-radius: 26px;
+      box-shadow:
+        inset 0 0 80px rgba(0,0,0,0.2),
+        0 18px 40px rgba(0,0,0,0.25);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      z-index: 4;
+      transform-origin: left center;
+      backface-visibility: hidden;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .book-cover-panel::before {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      border-radius: 18px;
+      border: 2px dashed rgba(255, 236, 210, 0.7);
+      box-shadow: inset 0 0 0 2px rgba(124, 76, 34, 0.18);
+      pointer-events: none;
+    }
+    .book-cover-panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='1' stitchTiles='stitch'/></filter><rect width='220' height='220' filter='url(%23n)' opacity='0.08'/></svg>");
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+    }
+    .cover-corner {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 2px solid rgba(255, 236, 210, 0.9);
+      background: rgba(255, 220, 180, 0.4);
+      box-shadow: inset 0 0 10px rgba(124, 76, 34, 0.2);
+    }
+    .cover-corner.tl { top: 8px; left: 8px; }
+    .cover-corner.tr { top: 8px; right: 8px; }
+    .cover-corner.bl { bottom: 8px; left: 8px; }
+    .cover-corner.br { bottom: 8px; right: 8px; }
+    .cover-spine,
+    .cover-ribbon,
+    .cover-deco {
+      display: none;
+    }
+    .cover-stickers {
+      position: absolute;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: inline-flex;
+      gap: 10px;
+      font-size: 1.8rem;
+      z-index: 2;
+      opacity: 0.9;
+    }
+    .cover-panel-inner {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.9rem;
+      padding: 2.4rem;
+      text-align: center;
+      z-index: 2;
+    }
+    .cover-title {
+      margin: 0;
+      font-size: clamp(2rem, 3.4vw, 3rem);
+      line-height: 1.12;
+      letter-spacing: 0.06em;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+    }
+    .cover-subtitle {
+      margin: 0;
+      max-width: 760px;
+      font-size: clamp(1rem, 1.35vw, 1.45rem);
+      font-weight: 700;
+      line-height: 1.3;
+      letter-spacing: 0.04em;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    }
+    .book-cover-panel.open {
+      animation: coverOpen 0.9s ease forwards;
+    }
+    @keyframes coverOpen {
+      to { transform: rotateY(-150deg); }
+    }
+    .book-flip {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 50%;
+      background: linear-gradient(180deg, #fffaf0 0%, #fff5e1 100%);
+      z-index: 3;
+      transform-origin: left center;
+      backface-visibility: hidden;
+      border-left: 1px solid rgba(124, 76, 34, 0.2);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+      display: none;
+      will-change: transform, box-shadow;
+    }
+    .book-flip.active { display: block; }
+    .book-flip::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 10% 50%, rgba(0,0,0,0.08), transparent 55%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .book-flip::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(124, 76, 34, 0.03) 0px,
+          rgba(124, 76, 34, 0.03) 1px,
+          rgba(255, 255, 255, 0) 1px,
+          rgba(255, 255, 255, 0) 22px
+        ),
+        linear-gradient(180deg, #fffaf0 0%, #fff5e1 100%);
+      pointer-events: none;
+    }
+    .book-flip.animate-next { animation: flipNext 0.9s ease forwards; }
+    .book-flip.animate-prev { animation: flipPrev 0.9s ease forwards; }
+    @keyframes flipNext {
+      0% { transform: rotateY(0deg); box-shadow: 0 18px 36px rgba(0,0,0,0.12); }
+      50% { transform: rotateY(-80deg) translateX(-8px); box-shadow: 0 24px 48px rgba(0,0,0,0.2); }
+      100% { transform: rotateY(-165deg) translateX(-12px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+    }
+    @keyframes flipPrev {
+      0% { transform: rotateY(-165deg) translateX(-12px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+      50% { transform: rotateY(-80deg) translateX(-8px); box-shadow: 0 24px 48px rgba(0,0,0,0.2); }
+      100% { transform: rotateY(0deg); box-shadow: 0 18px 36px rgba(0,0,0,0.12); }
+    }
+    .book {
+      width: min(1040px, 96vw);
+      height: 600px;
+      margin: 0 auto;
+      background:
+        linear-gradient(180deg, rgba(255, 249, 239, 0.95) 0%, rgba(255, 243, 225, 0.98) 100%);
+      border-radius: 26px;
+      border: 6px solid #b46a2a;
+      box-shadow:
+        0 28px 50px rgba(0,0,0,0.2),
+        inset 0 0 100px rgba(124, 76, 34, 0.16);
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      font-family: "Georgia", "Times New Roman", serif;
+    }
+    .book::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 18px;
+      border: 2px solid rgba(185, 105, 42, 0.3);
+      pointer-events: none;
+    }
+    .book-title-hand {
+      font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive;
+      letter-spacing: 0.02em;
+      color: #7c4c22;
+    }
+    .book::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 3px;
+      background: rgba(185, 105, 42, 0.45);
+      transform: translateX(-1px);
+      box-shadow: 0 0 16px rgba(185, 105, 42, 0.25);
+    }
+    .page {
+      padding: 1.6rem 1.85rem;
+      position: relative;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(124, 76, 34, 0.04) 0px,
+          rgba(124, 76, 34, 0.04) 1px,
+          rgba(255, 255, 255, 0) 1px,
+          rgba(255, 255, 255, 0) 24px
+        ),
+        linear-gradient(180deg, #fffaf0 0%, #fff5e1 100%);
+      overflow: hidden;
+    }
+    .page.left { border-right: 1px solid rgba(124, 76, 34, 0.1); }
+    .page.right { border-left: 1px solid rgba(124, 76, 34, 0.1); }
+    .page .page-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #7c4c22;
+      margin-bottom: 0.6rem;
+      font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive;
+    }
+    .page-content {
+      max-height: 470px;
+      overflow: auto;
+      padding-right: 6px;
+    }
+    .page .page-number {
+      position: absolute;
+      bottom: 12px;
+      right: 20px;
+      color: rgba(124, 76, 34, 0.6);
+      font-size: 0.85rem;
+    }
+    .page::after {
+      content: "";
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: 48px;
+      height: 48px;
+      background: radial-gradient(circle at 100% 100%, rgba(255,255,255,0.9), rgba(0,0,0,0.08));
+      transform: rotate(-6deg);
+      border-bottom-right-radius: 8px;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    .page.left::after {
+      right: auto;
+      left: 10px;
+      transform: rotate(6deg);
+    }
+    .page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 10% 20%, rgba(255, 204, 170, 0.18), transparent 45%),
+        radial-gradient(circle at 90% 10%, rgba(180, 230, 225, 0.2), transparent 40%),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='1' stitchTiles='stitch'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='0.04'/></svg>");
+      pointer-events: none;
+      mix-blend-mode: multiply;
+    }
+    .page .doodle-margin {
+      position: absolute;
+      inset: 12px;
+      border: 2px dashed rgba(124, 76, 34, 0.25);
+      border-radius: 14px;
+      pointer-events: none;
+    }
+    .page-decoration {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 70px;
+      height: 18px;
+      background: rgba(255, 200, 120, 0.45);
+      border: 1px solid rgba(124, 76, 34, 0.2);
+      transform: rotate(-6deg);
+      border-radius: 4px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+    .page-decoration.second {
+      left: auto;
+      right: 16px;
+      top: 22px;
+      transform: rotate(5deg);
+      background: rgba(120, 210, 200, 0.35);
+    }
+    .coffee-stain {
+      position: absolute;
+      bottom: 18px;
+      left: 20px;
+      width: 80px;
+      height: 80px;
+      border: 2px solid rgba(124, 76, 34, 0.18);
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 8px rgba(124, 76, 34, 0.05);
+      opacity: 0.35;
+    }
+    .memory-entry {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 1.1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px dashed rgba(124, 76, 34, 0.3);
+    }
+    .memory-entry:last-child {
+      border-bottom: none;
+    }
+    .memory-meta { color: #7c4c22; font-weight: 600; font-size: 0.85rem; }
+    .memory-title {
+      font-weight: 800;
+      font-size: 1.05rem;
+      font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive;
+    }
+    .memory-content { color: #5b3a1a; line-height: 1.5; }
+    .memory-media {
+      width: 100%;
+      max-height: 160px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid rgba(124, 76, 34, 0.2);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    }
+    .memory-sticker {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ecfeff;
+      color: #0f766e;
+      border: 1px solid rgba(44, 182, 165, 0.35);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      box-shadow: 0 4px 10px rgba(15, 118, 110, 0.1);
+    }
+    .memory-card {
+      background: #fffaf4;
+      border: 2px solid rgba(249, 115, 22, 0.28);
+      border-radius: 18px;
+      padding: 1rem;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+      position: relative;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .memory-card::before,
+    .memory-card::after {
+      content: "";
+      position: absolute;
+      width: 54px;
+      height: 16px;
+      background: rgba(249, 115, 22, 0.28);
+      border: 1px solid rgba(124, 76, 34, 0.2);
+      border-radius: 4px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+    .memory-card::before {
+      top: -6px;
+      left: 16px;
+      transform: rotate(-6deg);
+    }
+    .memory-card::after {
+      top: -6px;
+      right: 16px;
+      transform: rotate(6deg);
+      background: rgba(44, 182, 165, 0.3);
+    }
+    .memory-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(15, 118, 110, 0.15);
+    }
+    .memory-card.pinned {
+      border-color: rgba(249, 115, 22, 0.7);
+      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.25), 0 10px 24px rgba(0,0,0,0.12);
+    }
+    .memory-card.shared::after {
+      content: "Companion";
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: rgba(44, 182, 165, 0.15);
+      color: #0f766e;
+      border: 1px solid rgba(44, 182, 165, 0.4);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.7rem;
+    }
+    .memory-banner {
+      height: 170px;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 0.6rem;
+      border: 1px solid rgba(249, 115, 22, 0.25);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(44, 182, 165, 0.18));
+    }
+    .memory-banner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .banner-tape {
+      position: absolute;
+      top: -6px;
+      left: 12px;
+      width: 64px;
+      height: 18px;
+      background: rgba(249, 115, 22, 0.35);
+      border: 1px solid rgba(124, 76, 34, 0.2);
+      transform: rotate(-5deg);
+      border-radius: 4px;
+    }
+    .banner-tape.right {
+      left: auto;
+      right: 14px;
+      transform: rotate(6deg);
+      background: rgba(44, 182, 165, 0.35);
+    }
+    .memory-card.mood-happy { background: linear-gradient(180deg, rgba(255, 237, 213, 0.9), #fff7ed); }
+    .memory-card.mood-neutral { background: linear-gradient(180deg, rgba(253, 246, 234, 0.95), #fffaf0); }
+    .memory-card.mood-lonely { background: linear-gradient(180deg, rgba(209, 250, 229, 0.6), #f0fdfa); }
+    .memory-card.featured {
+      border-color: rgba(249, 115, 22, 0.9);
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.25), 0 18px 30px rgba(0,0,0,0.12);
+    }
+    .featured-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(249, 115, 22, 0.15);
+      color: #c2410c;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .timeline-divider {
+      text-align: center;
+      margin: 1rem 0;
+      font-weight: 700;
+      color: #c2410c;
+    }
+    .timeline-divider span {
+      background: rgba(249, 115, 22, 0.15);
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(249, 115, 22, 0.3);
+    }
+    .pinned-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .memory-ribbon {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(44, 182, 165, 0.15);
+      color: #0f766e;
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      position: relative;
+    }
+    .memory-ribbon::after,
+    .memory-ribbon::before {
+      content: "";
+      position: absolute;
+      top: 6px;
+      width: 8px;
+      height: 8px;
+      background: rgba(44, 182, 165, 0.25);
+    }
+    .memory-ribbon::before {
+      left: -4px;
+      transform: rotate(45deg);
+    }
+    .memory-ribbon::after {
+      right: -4px;
+      transform: rotate(45deg);
+    }
+    .memory-date {
+      font-size: 0.75rem;
+      color: rgba(124, 76, 34, 0.7);
+      background: rgba(249, 115, 22, 0.12);
+      padding: 2px 6px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .corner-stickers {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      display: flex;
+      gap: 6px;
+      font-size: 0.95rem;
+      opacity: 0.85;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(249, 115, 22, 0.2);
+      color: #c2410c;
+      font-size: 0.7rem;
+      font-weight: 800;
+      border: 1px solid rgba(249, 115, 22, 0.4);
+    }
+    .companion-block {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 0.4rem;
+      color: #0f766e;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .companion-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid rgba(44, 182, 165, 0.5);
+    }
+    .memory-new {
+      animation: pulseOrange 1.2s ease 2;
+    }
+    @keyframes pulseOrange {
+      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.35); }
+      100% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+    }
+    .reaction-btn.active {
+      box-shadow: 0 0 0 2px rgba(44, 182, 165, 0.35);
+      transform: translateY(-1px);
+    }
+    .sticker-pack {
+      position: absolute;
+      top: 18px;
+      right: 24px;
+      display: flex;
+      gap: 6px;
+      font-size: 1rem;
+      opacity: 0.8;
+    }
+    .sticker-pack span {
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(124, 76, 34, 0.2);
+      padding: 2px 6px;
+      border-radius: 8px;
+      transform: rotate(-4deg);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+    .memory-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .memory-actions .btn { padding: 0.35rem 0.8rem; font-size: 0.85rem; }
+    .book-controls {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .book-shadow {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at center, rgba(0,0,0,0.05), transparent 60%);
+      opacity: 0.6;
+    }
+    .page-hint { display: none; }
+    .polaroid {
+      background: #fff;
+      padding: 0.4rem 0.4rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid rgba(124, 76, 34, 0.2);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+      position: relative;
+    }
+    .polaroid::after {
+      content: "";
+      position: absolute;
+      top: -10px;
+      left: 20px;
+      width: 60px;
+      height: 18px;
+      background: rgba(255, 245, 230, 0.8);
+      border: 1px solid rgba(124, 76, 34, 0.2);
+      transform: rotate(-6deg);
+      border-radius: 4px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+    .scrapbook-form {
+      background: #ffffff;
+      border: 2px solid #fde2c7;
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .storybook-card {
+      background: #fffaf4;
+      border: 2px dashed rgba(124, 76, 34, 0.35);
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    }
+    .storybook-card h3 {
+      font-family: "Comic Sans MS", "Segoe Print", "Bradley Hand", cursive;
+      color: #7c4c22;
+      margin-bottom: 0.6rem;
+    }
+  </style>
+  <style>
+    .navbar .nav-links .active {
+      color: var(--orange);
+      position: relative;
+      font-weight: 700;
+    }
+    .navbar .nav-links .active::after {
+      content: "";
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--orange);
+    }
+    .profile-menu {
+      position: relative;
+    }
+    .profile-link {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .nav-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--orange);
+      object-fit: cover;
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+
+      <ul class="nav-links icon-nav">
+        <li class="icon-nav-item">
+          <button class="icon-nav-btn" id="notif-btn" type="button" title="Notifications" aria-label="Notifications">
+            <span aria-hidden="true">&#x1F514;</span>
+            <span class="notification-badge">3</span>
+          </button>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/discover" class="icon-nav-link" title="Discover Matches" aria-label="Discover Matches">&#x2764;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/explore" class="icon-nav-link" title="Search" aria-label="Search">&#x1F50D;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/messages" class="icon-nav-link" title="Messages" aria-label="Messages">&#x1F4AC;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/profile" class="icon-nav-link" title="Profile" aria-label="Profile">&#x1F464;</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="scrapbook-wrap">
+    <div class="container scrapbook-stage" id="scrapbookStage" style="max-width: 1100px;">
+      <div class="scrapbook-header">
+        <div>
+          <h1 class="book-title-hand">{{ (user.full_name if user and user.full_name else "User") ~ "'s Scrapbook" }}</h1>
+          <p class="muted">Capture meaningful moments and build your memory timeline.</p>
+        </div>
+        <button class="btn btn-orange btn-sm" id="addMemoryBtn">+ Add Memory</button>
+      </div>
+
+      <div style="margin-bottom: 1rem;"></div>
+
+      <div class="scrapbook-form" id="scrapbookForm" style="display:none;">
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label">Title</label>
+            <input class="form-control" id="memory-title" placeholder="Laksa & Childhood Stories">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Type</label>
+            <select class="form-select" id="memory-type">
+              <option value="chat">Chat</option>
+              <option value="meetup">Meetup</option>
+              <option value="circle">Circle</option>
+              <option value="challenge">Challenge</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Visibility</label>
+            <select class="form-select" id="memory-visibility">
+              <option value="private">Private</option>
+              <option value="friends">Friends</option>
+              <option value="community">Community</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Mood Tag</label>
+            <select class="form-select" id="memory-mood">
+              <option value="">None</option>
+              <option value="happy">Happy</option>
+              <option value="neutral">Neutral</option>
+              <option value="lonely">Lonely</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Upload Media</label>
+            <input class="form-control" type="file" id="memory-file" accept="image/*,audio/*">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Media URL (optional)</label>
+            <input class="form-control" id="memory-media" placeholder="https://... (image/audio)">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Location</label>
+            <input class="form-control" id="memory-location" placeholder="e.g. Ang Mo Kio CC">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Memory Note</label>
+            <textarea class="form-control" id="memory-content" rows="3" placeholder="We talked about traditional recipes and family stories."></textarea>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-orange btn-sm" id="saveMemoryBtn">Save Memory</button>
+            <button class="btn btn-outline-teal btn-sm" id="cancelMemoryBtn">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="storybook-card">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h3>Storybook Builder</h3>
+          <button class="btn btn-outline-teal btn-sm" id="storybookToggle">+ Create Storybook</button>
+        </div>
+        <p class="muted" style="margin-bottom: 0.6rem;">Tell your story with guided prompts. We’ll turn it into scrapbook pages.</p>
+        <div id="storybookForm" style="display:none;">
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label">Story Title</label>
+              <input class="form-control" id="story-title" placeholder="Hawker Food Faves">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Where did it happen?</label>
+              <input class="form-control" id="story-place" placeholder="Maxwell Food Centre">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">What happened?</label>
+              <input class="form-control" id="story-event" placeholder="We shared noodles and stories.">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">How did you feel?</label>
+              <input class="form-control" id="story-feeling" placeholder="Warm and happy">
+            </div>
+            <div class="col-md-12">
+              <label class="form-label">Lesson to share</label>
+              <input class="form-control" id="story-lesson" placeholder="Every meal is better with company.">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Upload Photo</label>
+              <input class="form-control" type="file" id="story-media-file" accept="image/*">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Photo URL (optional)</label>
+              <input class="form-control" id="story-media-url" placeholder="https://...">
+            </div>
+            <div class="col-12 d-flex gap-2">
+              <button class="btn btn-orange btn-sm" id="saveStoryBtn">Save Storybook</button>
+              <button class="btn btn-outline-teal btn-sm" id="cancelStoryBtn">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="book-wrapper" id="bookView">
+        <div class="book-stage" id="bookStage">
+          <div class="book-cover-panel" id="bookCoverPanel">
+            <div class="cover-spine"></div>
+            <div class="cover-ribbon"></div>
+            <div class="cover-corner tl"></div>
+            <div class="cover-corner tr"></div>
+            <div class="cover-corner bl"></div>
+            <div class="cover-corner br"></div>
+            <div class="cover-deco photo"></div>
+            <div class="cover-deco tape"></div>
+            <div class="cover-stickers"><span>🧡</span><span>⭐</span><span>📍</span></div>
+            <div class="cover-panel-inner">
+              <div class="cover-title">{{ ((user.full_name if user and user.full_name else "User") ~ "'s Scrapbook")|upper }}</div>
+              <div class="cover-subtitle">Every memory we share becomes a story we keep.</div>
+            </div>
+          </div>
+          <div class="book-flip" id="bookFlip"></div>
+          <div class="book" id="scrapbookBook">
+            <div class="book-shadow"></div>
+            <div class="page left">
+              <div class="page-decoration"></div>
+              <div class="page-decoration second"></div>
+              <div class="coffee-stain"></div>
+              <div class="sticker-pack"><span>🌼</span><span>⭐</span><span>🧡</span></div>
+              <div class="doodle-margin"></div>
+              <div class="page-title">Pinned Memories</div>
+              <div class="page-content" id="scrapbookLeft"></div>
+            </div>
+            <div class="page right">
+              <div class="page-decoration"></div>
+              <div class="page-decoration second"></div>
+              <div class="coffee-stain"></div>
+              <div class="sticker-pack"><span>📌</span><span>🍃</span><span>✨</span></div>
+              <div class="doodle-margin"></div>
+              <div class="page-title">Moments</div>
+              <div class="page-content" id="scrapbookRight"></div>
+            </div>
+          </div>
+        </div>
+        <div class="book-controls" id="bookControls" style="display:flex;">
+          <button class="btn btn-outline-teal btn-sm" id="prevPageBtn">← Previous</button>
+          <button class="btn btn-outline-teal btn-sm" id="nextPageBtn">Next →</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/js/scrapbook.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+</html>
+

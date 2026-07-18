@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+<body class="admin-body" data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+
+{% macro render_external_section(section, title) %}
+    {% if section %}
+    <div class="card admin-card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">{{ title }}</h5>
+            <p class="text-muted small">Read-only view of external app data, styled to match Aden's admin UI.</p>
+            <div class="row g-4">
+                {% for app in section %}
+                <div class="col-12">
+                    <div class="card admin-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                <div>
+                                    <div class="text-muted small">App</div>
+                                    <div class="h5 mb-0">{{ app.label }}</div>
+                                </div>
+                                {% if app.link %}
+                                <a class="btn btn-sm btn-outline-teal" href="{{ app.link }}">Open Admin</a>
+                                {% endif %}
+                            </div>
+                            {% if app.rows %}
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
+                                        <tr>
+                                            {% for col in app.columns %}
+                                            <th>{{ col }}</th>
+                                            {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in app.rows %}
+                                        <tr>
+                                            {% for col in app.columns %}
+                                            <td>{{ row[col] }}</td>
+                                            {% endfor %}
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-muted small">No rows found.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endmacro %}
+
+    <div class="admin-shell">
+        <aside class="admin-sidebar">
+            <div class="admin-logo">Re:Connect</div>
+            <div class="admin-nav" role="tablist">
+                <span class="admin-nav-label">Main</span>
+                <button class="admin-nav-item active" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab">
+                    <span class="admin-nav-text">Overview</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-apps" type="button" role="tab">
+                    <span class="admin-nav-text">App Dashboards</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-users" type="button" role="tab">
+                    <span class="admin-nav-text">Users</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-quests" type="button" role="tab">
+                    <span class="admin-nav-text">Quests</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-landmarks" type="button" role="tab">
+                    <span class="admin-nav-text">Landmarks</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-badges" type="button" role="tab">
+                    <span class="admin-nav-text">Badges</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-rewards" type="button" role="tab">
+                    <span class="admin-nav-text">Rewards</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-activity" type="button" role="tab">
+                    <span class="admin-nav-text">Activity</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-roles" type="button" role="tab">
+                    <span class="admin-nav-text">Roles</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-audit" type="button" role="tab">
+                    <span class="admin-nav-text">Audit Logs</span>
+                </button>
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-reports" type="button" role="tab">
+                    <span class="admin-nav-text">Reports</span>
+                </button>
+                {% if external_apps %}
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-external-analytics" type="button" role="tab">
+                    <span class="admin-nav-text">External Analytics</span>
+                </button>
+
+                <span class="admin-nav-label">External Apps</span>
+                {% for app in external_apps %}
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-external-{{ app.key }}" type="button" role="tab">
+                    <span class="admin-nav-text">{{ app.label }}</span>
+                </button>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </aside>
+
+        <div class="admin-main">
+            <div class="container py-5 admin-container">
+                <div class="admin-topbar">
+                    <div>
+                        <h1 class="h3 mb-1 admin-title">Admin Dashboard</h1>
+                        <div class="text-muted small">Manage users, quests, landmarks, badges, and rewards.</div>
+                    </div>
+                    <div class="admin-actions">
+                        <a class="btn btn-outline-teal btn-sm" id="export-all-btn" href="/admin/external/export-all">Export All DBs</a>
+                        <div class="admin-chip">Last 7 Days</div>
+                        <a class="btn btn-outline-teal btn-sm" href="/">Back to App</a>
+                    </div>
+                </div>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+                <div class="admin-overview-header">
+                    <div class="admin-overview-title">Acquisition Overview</div>
+                    <div class="admin-overview-filters">
+                        <span class="admin-chip">All Users</span>
+                        <span class="admin-chip">Last 7 Days</span>
+                    </div>
+                </div>
+                <div class="row g-4 mb-4">
+                    <div class="col-sm-6 col-lg-4">
+                        <div class="card admin-card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Total Users</div>
+                                <div class="h3 mb-0">{{ stats.total_users }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <div class="card admin-card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Total Quests</div>
+                                <div class="h3 mb-0">{{ stats.total_quests }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <div class="card admin-card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Total Landmarks</div>
+                                <div class="h3 mb-0">{{ stats.total_landmarks }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <div class="card admin-card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Rewards Redeemed</div>
+                                <div class="h3 mb-0">{{ stats.rewards_redeemed }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <div class="card admin-card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Total Points Distributed</div>
+                                <div class="h3 mb-0">{{ stats.total_points }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-4">
+                        <div class="card admin-card h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Active Users</div>
+                                <div class="h3 mb-0">{{ stats.active_users }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <div class="card admin-card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">User Analytics</h5>
+                                <div class="text-muted small mb-3">Total vs Active Users</div>
+                                <canvas id="userChart" height="140"
+                                        data-total="{{ stats.total_users }}"
+                                        data-active="{{ stats.active_users }}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="card admin-card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">Recent Activity</h5>
+                                <div class="text-muted small mb-3">Latest actions in the system</div>
+                                <div class="admin-activity-list">
+                                    {% for item in activity[:5] %}
+                                    <div class="admin-activity-item">
+                                        <div class="admin-activity-meta">{{ item.ts }}</div>
+                                        <div class="admin-activity-text">
+                                            {{ item.username }} -
+                                            {% if item.activity_type == 'quest' %}
+                                                completed quest "{{ item.item_name }}"
+                                            {% elif item.activity_type == 'landmark' %}
+                                                completed landmark "{{ item.item_name }}"
+                                            {% else %}
+                                                redeemed reward "{{ item.item_name }}"
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tab-apps" role="tabpanel">
+                <div class="admin-overview-header">
+                    <div class="admin-overview-title">All App Admin Dashboards</div>
+                    <div class="admin-overview-filters">
+                        <span class="admin-chip">Aden UI</span>
+                        <span class="admin-chip">Unified View</span>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    {% for app in app_summaries %}
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card admin-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <div class="text-muted small">App</div>
+                                        <div class="h5 mb-1">{{ app.label }}</div>
+                                        <div class="text-muted small">{{ app.tables }} tables · {{ app.total_rows }} rows</div>
+                                    </div>
+                                    {% if app.link %}
+                                    <a class="btn btn-sm btn-outline-teal" href="{{ app.link }}">Open Admin</a>
+                                    {% endif %}
+                                </div>
+                                {% if app.error %}
+                                <div class="alert alert-warning mt-3 mb-0">{{ app.error }}</div>
+                                {% else %}
+                                <div class="row g-2 mt-3">
+                                    <div class="col-6">
+                                        <div class="text-muted small">Users</div>
+                                        <div class="fw-semibold">{{ app.counts.users }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-muted small">Posts</div>
+                                        <div class="fw-semibold">{{ app.counts.posts }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-muted small">Matches</div>
+                                        <div class="fw-semibold">{{ app.counts.matches }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-muted small">Messages</div>
+                                        <div class="fw-semibold">{{ app.counts.messages }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-muted small">Quests</div>
+                                        <div class="fw-semibold">{{ app.counts.quests }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-muted small">Rewards</div>
+                                        <div class="fw-semibold">{{ app.counts.rewards }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-muted small">Reports</div>
+                                        <div class="fw-semibold">{{ app.counts.reports }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-muted small">Auth Events</div>
+                                        <div class="fw-semibold">{{ app.counts.auth_events }}</div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="card admin-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Unified Admin Summary</h5>
+                        <p class="text-muted small mb-3">This is a combined view of Aden, Ryan, Sean, and Reconnect data in the Aden UI.</p>
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>App</th>
+                                        <th>Tables</th>
+                                        <th>Total Rows</th>
+                                        <th>Users</th>
+                                        <th>Posts</th>
+                                        <th>Matches</th>
+                                        <th>Messages</th>
+                                        <th>Quests</th>
+                                        <th>Rewards</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for app in app_summaries %}
+                                    <tr>
+                                        <td>{{ app.label }}</td>
+                                        <td>{{ app.tables }}</td>
+                                        <td>{{ app.total_rows }}</td>
+                                        <td>{{ app.counts.users }}</td>
+                                        <td>{{ app.counts.posts }}</td>
+                                        <td>{{ app.counts.matches }}</td>
+                                        <td>{{ app.counts.messages }}</td>
+                                        <td>{{ app.counts.quests }}</td>
+                                        <td>{{ app.counts.rewards }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tab-users" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Users</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Email</th>
+                                        <th>Points</th>
+                                        <th>Tier</th>
+                                        <th>Landmarks</th>
+                                        <th>Quests</th>
+                                        <th>Active Days</th>
+                                        <th>Select</th>
+                                            <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users %}
+                                    <tr>
+                                        <td>{{ user.username }}</td>
+                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.total_points }}</td>
+                                        <td>{{ user.current_tier }}</td>
+                                        <td>{{ user.landmarks_completed }}</td>
+                                        <td>{{ user.quests_completed }}</td>
+                                        <td>{{ user.active_days }}</td>
+                                        <td>
+                                            <a class="btn btn-sm btn-outline-teal" href="{{ url_for('admin.admin_user_detail', user_id=user.id) }}">View</a>
+                                            <form class="d-inline" method="post" action="{{ url_for('admin.admin_delete_user', user_id=user.id) }}">
+                                                <button class="btn btn-sm btn-outline-orange" type="submit">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {{ render_external_section(external_views.users, 'External Users (Ryan, Sean, Reconnect, Aden)') }}
+            </div>
+            <div class="tab-pane fade" id="tab-quests" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Create Quest</h5>
+                        <form method="post" action="{{ url_for('admin.admin_create_quest') }}">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Title</label>
+                                    <input class="form-control" name="title" type="text" minlength="5" maxlength="100" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Reward</label>
+                                    <input class="form-control" name="reward" type="number" min="10" max="10000" step="1" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Total Required</label>
+                                    <input class="form-control" name="total_required" type="number" min="1" max="100" step="1" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" name="description" rows="2" minlength="10" maxlength="500" required></textarea>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-orange" type="submit">Create Quest</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">All Quests</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Description</th>
+                                        <th>Reward</th>
+                                        <th>Times Completed</th>
+                                        <th>Select</th>
+                                            <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for quest in quests %}
+                                    <tr>
+                                        <td>{{ quest.title }}</td>
+                                        <td class="text-muted">{{ quest.description[:60] }}{% if quest.description|length > 60 %}...{% endif %}</td>
+                                        <td>{{ quest.reward }}</td>
+                                        <td>{{ quest.times_completed }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-teal" data-bs-toggle="collapse" data-bs-target="#questEdit{{ quest.id }}">Edit</button>
+                                            <form class="d-inline" method="post" action="{{ url_for('admin.admin_delete_quest', quest_id=quest.id) }}">
+                                                <button class="btn btn-sm btn-outline-orange" type="submit">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <tr class="collapse" id="questEdit{{ quest.id }}">
+                                        <td colspan="5">
+                                            <form method="post" action="{{ url_for('admin.admin_update_quest', quest_id=quest.id) }}">
+                                                <div class="row g-3">
+                                                    <div class="col-md-5">
+                                                        <label class="form-label">Title</label>
+                                                        <input class="form-control" name="title" type="text" minlength="5" maxlength="100" value="{{ quest.title }}" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Reward</label>
+                                                        <input class="form-control" name="reward" type="number" min="10" max="10000" step="1" value="{{ quest.reward }}" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Total Required</label>
+                                                        <input class="form-control" name="total_required" type="number" min="1" max="100" step="1" value="{{ quest.total_required }}" required>
+                                                    </div>
+                                                    <div class="col-md-12">
+                                                        <label class="form-label">Description</label>
+                                                        <textarea class="form-control" name="description" rows="2" minlength="10" maxlength="500" required>{{ quest.description }}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <button class="btn btn-orange" type="submit">Save Changes</button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {{ render_external_section(external_views.quests, 'External Quests (Ryan, Sean, Reconnect, Aden)') }}
+            </div>
+            <div class="tab-pane fade" id="tab-landmarks" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Create Landmark</h5>
+                        <form method="post" action="{{ url_for('admin.admin_create_landmark') }}">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Name</label>
+                                    <input class="form-control" name="name" type="text" minlength="3" maxlength="100" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Icon</label>
+                                    <input class="form-control" name="icon" type="text" minlength="1" maxlength="10" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Correct Answer</label>
+                                    <input class="form-control" name="correct_answer" type="number" min="0" max="3" step="1" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">X</label>
+                                    <input class="form-control" name="x_coord" type="number" min="0" max="800" step="1" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Y</label>
+                                    <input class="form-control" name="y_coord" type="number" min="0" max="550" step="1" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Points Value</label>
+                                    <input class="form-control" name="points_value" type="number" min="0" max="10000" step="1" value="100" required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Story</label>
+                                    <textarea class="form-control" name="story" rows="2" minlength="20" maxlength="1000" required></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Question</label>
+                                    <input class="form-control" name="question" type="text" minlength="10" maxlength="200" required>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-orange" type="submit">Create Landmark</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">All Landmarks</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Icon</th>
+                                        <th>Times Completed</th>
+                                        <th>Coordinates</th>
+                                        <th>Select</th>
+                                            <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for landmark in landmarks %}
+                                    <tr>
+                                        <td>{{ landmark.name }}</td>
+                                        <td>{{ landmark.icon }}</td>
+                                        <td>{{ landmark.times_completed }}</td>
+                                        <td>{{ landmark.x_coord }}, {{ landmark.y_coord }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-teal" data-bs-toggle="collapse" data-bs-target="#landmarkEdit{{ landmark.id }}">Edit</button>
+                                            <form class="d-inline" method="post" action="{{ url_for('admin.admin_delete_landmark', landmark_id=landmark.id) }}">
+                                                <button class="btn btn-sm btn-outline-orange" type="submit">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <tr class="collapse" id="landmarkEdit{{ landmark.id }}">
+                                        <td colspan="5">
+                                            <form method="post" action="{{ url_for('admin.admin_update_landmark', landmark_id=landmark.id) }}">
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Name</label>
+                                                        <input class="form-control" name="name" type="text" minlength="3" maxlength="100" value="{{ landmark.name }}" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Icon</label>
+                                                        <input class="form-control" name="icon" type="text" minlength="1" maxlength="10" value="{{ landmark.icon }}" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Correct Answer</label>
+                                                        <input class="form-control" name="correct_answer" type="number" min="0" max="3" step="1" value="{{ landmark.correct_answer }}" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">X</label>
+                                                        <input class="form-control" name="x_coord" type="number" min="0" max="800" step="1" value="{{ landmark.x_coord }}" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Y</label>
+                                                        <input class="form-control" name="y_coord" type="number" min="0" max="550" step="1" value="{{ landmark.y_coord }}" required>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Points Value</label>
+                                                        <input class="form-control" name="points_value" type="number" min="0" max="10000" step="1" value="{{ landmark.points_value }}" required>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label class="form-label">Story</label>
+                                                        <textarea class="form-control" name="story" rows="2" minlength="20" maxlength="1000" required>{{ landmark.story }}</textarea>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label class="form-label">Question</label>
+                                                        <input class="form-control" name="question" type="text" minlength="10" maxlength="200" value="{{ landmark.question }}" required>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <button class="btn btn-orange" type="submit">Save Changes</button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {{ render_external_section(external_views.landmarks, 'External Landmarks (Ryan, Sean, Reconnect, Aden)') }}
+            </div>
+            <div class="tab-pane fade" id="tab-badges" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Create Badge</h5>
+                        <form method="post" action="{{ url_for('admin.admin_create_badge') }}">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Name</label>
+                                    <input class="form-control" name="name" type="text" minlength="3" maxlength="100" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Category</label>
+                                    <input class="form-control" name="category" type="text" minlength="3" maxlength="50" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Threshold</label>
+                                    <input class="form-control" name="threshold" type="number" min="1" max="100000" step="1" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Requirement</label>
+                                    <select class="form-select" name="requirement_type" required>
+                                        <option value="landmarks">landmarks</option>
+                                        <option value="quests">quests</option>
+                                        <option value="points">points</option>
+                                        <option value="tier">tier</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Icon</label>
+                                    <input class="form-control" name="icon" type="text" maxlength="50">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" name="description" rows="2" minlength="5" maxlength="500" required></textarea>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-orange" type="submit">Create Badge</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">All Badges</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Category</th>
+                                        <th>Threshold</th>
+                                        <th>Requirement</th>
+                                        <th>Times Earned</th>
+                                        <th>Select</th>
+                                            <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for badge in badges %}
+                                    <tr>
+                                        <td>{{ badge.name }}</td>
+                                        <td>{{ badge.category }}</td>
+                                        <td>{{ badge.threshold }}</td>
+                                        <td>{{ badge.requirement_type }}</td>
+                                        <td>{{ badge.times_earned }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-teal" data-bs-toggle="collapse" data-bs-target="#badgeEdit{{ badge.id }}">Edit</button>
+                                            <form class="d-inline" method="post" action="{{ url_for('admin.admin_delete_badge', badge_id=badge.id) }}">
+                                                <button class="btn btn-sm btn-outline-orange" type="submit">Delete</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <tr class="collapse" id="badgeEdit{{ badge.id }}">
+                                        <td colspan="6">
+                                            <form method="post" action="{{ url_for('admin.admin_update_badge', badge_id=badge.id) }}">
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Name</label>
+                                                        <input class="form-control" name="name" type="text" minlength="3" maxlength="100" value="{{ badge.name }}" required>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Category</label>
+                                                        <input class="form-control" name="category" type="text" minlength="3" maxlength="50" value="{{ badge.category }}" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Threshold</label>
+                                                        <input class="form-control" name="threshold" type="number" min="1" max="100000" step="1" value="{{ badge.threshold }}" required>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Requirement</label>
+                                                        <select class="form-select" name="requirement_type" required>
+                                                            <option value="landmarks" {% if badge.requirement_type == 'landmarks' %}selected{% endif %}>landmarks</option>
+                                                            <option value="quests" {% if badge.requirement_type == 'quests' %}selected{% endif %}>quests</option>
+                                                            <option value="points" {% if badge.requirement_type == 'points' %}selected{% endif %}>points</option>
+                                                            <option value="tier" {% if badge.requirement_type == 'tier' %}selected{% endif %}>tier</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Icon</label>
+                                                        <input class="form-control" name="icon" type="text" maxlength="50" value="{{ badge.icon }}">
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label class="form-label">Description</label>
+                                                        <textarea class="form-control" name="description" rows="2" minlength="5" maxlength="500" required>{{ badge.description }}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <button class="btn btn-orange" type="submit">Save Changes</button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {{ render_external_section(external_views.badges, 'External Badges (Ryan, Sean, Reconnect, Aden)') }}
+            </div>
+            <div class="tab-pane fade" id="tab-rewards" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Create Reward</h5>
+                        <form method="post" action="{{ url_for('admin.admin_create_reward') }}">
+                            <div class="row g-3">
+                                <div class="col-md-5">
+                                    <label class="form-label">Name</label>
+                                    <input class="form-control" name="name" type="text" minlength="3" maxlength="100" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Cost</label>
+                                    <input class="form-control" name="cost" type="number" min="1" max="100000" step="1" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Icon</label>
+                                    <input class="form-control" name="icon" type="text" maxlength="50">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" name="description" rows="2" maxlength="200"></textarea>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-orange" type="submit">Create Reward</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">All Rewards</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Cost</th>
+                                        <th>Redeemed</th>
+                                        <th>Status</th>
+                                        <th>Select</th>
+                                            <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for reward in rewards %}
+                                    <tr>
+                                        <td>{{ reward.name }}</td>
+                                        <td>{{ reward.cost }}</td>
+                                        <td>{{ reward.times_redeemed }}</td>
+                                        <td>
+                                            {% if reward.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Archived</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-teal" data-bs-toggle="collapse" data-bs-target="#rewardEdit{{ reward.id }}">Edit</button>
+                                            <form class="d-inline" method="post" action="{{ url_for('admin.admin_delete_reward', reward_id=reward.id) }}">
+                                                <button class="btn btn-sm btn-outline-orange" type="submit">Archive</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <tr class="collapse" id="rewardEdit{{ reward.id }}">
+                                        <td colspan="5">
+                                            <form method="post" action="{{ url_for('admin.admin_update_reward', reward_id=reward.id) }}">
+                                                <div class="row g-3">
+                                                    <div class="col-md-5">
+                                                        <label class="form-label">Name</label>
+                                                        <input class="form-control" name="name" type="text" minlength="3" maxlength="100" value="{{ reward.name }}" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Cost</label>
+                                                        <input class="form-control" name="cost" type="number" min="1" max="100000" step="1" value="{{ reward.cost }}" required>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Icon</label>
+                                                        <input class="form-control" name="icon" type="text" maxlength="50" value="{{ reward.icon }}">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">Active</label>
+                                                        <select class="form-select" name="is_active">
+                                                            <option value="1" {% if reward.is_active %}selected{% endif %}>Yes</option>
+                                                            <option value="0" {% if not reward.is_active %}selected{% endif %}>No</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label class="form-label">Description</label>
+                                                        <textarea class="form-control" name="description" rows="2" maxlength="200">{{ reward.description }}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <button class="btn btn-orange" type="submit">Save Changes</button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Redemption History</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Reward</th>
+                                        <th>Points Spent</th>
+                                        <th>Redeemed At</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in redemptions %}
+                                    <tr>
+                                        <td>{{ item.username }}</td>
+                                        <td>{{ item.reward_name }}</td>
+                                        <td>{{ item.cost }}</td>
+                                        <td>{{ item.redeemed_at }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {{ render_external_section(external_views.rewards, 'External Rewards (Ryan, Sean, Reconnect, Aden)') }}
+            </div>
+            <div class="tab-pane fade" id="tab-activity" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Recent Activity</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>User</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in activity %}
+                                    <tr>
+                                        <td>{{ item.ts }}</td>
+                                        <td>{{ item.username }}</td>
+                                        <td>
+                                            {% if item.activity_type == 'quest' %}
+                                                Completed quest "{{ item.item_name }}"
+                                            {% elif item.activity_type == 'landmark' %}
+                                                Completed landmark "{{ item.item_name }}"
+                                            {% else %}
+                                                Redeemed reward "{{ item.item_name }}"
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {{ render_external_section(external_views.activity, 'External Auth Activity (Ryan, Sean, Reconnect, Aden)') }}
+                {{ render_external_section(external_views.forum_posts, 'External Forum Posts (Reconnect)') }}
+                {{ render_external_section(external_views.forum_comments, 'External Forum Comments (Reconnect)') }}
+                {{ render_external_section(external_views.forum_challenges, 'External Challenges (Reconnect)') }}
+                {{ render_external_section(external_views.forum_submissions, 'External Submissions (Reconnect)') }}
+                {{ render_external_section(external_views.safety_matches, 'External Matches (Sean)') }}
+                {{ render_external_section(external_views.safety_messages, 'External Messages (Sean)') }}
+            </div>
+            {% if external_apps %}
+                <button class="admin-nav-item" data-bs-toggle="tab" data-bs-target="#tab-external-analytics" type="button" role="tab">
+                    <span class="admin-nav-text">External Analytics</span>
+                </button>
+
+            {% for app in external_apps %}
+            <div class="tab-pane fade" id="tab-external-{{ app.key }}" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ app.label }}</h5>
+                        <p class="text-muted small">Manage records from the {{ app.label }} database.</p>
+                        {% if app.error %}
+                        <div class="alert alert-warning" role="alert">{{ app.error }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if not app.error %}
+                    {% if not app.tables %}
+                    <div class="alert alert-info" role="alert">No tables found in this database.</div>
+                    {% endif %}
+                    {% for table in app.tables %}
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">{{ table.name }}</h6>
+                            <form method="post" action="{{ url_for('admin.admin_external_create', app_key=app.key, table=table.name) }}">
+                                {% if table.editable_columns %}
+                                <div class="row g-3">
+                                    {% for col in table.editable_columns %}
+                                    <div class="col-md-4">
+                                        <label class="form-label">{{ col }}</label>
+                                        {% if 'content' in col or 'description' in col or 'story' in col or 'summary' in col or 'text' in col %}
+                                        <textarea class="form-control" name="{{ col }}" rows="2"></textarea>
+                                        {% else %}
+                                        <input class="form-control" name="{{ col }}" type="text">
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-orange" type="submit">Create Row</button>
+                                </div>
+                                {% else %}
+                                <div class="text-muted small">No editable columns for this table.</div>
+                                {% endif %}
+                            </form>
+
+                            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                                <form method="post" action="{{ url_for('admin.admin_external_bulk_delete', app_key=app.key, table=table.name) }}" class="d-flex gap-2 align-items-center js-bulk-form">
+                                    <input type="hidden" name="rowids" class="js-rowids">
+                                    <button class="btn btn-sm btn-outline-orange" type="submit">Bulk Delete</button>
+                                </form>
+                                <form method="post" action="{{ url_for('admin.admin_external_bulk_update', app_key=app.key, table=table.name) }}" class="d-flex gap-2 align-items-center js-bulk-form">
+                                    <input type="hidden" name="rowids" class="js-rowids">
+                                    <select class="form-select form-select-sm" name="column">{% for col in table.editable_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}</select>
+                                    <input class="form-control form-control-sm" name="value" placeholder="New value">
+                                    <button class="btn btn-sm btn-outline-teal" type="submit">Bulk Update</button>
+                                </form>
+                                <input class="form-control form-control-sm js-table-search" placeholder="Search this table..." data-app="{{ app.key }}" data-table="{{ table.name }}">
+                                <a class="btn btn-sm btn-outline-teal js-export-link" href="{{ url_for('admin.admin_external_export', app_key=app.key, table=table.name) }}">Export</a>
+                                <a class="btn btn-sm btn-outline-teal" href="{{ url_for('admin.admin_external_template', app_key=app.key, table=table.name) }}">Template</a>
+                                <form method="post" action="{{ url_for('admin.admin_external_import', app_key=app.key, table=table.name) }}" enctype="multipart/form-data" class="d-flex gap-2">
+                                    <input class="form-control form-control-sm" type="file" name="file" accept=".csv" required>
+                                    <button class="btn btn-sm btn-outline-teal" type="submit">Import</button>
+                                </form>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table align-middle js-data-table" data-app="{{ app.key }}" data-table="{{ table.name }}">
+                                    <thead>
+                                        <tr>
+                                            {% for col in table.columns %}
+                                            <th>{{ col }}</th>
+                                            {% endfor %}
+                                            <th>Select</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in table.rows %}
+                                        <tr>
+                                            {% for col in table.columns %}
+                                            <td>{{ row[col] | string | truncate(80) }}</td>
+                                            {% endfor %}
+                                            <td><input type="checkbox" class="js-row-select" data-rowid="{{ row._rowid }}"></td>
+                                            <td>
+                                                {% if table.editable_columns %}
+                                                <button class="btn btn-sm btn-outline-teal" data-bs-toggle="collapse" data-bs-target="#extEdit{{ app.key }}{{ table.name }}{{ row._rowid }}">Edit</button>
+                                                {% endif %}
+                                                <form class="d-inline" method="post" action="{{ url_for('admin.admin_external_delete', app_key=app.key, table=table.name, rowid=row._rowid) }}">
+                                                    <button class="btn btn-sm btn-outline-orange" type="submit">Delete</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% if table.editable_columns %}
+                                        <tr class="collapse" id="extEdit{{ app.key }}{{ table.name }}{{ row._rowid }}">
+                                            <td colspan="{{ table.columns | length + 1 }}">
+                                                <form method="post" action="{{ url_for('admin.admin_external_update', app_key=app.key, table=table.name, rowid=row._rowid) }}">
+                                                    <div class="row g-3">
+                                                        {% for col in table.editable_columns %}
+                                                        <div class="col-md-4">
+                                                            <label class="form-label">{{ col }}</label>
+                                                            {% if 'content' in col or 'description' in col or 'story' in col or 'summary' in col or 'text' in col %}
+                                                            <textarea class="form-control" name="{{ col }}" rows="2">{{ row[col] }}</textarea>
+                                                            {% else %}
+                                                            <input class="form-control" name="{{ col }}" type="text" value="{{ row[col] }}">
+                                                            {% endif %}
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                    <div class="mt-3">
+                                                        <button class="btn btn-orange" type="submit">Save Changes</button>
+                                                    </div>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+            </div>
+        </div>
+    </div>
+
+<script id="external-analytics-data" type="application/json">{{ external_analytics | tojson }}</script>
+    
+            <div class="tab-pane fade" id="tab-roles" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Role Management (All Apps)</h5>
+                        <p class="text-muted small">Update user roles and admin flags across all app databases.</p>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>App</th>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Admin</th>
+                                        <th>Select</th>
+                                            <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for u in external_users %}
+                                    <tr>
+                                        <td>{{ u.app_label }}</td>
+                                        <td>{{ u.username }}</td>
+                                        <td>{{ u.email }}</td>
+                                        <td>{{ u.role }}</td>
+                                        <td>{{ 1 if u.is_admin else 0 }}</td>
+                                        <td>
+                                            <form class="d-flex gap-2" method="post" action="{{ url_for('admin.admin_external_update_role', app_key=u.app_key, rowid=u.rowid) }}">
+                                                <input class="form-control form-control-sm" name="role" value="{{ u.role }}">
+                                                <select class="form-select form-select-sm" name="is_admin">
+                                                    <option value="0" {% if not u.is_admin %}selected{% endif %}>User</option>
+                                                    <option value="1" {% if u.is_admin %}selected{% endif %}>Admin</option>
+                                                </select>
+                                                <button class="btn btn-sm btn-outline-teal" type="submit">Save</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {{ render_external_section(external_views.roles, 'External User Roles (Ryan, Sean, Reconnect, Aden)') }}
+            </div>
+
+            <div class="tab-pane fade" id="tab-audit" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Audit Logs</h5>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Actor</th>
+                                        <th>Action</th>
+                                        <th>App</th>
+                                        <th>Table</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in audit_logs %}
+                                    <tr>
+                                        <td>{{ log.created_at }}</td>
+                                        <td>{{ log.actor_id }}</td>
+                                        <td>{{ log.action }}</td>
+                                        <td>{{ log.app_key }}</td>
+                                        <td>{{ log.table_name }}</td>
+                                        <td>{{ log.details }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {{ render_external_section(external_views.audit, 'External Audit Logs (Ryan, Sean, Reconnect, Aden)') }}
+            </div>
+
+            <div class="tab-pane fade" id="tab-reports" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Scheduled Reports</h5>
+                        <p class="text-muted small">Reports are generated on a schedule and saved on disk.</p>
+                        <div class="table-responsive">
+                            <table class="table align-middle js-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Filename</th>
+                                        <th>Size</th>
+                                        <th>Download</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for report in scheduled_reports %}
+                                    <tr>
+                                        <td>{{ report.name }}</td>
+                                        <td>{{ report.size }}</td>
+                                        <td><a class="btn btn-sm btn-outline-teal" href="{{ report.url }}">Download</a></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {{ render_external_section(external_views.reports, 'External Reports (Ryan, Sean, Reconnect, Aden)') }}
+                {{ render_external_section(external_views.safety_profanities, 'External Profanities (Sean)') }}
+                {{ render_external_section(external_views.safety_reports, 'External Safety Reports (Sean)') }}
+            </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const hash = window.location.hash;
+            if (hash) {
+                const trigger = document.querySelector(`[data-bs-target="${hash}"]`);
+                if (trigger) {
+                    const tab = new bootstrap.Tab(trigger);
+                    tab.show();
+                }
+            }
+            document.querySelectorAll('[data-bs-toggle="tab"]').forEach((trigger) => {
+                trigger.addEventListener('shown.bs.tab', (event) => {
+                    const target = event.target.getAttribute('data-bs-target');
+                    if (target) {
+                        history.replaceState(null, '', target);
+                    }
+                });
+            });
+        });
+
+        const chartEl = document.getElementById('userChart');
+        if (chartEl) {
+            const totalUsers = Number(chartEl.dataset.total || 0);
+            const activeUsers = Number(chartEl.dataset.active || 0);
+
+            new Chart(chartEl, {
+                type: 'bar',
+                data: {
+                    labels: ['Total Users', 'Active Users'],
+                    datasets: [{
+                        label: 'Users',
+                        data: [totalUsers, activeUsers],
+                        backgroundColor: ['#F47C20', '#2CB6A5']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        }
+    </script>
+  <script src="{{ request.script_root }}/static/js/global_navbar.js"></script>
+    <script src="{{ request.script_root }}/static/js/admin_unified.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+</html>
+
+

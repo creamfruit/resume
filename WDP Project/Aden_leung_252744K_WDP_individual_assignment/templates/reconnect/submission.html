@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Re:Challenges</title>
+  <link rel="stylesheet" href="/static/reconnect/css/styles.css">
+  <link rel="stylesheet" href="/static/reconnect/css/dashboard.css">
+  <link rel="stylesheet" href="/static/reconnect/css/tabs.css">
+  <link rel="stylesheet" href="/static/reconnect/css/messages.css">
+  <link rel="stylesheet" href="/static/reconnect/css/submission.css">
+  <link rel="stylesheet" href="/static/reconnect/css/global_navbar.css">
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+<body data-logged-in="{{ '1' if session.get('user_id') else '0' }}">
+<div class="global-topbar" id="reconnect-global-navbar">
+  <div class="brand">Re:Connect Global</div>
+  <div class="actions">
+    <button type="button" id="global-notif-btn">Notifications <span class="badge" id="global-notif-badge">0</span></button>
+    <button type="button" id="global-chatbot-btn">Chatbot</button>
+    <button type="button" id="global-access-btn">Accessibility</button>
+  </div>
+  <div class="panel" id="global-notif-panel">
+    <header>Notifications</header>
+    <div class="panel-body" id="global-notif-list">
+      <div class="item">No notifications yet.</div>
+    </div>
+  </div>
+  <div class="panel" id="global-chatbot-panel">
+    <header>FAQ Chatbot</header>
+    <div class="panel-body">
+      <div id="global-chatbot-log" style="max-height:160px; overflow:auto;"></div>
+      <form id="global-chatbot-form" class="chatbot-input">
+        <input id="global-chatbot-input" type="text" placeholder="Ask a question...">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+  <div class="panel" id="global-access-panel">
+    <header>Accessibility</header>
+    <div class="panel-body">
+      <div class="item">Use browser zoom for text size.</div>
+      <div class="item">High contrast mode: Alt + Shift + H.</div>
+      <div class="item">Keyboard navigation supported.</div>
+    </div>
+  </div>
+</div>
+
+    <!-- Accessibility Controls -->
+  <div class="accessibility-bar">
+    <div class="container">
+      <button id="back-btn" class="back-btn btn-auth" onclick="window.location.href='dashboard.html'">← Back to Dashboard</button>
+      <div class="accessibility-controls">
+        <button class="accessibility-btn btn-auth" id="font-size-btn" title="Adjust Text Size">
+          <span>A</span><span style="font-size: 1.2em;">A</span>
+        </button>
+        <button class="accessibility-btn btn-auth" id="contrast-btn" title="Toggle High Contrast">
+          ◐
+        </button>
+        <button class="accessibility-btn btn-auth" id="lang-btn" title="Change Language">
+          🌐
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submission Form -->
+   <div class="submission-container">
+    <h1>Submit Your Entry</h1>
+    <h2>Recreate Your Childhood Snack</h2>
+
+    <div class="upload-box" onclick="document.getElementById('file-upload').click()">
+  <i>📷</i>
+  <h1>Upload Photo or Video</h1>
+  <h2>Click to browse or drag and drop</h2>
+  <input type="file" id="file-upload" name="file" accept=".jpg,.jpeg,.png,.mp4,.mov" style="display:none;">
+</div>
+
+    <textarea id="description" name="description" placeholder="Describe your recreation process..." rows="5"></textarea>
+
+    <button id="submit-btn" onclick="alert('Submission received! Thank you for participating.'); window.location.href='thankyou.html';">Submit</button>
+  </div>
+  <script src="/static/reconnect/js/global_navbar.js"></script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+  

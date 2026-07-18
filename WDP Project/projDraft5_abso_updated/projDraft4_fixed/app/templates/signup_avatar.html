@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customize Avatar - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/auth.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(180deg, #fff7ed, #ffffff);
+      min-height: 100vh;
+    }
+    .auth-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+    }
+    .auth-box {
+      padding: 24px !important;
+      border-radius: 26px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid rgba(17,24,39,0.08);
+      box-shadow: 0 14px 40px rgba(17,24,39,0.1);
+      position: relative;
+    }
+    .avatar-page-card{
+      width: min(1160px, 100%);
+      margin: 0 auto;
+      padding: 16px 32px 24px;
+    }
+    .avatar-studio{
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+    .avatar-preview-wrap{
+      position: sticky;
+      top: 90px;
+      align-self: start;
+    }
+    .avatar-controls{
+      max-width: 540px;
+      width: 100%;
+      max-height: calc(100vh - 140px);
+      overflow: auto;
+      padding-right: 8px;
+    }
+    .avatar-controls::-webkit-scrollbar{ width: 10px; }
+    .avatar-controls::-webkit-scrollbar-thumb{
+      background: rgba(17,24,39,.18);
+      border-radius: 999px;
+    }
+    .avatar-controls::-webkit-scrollbar-track{
+      background: rgba(17,24,39,.05);
+      border-radius: 999px;
+    }
+    .auth-header {
+      text-align: center;
+      position: relative;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(124, 76, 34, 0.15);
+      margin-bottom: 16px;
+    }
+    .auth-header h1 { font-size: 2rem; margin-bottom: 0.2rem; color: #6b4f3d; }
+    .auth-header p { font-size: 0.95rem; margin-bottom: 0.6rem; color: #8a7361; }
+    .avatar-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .avatar-preview {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 520px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(253,186,116,.45), transparent 55%),
+        radial-gradient(circle at 70% 60%, rgba(20,184,166,.18), transparent 55%),
+        linear-gradient(180deg, rgba(255,237,213,.95), #ffffff);
+      border: none;
+      border-radius: 22px;
+      padding: 14px;
+      overflow: hidden;
+    }
+    .avatar-preview-box{
+      height: 520px;
+      border-radius: 22px;
+      padding: 18px;
+      background: linear-gradient(180deg, #fff4e6, #fff);
+      border: 1px solid rgba(249,115,22,.25);
+      position: relative;
+      overflow: hidden;
+    }
+    .avatar-render{
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+    .avatar-preview-box::after{
+      content:"";
+      position:absolute;
+      width: 260px;
+      height: 42px;
+      left: 50%;
+      bottom: 80px;
+      transform: translateX(-50%);
+      background: rgba(17,24,39,.14);
+      filter: blur(18px);
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .avatar-preview::after { display: none; }
+    .avatar-stage {
+      width: 420px;
+      height: 420px;
+      position: relative;
+      margin: 0 auto;
+      z-index: 2;
+    }
+    .avatar-ring {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 4px solid #f59e0b;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .avatar-crop {
+      position: absolute;
+      inset: 22px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #fdebd8;
+      z-index: 1;
+    }
+    .avatar-layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform: none;
+      object-fit: contain;
+      pointer-events: none;
+      opacity: 1;
+      filter: none;
+      mix-blend-mode: normal;
+    }
+    .avatar-preview .studio-vignette {
+      display: none;
+    }
+    .scene-peach { background: linear-gradient(135deg, #fff1e6, #ffe4cc); }
+    .scene-mint { background: linear-gradient(135deg, #e6fff7, #d4f9f1); }
+    .scene-sky { background: linear-gradient(135deg, #eef4ff, #dbe7ff); }
+    .scene-studio { background: linear-gradient(135deg, #fff7ed, #ffe8d1); }
+    .scene-park {
+      background:
+        radial-gradient(circle at bottom, rgba(34,197,94,0.18), transparent 55%),
+        linear-gradient(135deg, #fef3c7, #d1fae5);
+    }
+    .earbuds-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      pointer-events: none;
+      z-index: 4;
+    }
+    .earbuds-overlay .earbud {
+      position: absolute;
+      width: 6%;
+      height: 6%;
+      border-radius: 50%;
+      background: #1f2937;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .earbuds-overlay .earbud.left { left: 24%; top: 50%; }
+    .earbuds-overlay .earbud.right { right: 24%; top: 50%; }
+    .headphones-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      pointer-events: none;
+      z-index: 4;
+    }
+    .headphones-band {
+      position: absolute;
+      width: 68%;
+      height: 54%;
+      left: 16%;
+      border: 6px solid #111827;
+      border-bottom: none;
+      border-radius: 999px 999px 0 0;
+      top: 6%;
+    }
+    .headphones-cup {
+      position: absolute;
+      width: 11%;
+      height: 22%;
+      border-radius: 16px;
+      background: #111827;
+      top: 34%;
+    }
+    .headphones-cup.left { left: 14%; }
+    .headphones-cup.right { right: 14%; }
+    .avatar-controls { display: block; }
+    .avatar-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px;
+      background: #ffffff;
+      border: 1px solid #eef2f5;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto 10px;
+      flex-wrap: nowrap;
+    }
+    .avatar-tabs .tab-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background: #f8fafc;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 150ms ease;
+      outline: none;
+      flex: 1 1 0;
+      min-width: 0;
+      white-space: nowrap;
+    }
+    .avatar-tabs .tab-btn:hover {
+      transform: translateY(-1px);
+      border-color: #e2e8f0;
+    }
+    .avatar-tabs .tab-btn:focus {
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+    }
+    .avatar-tabs .tab-btn.active {
+      background: rgba(249, 115, 22, 0.12);
+      border-color: rgba(249, 115, 22, 0.45);
+      color: #f97316;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .control-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    .form-group select, .form-group input { width: 100%; padding: 0.4rem 0.6rem; border-radius: 0.45rem; border: 1px solid #ddd; font-size: 0.85rem; }
+    .section-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin: 4px 0 10px; }
+    .preset-row { break-inside: avoid; }
+    .button-group { margin-top: 0.75rem !important; }
+    .button-group {
+      margin-top: 1.25rem !important;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items: center;
+    }
+    .button-group .avatar-nav-btn {
+      width: 100%;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      font-size: 0.96rem;
+      font-weight: 700;
+      text-decoration: none;
+      border: 2px solid transparent;
+      transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+      line-height: 1.2;
+    }
+    .button-group .avatar-nav-btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(0.98);
+    }
+    .button-group .avatar-nav-back {
+      color: #111827;
+      background: #ffffff;
+      border-color: #111827;
+      box-shadow: none;
+    }
+    .button-group .avatar-nav-next {
+      color: #ffffff;
+      background: #f97316;
+      border-color: #f97316;
+      box-shadow: 0 12px 22px rgba(249, 115, 22, 0.28);
+    }
+    body.avatar-edit-mode .button-group {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 22px;
+      align-items: center;
+    }
+    body.avatar-edit-mode .avatar-nav-back {
+      display: none;
+    }
+    body.avatar-edit-mode .button-group .avatar-nav-next {
+      grid-column: 2;
+      width: 100%;
+      min-height: 56px;
+      font-size: 1.05rem;
+    }
+    @media (min-width: 1600px) {
+      .auth-box { max-height: 900px; }
+      .auth-header h1 { font-size: 1.9rem; }
+      .auth-header p { font-size: 0.9rem; }
+      .avatar-preview { min-height: 300px; padding: 12px; }
+      .avatar-stage { width: 360px; height: 360px; }
+      .avatar-crop { inset: 20px; }
+      .avatar-controls .form-group { margin-bottom: 6px; }
+      .form-group select, .form-group input { padding: 0.35rem 0.55rem; font-size: 0.82rem; }
+      .tabs { margin-bottom: 6px; }
+    }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .preset-btn {
+      border: 2px solid rgba(20, 184, 166, 0.3);
+      background: rgba(20, 184, 166, 0.08);
+      color: #0f766e;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .preset-btn:hover { background: rgba(20, 184, 166, 0.18); }
+    @media (max-width: 900px) {
+      .avatar-wrap { grid-template-columns: 1fr; }
+      .avatar-preview-wrap { position: static; top: auto; }
+      .avatar-controls { max-height: none; overflow: visible; padding-right: 0; }
+      .avatar-page-card { padding: 14px 14px 18px; }
+      .button-group { grid-template-columns: 1fr; }
+      body.avatar-edit-mode .button-group {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+      body.avatar-edit-mode .button-group .avatar-nav-next {
+        grid-column: auto;
+        width: 100%;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+
+  <body class="show-face">
+  <div class="auth-container">
+    <div class="auth-box avatar-page-card" style="max-width: 1200px;">
+      <div class="auth-header">
+        <h1>Design Your Avatar</h1>
+        <p>Set up your look, then continue to onboarding.</p>
+      </div>
+
+      <form class="auth-form" action="/signup-avatar" method="post">
+        <input type="hidden" id="avatar-data" name="avatar_data" value="">
+        <input type="hidden" id="edit-mode-input" name="edit_mode" value="0">
+        <input type="hidden" id="seed" name="seed" value="{{ avatar_config.get('seed', 'ReConnect') }}">
+        <input type="hidden" id="top" name="top" value="{{ avatar_config.get('top', '') }}">
+          <div class="avatar-wrap avatar-studio">
+            <div class="avatar-preview-wrap">
+              <div class="avatar-preview avatar-preview-box scene-studio" id="avatar-preview-panel">
+              <div class="avatar-stage">
+                <div class="avatar-ring"></div>
+                <div class="avatar-crop">
+                  <div class="avatar-render">
+                    <img class="avatar-layer" id="avatar-preview" src="{{ avatar_url if avatar_url else 'https://api.dicebear.com/6.x/avataaars/svg?seed=ReConnect' }}" alt="Avatar preview" crossorigin="anonymous" referrerpolicy="no-referrer">
+                  </div>
+                  <div class="earbuds-overlay" id="earbuds-overlay">
+                    <span class="earbud left"></span>
+                    <span class="earbud right"></span>
+                  </div>
+                  <div class="headphones-overlay" id="headphones-overlay">
+                    <span class="headphones-band"></span>
+                    <span class="headphones-cup left"></span>
+                    <span class="headphones-cup right"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="avatar-placeholder" id="avatar-placeholder">
+                <div class="ph-circle"></div>
+                <p>Preview will appear here</p>
+                <span>Pick Face / Hair / Outfit to update</span>
+              </div>
+              <div class="studio-vignette"></div>
+              </div>
+          </div>
+            <div class="avatar-controls">
+              <div class="tabs avatar-tabs">
+                <button type="button" class="tab-btn active" data-tab="tab-overview">Overview</button>
+                <button type="button" class="tab-btn" data-tab="tab-face">Face</button>
+                <button type="button" class="tab-btn" data-tab="tab-hair">Hair</button>
+                <button type="button" class="tab-btn" data-tab="tab-outfit">Outfit</button>
+                <button type="button" class="tab-btn" data-tab="tab-accessories">Accessories</button>
+              </div>
+
+              <div class="tab-panel active tab-overview" id="tab-overview">
+                <div class="form-group">
+                  <label for="gender">Gender</label>
+                  <select id="gender" name="gender">
+                    <option value="boy">Boy</option>
+                    <option value="girl">Girl</option>
+                  </select>
+                </div>
+                <div class="section-title avatar-section-title">Quick Presets</div>
+                <div class="preset-row">
+                  <button type="button" class="preset-btn" data-preset="friendly">Friendly</button>
+                  <button type="button" class="preset-btn" data-preset="happy">Happy</button>
+                  <button type="button" class="preset-btn" data-preset="calm">Calm</button>
+                  <button type="button" class="preset-btn" data-preset="serious">Serious</button>
+                </div>
+              </div>
+
+              <div class="tab-panel tab-face" id="tab-face">
+                <div class="form-section">
+                  <div class="section-title avatar-section-title">Face</div>
+                <div class="control-grid">
+                <div class="form-group">
+                  <label for="skin">Skin Tone</label>
+                  <select id="skin" name="skin">
+                    <option value="Light">Light</option>
+                    <option value="Pale">Pale</option>
+                    <option value="Tanned">Tanned</option>
+                    <option value="Brown">Brown</option>
+                    <option value="DarkBrown">Dark Brown</option>
+                    <option value="Black">Black</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="eyes">Eyes</label>
+                  <select id="eyes" name="eyes">
+                    <option value="Default">Default</option>
+                    <option value="Happy">Happy</option>
+                    <option value="Surprised">Surprised</option>
+                    <option value="Wink">Wink</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="eyebrows">Eyebrows</label>
+                  <select id="eyebrows" name="eyebrows">
+                    <option value="Default">Default</option>
+                    <option value="Angry">Angry</option>
+                    <option value="Raised">Raised</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="mouth">Mouth</label>
+                  <select id="mouth" name="mouth">
+                    <option value="Smile">Smile</option>
+                    <option value="Twinkle">Twinkle</option>
+                    <option value="Serious">Serious</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="eyeColor">Eye Color</label>
+                  <select id="eyeColor" name="eyeColor">
+                    <option value="Dark">Dark</option>
+                    <option value="Hazel">Hazel</option>
+                    <option value="Green">Green</option>
+                    <option value="Blue">Blue</option>
+                  </select>
+                </div>
+                </div>
+                </div>
+              </div>
+
+              <div class="tab-panel tab-hair" id="tab-hair">
+                <div class="form-section">
+                  <div class="section-title avatar-section-title">Hair</div>
+                  <div class="control-grid">
+                    <div class="form-group">
+                      <label for="hairColor">Hair Color</label>
+                      <select id="hairColor" name="hairColor">
+                        <option value="Black">Black</option>
+                        <option value="DarkBrown">Dark Brown</option>
+                        <option value="Brown">Brown</option>
+                        <option value="Auburn">Auburn</option>
+                        <option value="Blonde">Blonde</option>
+                        <option value="Gray">Gray</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-panel tab-outfit" id="tab-outfit">
+                <div class="form-section">
+                  <div class="section-title avatar-section-title">Outfit</div>
+                  <div class="control-grid">
+                <div class="form-group">
+                  <label for="outfitColor">Outfit Color</label>
+                  <select id="outfitColor" name="outfitColor">
+                    <option value="Orange">Orange</option>
+                    <option value="Teal">Teal</option>
+                    <option value="Blue">Blue</option>
+                    <option value="Purple">Purple</option>
+                    <option value="Gray">Gray</option>
+                  </select>
+                </div>
+                </div>
+                </div>
+              </div>
+
+              <div class="tab-panel tab-accessories" id="tab-accessories">
+                <div class="form-section">
+                  <div class="section-title avatar-section-title">Accessories</div>
+                  <div class="control-grid">
+                <div class="form-group">
+                  <label for="accessories">Facewear</label>
+                  <select id="accessories" name="accessories">
+                    <option value="">None</option>
+                    <option value="Prescription02">Glasses</option>
+                    <option value="Sunglasses">Sunglasses</option>
+                    <option value="headphones">Headphones</option>
+                    <option value="earbuds">Earbuds</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="headwear">Headwear</label>
+                  <select id="headwear" name="headwear">
+                    <option value="">None</option>
+                    <option value="Hat">Hat</option>
+                    <option value="Hijab">Hijab</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="background">Background</label>
+                  <select id="background" name="background">
+                    <option value="Studio">Studio</option>
+                    <option value="Peach">Peach</option>
+                    <option value="Mint">Mint</option>
+                    <option value="Sky">Sky</option>
+                    <option value="Park">Park</option>
+                  </select>
+                </div>
+                </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        <div class="button-group">
+          <a href="/signup" class="avatar-nav-btn avatar-nav-back" id="avatar-back-btn">Back</a>
+          <button type="submit" class="avatar-nav-btn avatar-nav-next" id="avatar-save-btn">Continue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var isEditMode = params.get('edit') === '1';
+      var config = {{ avatar_config|tojson }};
+      var seed = document.getElementById('seed');
+      var top = document.getElementById('top');
+      var gender = document.getElementById('gender');
+      var skin = document.getElementById('skin');
+      var eyes = document.getElementById('eyes');
+      var eyebrows = document.getElementById('eyebrows');
+      var eyeColor = document.getElementById('eyeColor');
+      var hairColor = document.getElementById('hairColor');
+      var outfitColor = document.getElementById('outfitColor');
+      var background = document.getElementById('background');
+      var nose = document.getElementById('nose');
+      var facialHair = document.getElementById('facialHair');
+      var bodyType = document.getElementById('bodyType');
+      var shoes = document.getElementById('shoes');
+      var mouth = document.getElementById('mouth');
+      var accessories = document.getElementById('accessories');
+      var headwear = document.getElementById('headwear');
+      var preview = document.getElementById('avatar-preview');
+      var saveBtn = document.getElementById('avatar-save-btn');
+      var editModeInput = document.getElementById('edit-mode-input');
+      var previewPanel = document.getElementById('avatar-preview-panel');
+      var placeholder = document.getElementById('avatar-placeholder');
+      var presetButtons = document.querySelectorAll('.preset-btn');
+      var earbudsOverlay = document.getElementById('earbuds-overlay');
+      var headphonesOverlay = document.getElementById('headphones-overlay');
+
+      if (isEditMode) {
+        document.body.classList.add('avatar-edit-mode');
+        if (saveBtn) saveBtn.textContent = 'Save';
+        if (editModeInput) editModeInput.value = '1';
+      }
+
+
+      if (config) {
+        if (seed && config.seed) seed.value = config.seed;
+        if (top && config.top) top.value = config.top;
+        if (eyes && config.eyes) eyes.value = config.eyes;
+        if (eyebrows && config.eyebrows) eyebrows.value = config.eyebrows;
+        if (mouth && config.mouth) mouth.value = config.mouth;
+        if (accessories && config.accessories) accessories.value = config.accessories;
+        if (headwear && config.headwear) headwear.value = config.headwear;
+        if (skin && config.skin) skin.value = config.skin;
+        if (gender && config.gender) gender.value = config.gender;
+        if (eyeColor && config.eyeColor) eyeColor.value = config.eyeColor;
+        if (hairColor && config.hairColor) hairColor.value = config.hairColor;
+        if (outfitColor && config.outfitColor) outfitColor.value = config.outfitColor;
+        if (background && config.background) background.value = config.background;
+        if (nose && config.nose) nose.value = config.nose;
+        if (facialHair && config.facialHair) facialHair.value = config.facialHair;
+        if (bodyType && config.bodyType) bodyType.value = config.bodyType;
+        if (shoes && config.shoes) shoes.value = config.shoes;
+      }
+
+      function applyGenderDefaults() {
+        if (!gender || !top) return;
+        if (gender.value === 'boy') top.value = 'LongHairStraight';
+        if (gender.value === 'girl') top.value = 'LongHairStraight';
+      }
+
+      function applyScene() {
+        if (!previewPanel || !background) return;
+        previewPanel.classList.remove('scene-peach', 'scene-mint', 'scene-sky', 'scene-studio', 'scene-park');
+        var map = {
+          Peach: 'scene-peach',
+          Mint: 'scene-mint',
+          Sky: 'scene-sky',
+          Studio: 'scene-studio',
+          Park: 'scene-park',
+          None: 'scene-studio'
+        };
+        previewPanel.classList.add(map[background.value] || 'scene-studio');
+      }
+
+
+      function applyPreset(name) {
+        if (!eyes || !mouth || !eyebrows) return;
+        if (name === 'friendly') {
+          eyes.value = 'Happy';
+          mouth.value = 'Smile';
+          eyebrows.value = 'Raised';
+        } else if (name === 'happy') {
+          eyes.value = 'Happy';
+          mouth.value = 'Twinkle';
+          eyebrows.value = 'Raised';
+        } else if (name === 'calm') {
+          eyes.value = 'Default';
+          mouth.value = 'Smile';
+          eyebrows.value = 'Default';
+        } else if (name === 'serious') {
+          eyes.value = 'Default';
+          mouth.value = 'Serious';
+          eyebrows.value = 'Default';
+        }
+        updatePreview();
+      }
+
+      function svgAvatar(opts) {
+        var skinMap = {
+          Light: '#f7d7c4',
+          Pale: '#f3c9b0',
+          Tanned: '#e0b08a',
+          Brown: '#c0896b',
+          DarkBrown: '#8b5e3c',
+          Black: '#5b3a24'
+        };
+        var hair = opts.top || (opts.gender === 'boy' ? 'LongHairStraight' : 'ShortHairShortFlat');
+        var skin = skinMap[opts.skin] || skinMap.Light;
+        var hairColorMap = {
+          Black: '#1f2937',
+          DarkBrown: '#3b2f2f',
+          Brown: '#6b4f3d',
+          Auburn: '#8b4b3a',
+          Blonde: '#c8a45a',
+          Gray: '#9ca3af'
+        };
+        var hairColor = hairColorMap[opts.hairColor] || (opts.gender === 'girl' ? '#3b2f2f' : '#2b2b2b');
+        var eyeColorMap = {
+          Dark: '#1f2937',
+          Hazel: '#7c5c2e',
+          Green: '#15803d',
+          Blue: '#2563eb'
+        };
+        var eyesFill = eyeColorMap[opts.eyeColor] || '#1f2937';
+        var outfitColorMap = {
+          Orange: '#f97316',
+          Teal: '#14b8a6',
+          Blue: '#2563eb',
+          Purple: '#8b5cf6',
+          Gray: '#64748b'
+        };
+        var outfitColor = outfitColorMap[opts.outfitColor] || outfitColorMap.Orange;
+        var bgColorMap = {
+          None: '#ffffff',
+          Peach: '#fff3e6',
+          Mint: '#e6fff7',
+          Sky: '#eef4ff',
+          Studio: '#fff7ed',
+          Park: '#fef3c7'
+        };
+        var backgroundFill = bgColorMap[opts.background] || '#ffffff';
+        var scarfColor = '#1f6feb';
+        var hatColor = '#111827';
+        var facewear = opts.accessories || '';
+        var headwearType = opts.headwear || '';
+        if ((hair === 'Hat' || hair === 'Hijab') && !headwearType) {
+          headwearType = hair;
+          hair = 'ShortHairShortFlat';
+        }
+        var bodyType = opts.bodyType || 'Average';
+        var poseType = 'neutral';
+        var facewearOffsetY = 2;
+        // Keep dreads as-is; normalize all other hair styles to the same alignment baseline.
+        var hairOffsets = {
+          ShortHairShortFlat: { x: 0, y: 0, s: 1.0 },
+          ShortHairDreads01: { x: 0, y: -2, s: 1.0 },
+          LongHairStraight: { x: 0, y: 0, s: 1.0 },
+          LongHairStraight2: { x: 0, y: 0, s: 1.0 },
+          LongHairCurly: { x: 0, y: 0, s: 1.0 },
+          Hat: { x: 0, y: 0, s: 1.0 },
+          Hijab: { x: 0, y: 0, s: 1.0 }
+        };
+        var hairOffset = hairOffsets[headwearType || hair] || { x: 0, y: 0, s: 1.0 };
+
+        var hairBackSvg = '';
+        var hairFrontSvg = '';
+        var headwearSvg = '';
+        if (hair === 'ShortHairShortFlat') {
+          if ((opts.gender || 'boy') === 'girl') {
+            hairBackSvg =
+              '<path d="M58 102c8-20 28-30 52-30s44 10 52 30v74H58z" fill="'+hairColor+'"/>';
+            hairFrontSvg =
+              '<path d="M52 94c8-30 34-50 58-50s50 20 58 50v14H52z" fill="'+hairColor+'"/>' +
+              '<path d="M62 118c-5 16-7 30-6 56h14c-1-20 1-38 7-56z" fill="'+hairColor+'"/>' +
+              '<path d="M158 118c5 16 7 30 6 56h-14c1-20-1-38-7-56z" fill="'+hairColor+'"/>';
+          } else {
+            hairBackSvg =
+              '<path d="M62 108c8-18 26-28 48-28s40 10 48 28v66H62z" fill="'+hairColor+'"/>';
+            hairFrontSvg =
+              '<path d="M52 94c8-30 34-50 58-50s50 20 58 50v14H52z" fill="'+hairColor+'"/>' +
+              '<path d="M62 118c-5 16-7 30-6 56h14c-1-20 1-38 7-56z" fill="'+hairColor+'"/>' +
+              '<path d="M158 118c5 16 7 30 6 56h-14c1-20-1-38-7-56z" fill="'+hairColor+'"/>';
+          }
+        } else if (hair === 'ShortHairDreads01') {
+          hairFrontSvg = '<path d="M48 98c12-36 40-58 62-58s52 22 62 58v22H48z" fill="'+hairColor+'"/>' +
+            '<g fill="'+hairColor+'"><rect x="60" y="110" width="10" height="40" rx="5"/><rect x="78" y="112" width="10" height="38" rx="5"/><rect x="96" y="114" width="10" height="36" rx="5"/><rect x="114" y="114" width="10" height="36" rx="5"/><rect x="132" y="112" width="10" height="38" rx="5"/><rect x="150" y="110" width="10" height="40" rx="5"/></g>';
+        } else if (hair === 'LongHairStraight') {
+          if ((opts.gender || 'boy') === 'girl') {
+            hairBackSvg =
+              '<path d="M64 104c10-18 26-28 46-28s36 10 46 28v86H64z" fill="'+hairColor+'"/>';
+          } else {
+            hairBackSvg = '';
+          }
+          if ((opts.gender || 'boy') === 'boy') {
+            hairFrontSvg =
+              '<path d="M54 96c10-24 32-38 56-38s46 14 56 38v8H54z" fill="'+hairColor+'"/>';
+          } else {
+            hairFrontSvg =
+              '<path d="M54 96c10-24 32-38 56-38s46 14 56 38v8H54z" fill="'+hairColor+'"/>';
+          }
+        } else if (hair === 'LongHairStraight2') {
+          hairBackSvg =
+            '<path d="M68 110c8-16 24-24 42-24s34 8 42 24v74H68z" fill="'+hairColor+'"/>';
+          hairFrontSvg =
+            '<path d="M58 98c10-24 30-38 52-38s42 14 52 38v12H58z" fill="'+hairColor+'"/>' +
+            '<path d="M110 98v14" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-linecap="round"/>' +
+            '<path d="M64 118c-5 18-7 36-6 68h14c-2-27 1-46 7-68z" fill="'+hairColor+'"/>' +
+            '<path d="M156 118c5 18 7 36 6 68h-14c2-27-1-46-7-68z" fill="'+hairColor+'"/>';
+        } else if (hair === 'LongHairCurly') {
+          hairBackSvg =
+            '<path d="M66 108c10-18 26-28 44-28s34 10 44 28v76H66z" fill="'+hairColor+'"/>';
+          hairFrontSvg =
+            '<path d="M58 98c10-24 30-38 52-38s42 14 52 38v12H58z" fill="'+hairColor+'"/>' +
+            '<path d="M64 118c-5 18-7 36-6 68h16c-2-27 1-46 7-68z" fill="'+hairColor+'"/>' +
+            '<path d="M156 118c5 18 7 36 6 68h-16c2-27-1-46-7-68z" fill="'+hairColor+'"/>' +
+            '<g fill="'+hairColor+'"><circle cx="74" cy="182" r="6"/><circle cx="146" cy="182" r="6"/></g>';
+        }
+        if (headwearType === 'Hat') {
+          headwearSvg = '<rect x="48" y="70" width="124" height="40" rx="18" fill="'+hatColor+'"/>' +
+                        '<rect x="34" y="98" width="152" height="12" rx="6" fill="'+hatColor+'"/>';
+          if (hair === 'LongHairStraight' || hair === 'LongHairStraight2' || hair === 'LongHairCurly') {
+            hairFrontSvg = '';
+          }
+        } else if (headwearType === 'Hijab') {
+          hairBackSvg = '';
+          hairFrontSvg = '';
+          headwearSvg =
+            '<path d="M44 92c20-30 44-46 66-46s46 16 66 46v90H44z M62 130a48 54 0 1 0 96 0a48 54 0 1 0 -96 0z" fill="'+scarfColor+'" fill-rule="evenodd"/>' +
+            '<ellipse cx="110" cy="130" rx="48" ry="54" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="2"/>';
+        }
+
+        var eyesSvg = '';
+        if (opts.eyes === 'Happy') {
+          eyesSvg = '<path d="M78 128c8 6 16 6 24 0" stroke="'+eyesFill+'" stroke-width="4" fill="none" stroke-linecap="round"/>' +
+                    '<path d="M118 128c8 6 16 6 24 0" stroke="'+eyesFill+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+        } else if (opts.eyes === 'Wink') {
+          eyesSvg = '<circle cx="88" cy="126" r="5" fill="'+eyesFill+'"/>' +
+                    '<path d="M122 128c10 0 18 0 26 0" stroke="'+eyesFill+'" stroke-width="4" stroke-linecap="round"/>';
+        } else if (opts.eyes === 'Surprised') {
+          eyesSvg = '<circle cx="88" cy="126" r="6" fill="'+eyesFill+'"/>' +
+                    '<circle cx="132" cy="126" r="6" fill="'+eyesFill+'"/>';
+        } else {
+          eyesSvg = '<circle cx="88" cy="126" r="5" fill="'+eyesFill+'"/>' +
+                    '<circle cx="132" cy="126" r="5" fill="'+eyesFill+'"/>';
+        }
+
+        var browsSvg = '';
+        if (opts.eyebrows === 'Angry') {
+          browsSvg = '<path d="M72 108l30 6" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>' +
+                     '<path d="M148 108l-30 6" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>';
+        } else if (opts.eyebrows === 'Raised') {
+          browsSvg = '<path d="M72 108l30 0" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>' +
+                     '<path d="M118 108l30 0" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>';
+        } else {
+          browsSvg = '<path d="M72 114l30 0" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>' +
+                     '<path d="M118 114l30 0" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>';
+        }
+
+        var mouthSvg = '';
+        if (opts.mouth === 'Serious') {
+          mouthSvg = '<path d="M92 158h44" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>';
+        } else if (opts.mouth === 'Twinkle') {
+          mouthSvg = '<path d="M90 156c10 6 30 6 40 0" stroke="#1f2937" stroke-width="5" fill="none" stroke-linecap="round"/>';
+        } else {
+          mouthSvg = '<path d="M90 154c12 10 28 10 40 0" stroke="#1f2937" stroke-width="5" fill="none" stroke-linecap="round"/>';
+        }
+
+        var facewearSvg = '';
+        if (facewear === 'Prescription02') {
+          facewearSvg = '<rect x="66" y="112" width="36" height="26" rx="9" fill="none" stroke="#111827" stroke-width="4"/>' +
+                   '<rect x="118" y="112" width="36" height="26" rx="9" fill="none" stroke="#111827" stroke-width="4"/>' +
+                   '<path d="M102 126h16" stroke="#111827" stroke-width="4" />';
+        } else if (facewear === 'Sunglasses') {
+          facewearSvg = '<rect x="64" y="112" width="38" height="26" rx="7" fill="#111827"/>' +
+                   '<rect x="118" y="112" width="38" height="26" rx="7" fill="#111827"/>' +
+                   '<path d="M102 126h16" stroke="#111827" stroke-width="4" />';
+        }
+
+        var noseSvg = '';
+        if (opts.nose === 'Small') {
+          noseSvg = '<path d="M110 136c2 4 2 8 0 12" stroke="#8b5e3c" stroke-width="3" stroke-linecap="round"/>';
+        } else if (opts.nose === 'Sharp') {
+          noseSvg = '<path d="M110 132l-4 14h8" stroke="#8b5e3c" stroke-width="3" stroke-linecap="round" fill="none"/>';
+        } else {
+          noseSvg = '<path d="M110 134c3 6 3 10 0 14" stroke="#8b5e3c" stroke-width="3" stroke-linecap="round"/>';
+        }
+
+        var facialSvg = '';
+        if (opts.facialHair === 'Stubble') {
+          facialSvg = '<path d="M84 170c18 12 52 12 72 0" stroke="#3f2a1d" stroke-width="6" stroke-linecap="round"/>';
+        } else if (opts.facialHair === 'Mustache') {
+          facialSvg = '<path d="M90 150c8 6 16 6 24 0" stroke="#3f2a1d" stroke-width="6" stroke-linecap="round"/>' +
+                      '<path d="M126 150c8 6 16 6 24 0" stroke="#3f2a1d" stroke-width="6" stroke-linecap="round"/>';
+        } else if (opts.facialHair === 'Beard') {
+          facialSvg = '<path d="M84 166c10 16 32 22 52 22s42-6 52-22" stroke="#3f2a1d" stroke-width="10" stroke-linecap="round"/>';
+        }
+
+        var bodyRect = { x: 40, y: 188, w: 140, h: 32, r: 16 };
+        if (bodyType === 'Slim') bodyRect = { x: 48, y: 190, w: 124, h: 30, r: 15 };
+        if (bodyType === 'Curvy') bodyRect = { x: 34, y: 184, w: 152, h: 36, r: 18 };
+        var poseShift = { x: 0, y: 0, r: 0 };
+        var poseHandSvg = '';
+
+        var outfitSvg = '';
+        if (opts.outfit === 'Hoodie') {
+          outfitSvg =
+            '<path d="M' + bodyRect.x + ' ' + (bodyRect.y + 12) +
+            'c12-26 40-40 70-40s58 14 70 40v20H' + bodyRect.x + 'z" fill="' + outfitColor + '"/>' +
+            '<path d="M70 178c10-16 24-24 40-24s30 8 40 24" stroke="#ffffff" stroke-width="6" fill="none"/>';
+        } else if (opts.outfit === 'Collar') {
+          outfitSvg =
+            '<rect x="' + bodyRect.x + '" y="' + bodyRect.y + '" width="' + bodyRect.w + '" height="' + bodyRect.h + '" rx="' + bodyRect.r + '" fill="' + outfitColor + '"/>' +
+            '<path d="M92 186l18 16 18-16" fill="#ffffff" />';
+        } else {
+          outfitSvg =
+            '<rect x="' + bodyRect.x + '" y="' + bodyRect.y + '" width="' + bodyRect.w + '" height="' + bodyRect.h + '" rx="' + bodyRect.r + '" fill="' + outfitColor + '"/>';
+        }
+
+        var shoesSvg = '';
+        if (opts.shoes === 'Boots') {
+          shoesSvg = '<rect x="62" y="210" width="40" height="8" rx="4" fill="#111827"/>' +
+                     '<rect x="118" y="210" width="40" height="8" rx="4" fill="#111827"/>';
+        } else if (opts.shoes === 'Loafers') {
+          shoesSvg = '<rect x="62" y="212" width="36" height="6" rx="3" fill="#6b4f3d"/>' +
+                     '<rect x="122" y="212" width="36" height="6" rx="3" fill="#6b4f3d"/>';
+        } else {
+          shoesSvg = '<rect x="62" y="212" width="36" height="6" rx="3" fill="#1f2937"/>' +
+                     '<rect x="122" y="212" width="36" height="6" rx="3" fill="#1f2937"/>';
+        }
+
+        var svg =
+          '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">' +
+          '<rect width="220" height="220" rx="110" fill="' + backgroundFill + '" fill-opacity="0"/>' +
+          '<g transform="translate(' + poseShift.x + ',' + poseShift.y + ') rotate(' + poseShift.r + ' 110 198)">' +
+          outfitSvg +
+          shoesSvg +
+          '<rect x="102" y="174" width="16" height="18" rx="8" fill="'+skin+'"/>' +
+          '</g>' +
+          '<g transform="translate(' + hairOffset.x + ',' + hairOffset.y + ') scale(' + hairOffset.s + ')">' + hairBackSvg + '</g>' +
+          '<circle cx="110" cy="130" r="60" fill="'+skin+'" stroke="#e5e7eb" stroke-width="2"/>' +
+          browsSvg +
+          eyesSvg +
+          noseSvg +
+          mouthSvg +
+          facialSvg +
+          '<g transform="translate(' + poseShift.x + ',' + poseShift.y + ')">' + poseHandSvg + '</g>' +
+          '<g transform="translate(0,' + facewearOffsetY + ')">' + facewearSvg + '</g>' +
+          headwearSvg +
+          '<g transform="translate(' + hairOffset.x + ',' + hairOffset.y + ') scale(' + hairOffset.s + ')">' + hairFrontSvg + '</g>' +
+          '</svg>';
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+      }
+
+      function updatePreview() {
+        var accValue = accessories.value || '';
+        var isEarbuds = accValue === 'earbuds';
+        var isHeadphones = accValue === 'headphones';
+        if (earbudsOverlay) earbudsOverlay.style.display = isEarbuds ? 'flex' : 'none';
+        if (headphonesOverlay) headphonesOverlay.style.display = isHeadphones ? 'flex' : 'none';
+        if (isEarbuds || isHeadphones) accValue = '';
+
+        var dataUrl = svgAvatar({
+          top: (top && top.value) ? top.value : '',
+          eyes: eyes.value || 'Default',
+          eyebrows: eyebrows ? eyebrows.value : 'Default',
+          nose: nose ? nose.value : 'Default',
+          mouth: mouth.value || 'Smile',
+          accessories: accValue || '',
+          headwear: headwear ? headwear.value : '',
+          skin: (skin && skin.value) ? skin.value : 'Light',
+          gender: (gender && gender.value) ? gender.value : 'boy',
+          eyeColor: eyeColor ? eyeColor.value : 'Dark',
+          hairColor: (hairColor && hairColor.value) ? hairColor.value : 'Black',
+          outfit: 'Tee',
+          outfitColor: outfitColor ? outfitColor.value : 'Orange',
+          background: background ? background.value : 'None',
+          facialHair: facialHair ? facialHair.value : '',
+          bodyType: bodyType ? bodyType.value : 'Average',
+          shoes: shoes ? shoes.value : 'Sneakers'
+        });
+        preview.src = dataUrl;
+        if (placeholder) placeholder.style.display = 'none';
+        var hidden = document.getElementById('avatar-data');
+        if (hidden) hidden.value = dataUrl;
+      }
+
+      [seed, top, gender, skin, eyes, eyebrows, nose, mouth, accessories, headwear, eyeColor, hairColor, outfitColor, background, facialHair, bodyType, shoes].forEach(function (el) {
+        if (!el) return;
+        el.addEventListener('input', updatePreview);
+        el.addEventListener('change', updatePreview);
+      });
+
+      if (background) background.addEventListener('change', applyScene);
+      if (presetButtons && presetButtons.length) {
+        presetButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            applyPreset(btn.dataset.preset);
+          });
+        });
+      }
+
+      var tabButtons = document.querySelectorAll('.tab-btn');
+      var tabPanels = document.querySelectorAll('.tab-panel');
+      if (tabButtons && tabButtons.length) {
+        tabButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            tabButtons.forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            tabPanels.forEach(function (panel) {
+              panel.classList.toggle('active', panel.id === btn.dataset.tab);
+            });
+          });
+        });
+      }
+
+      if (gender) {
+        gender.addEventListener('change', function () {
+          applyGenderDefaults();
+          updatePreview();
+        });
+      }
+
+      applyGenderDefaults();
+      updatePreview();
+      applyScene();
+
+    })();
+  </script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+
+</html>
+
+

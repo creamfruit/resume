@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Learning Circles - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <style>
+    .lc-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid #fde2c7;
+    }
+    .lc-hero h1 { margin: 0; font-size: 1.6rem; }
+    .lc-hero p { margin: 0.25rem 0 0; color: var(--muted-foreground); }
+    .lc-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--orange);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .lc-cats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+    .lc-cat-card {
+      background: #fff7ed;
+      border: 2px solid #fde2c7;
+      border-radius: 16px;
+      padding: 1.2rem;
+      min-height: 140px;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .lc-cat-card h4 { margin: 0; font-size: 1rem; }
+    .lc-cat-card p { margin: 0; color: #7c4c22; font-size: 0.9rem; }
+    .lc-tabs {
+      display: inline-flex;
+      gap: 0.5rem;
+      border: 1px solid #f2d4b6;
+      border-radius: 999px;
+      padding: 0.4rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      background: #fff7ed;
+    }
+    .lc-tab {
+      border: none;
+      background: transparent;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      font-weight: 700;
+      color: #6b4b2a;
+      cursor: pointer;
+    }
+    .lc-tab.active {
+      background: white;
+      color: #1f2937;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .lc-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+    .lc-card {
+      background: white;
+      border-radius: 18px;
+      border: 1px solid #e5e7eb;
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.04);
+    }
+    .lc-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 6px;
+      width: 100%;
+      background: var(--teal);
+    }
+    .lc-tags {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+    .lc-tag {
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid #dbeafe;
+    }
+    .lc-tag.level {
+      background: #f8fafc;
+      color: #334155;
+      border-color: #e2e8f0;
+    }
+    .lc-title { font-size: 1.1rem; margin: 0 0 0.4rem; }
+    .lc-desc { color: #64748b; margin: 0 0 0.75rem; }
+    .lc-meta { display: grid; gap: 0.4rem; margin-bottom: 0.75rem; color: #475569; font-size: 0.9rem; }
+    .lc-joined {
+      position: absolute;
+      right: 16px;
+      top: 16px;
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.75rem;
+      display: none;
+    }
+    .lc-joined.show { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .lc-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .lc-join-btn, .lc-leave-btn {
+      border-radius: 999px;
+      padding: 0.5rem 1rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+    }
+    .lc-join-btn { background: var(--teal); color: white; }
+    .lc-join-btn:disabled { background: #94a3b8; cursor: default; }
+    .lc-leave-btn { background: transparent; border: 2px solid #fecdd3; color: #e11d48; display: none; }
+    .lc-leave-btn.show { display: inline-flex; }
+    .lc-joined-msg {
+      margin-top: 0.8rem;
+      background: #86efac;
+      color: #14532d;
+      padding: 0.5rem 0.8rem;
+      border-radius: 12px;
+      font-weight: 700;
+      display: none;
+    }
+    .lc-joined-msg.show { display: block; }
+    .lc-host-banner {
+      margin-top: 2rem;
+      background: linear-gradient(90deg, #f97316, #f59e0b);
+      color: white;
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    .lc-host-banner .btn { background: white; color: #b45309; }
+    .lc-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    .lc-modal.show { display: flex; }
+    .lc-modal-card {
+      background: white;
+      width: min(560px, 92vw);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    }
+    .lc-modal-card h3 { margin: 0 0 1rem; }
+    .lc-modal-grid { display: grid; gap: 0.8rem; }
+    .lc-modal-grid input, .lc-modal-grid select, .lc-modal-grid textarea {
+      width: 100%;
+      padding: 0.7rem 0.9rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.75rem;
+      font-family: inherit;
+    }
+    .lc-modal-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .lc-partner-badge {
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      font-weight: 800;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+    }
+    .lc-partner-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid #e2e8f0;
+      object-fit: cover;
+    }
+    @media (max-width: 980px) {
+      .lc-cats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .lc-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+<body style="background: #f8fafc;">
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/wellbeing">Wellbeing</a></li>
+        <li><a href="/scrapbook">Scrapbook</a></li>
+        <li><a href="/learning-circles" class="active">Learning Circles</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="dashboard-main" style="padding-top: 96px;">
+    <div class="container">
+      <div class="lc-hero">
+        <div>
+          <a class="lc-back" href="/dashboard#tab-learning-circles">&#8592; Learning Circles</a>
+          <h1>Learning Circles</h1>
+          <p>Learn together, grow together</p>
+        </div>
+        <button class="btn btn-orange btn-sm" id="hostCircleBtn">+ Host a Circle</button>
+      </div>
+
+      <div class="lc-cats">
+        <div class="lc-cat-card">
+          <div style="font-size: 1.3rem;">&#x1F4F1;</div>
+          <h4>Teach Me Tech</h4>
+          <p>Youth teach digital tools and social media</p>
+        </div>
+        <div class="lc-cat-card">
+          <div style="font-size: 1.3rem;">&#x1F4A1;</div>
+          <h4>Wisdom Hour</h4>
+          <p>Seniors share life and career lessons</p>
+        </div>
+        <div class="lc-cat-card">
+          <div style="font-size: 1.3rem;">&#x1F4D6;</div>
+          <h4>Culture &amp; Memory</h4>
+          <p>Stories, old photos, and traditions</p>
+        </div>
+        <div class="lc-cat-card">
+          <div style="font-size: 1.3rem;">&#x1F3A8;</div>
+          <h4>Creative Skills</h4>
+          <p>Art, music, cooking, and gardening</p>
+        </div>
+      </div>
+
+      <div class="lc-tabs" id="lcTabs">
+        <button class="lc-tab active" data-filter="all">All Circles</button>
+        <button class="lc-tab" data-filter="mine">My Circles (0)</button>
+        <button class="lc-tab" data-filter="partner">Partner Programs</button>
+        <button class="lc-tab" data-filter="Teach Me Tech">Teach Me Tech</button>
+        <button class="lc-tab" data-filter="Wisdom Hour">Wisdom Hour</button>
+        <button class="lc-tab" data-filter="Culture &amp; Memory">Culture &amp; Memory</button>
+        <button class="lc-tab" data-filter="Creative Skills">Creative Skills</button>
+      </div>
+
+      <div class="lc-grid" id="lcGrid"></div>
+
+      <div class="lc-host-banner">
+        <h3>Want to Host Your Own Circle?</h3>
+        <p>Share your knowledge and skills. Paired youth + senior hosts get bonus Re:Points.</p>
+        <button class="btn btn-sm" id="hostBannerBtn">Become a Host</button>
+      </div>
+    </div>
+  </main>
+
+  <div class="lc-modal" id="hostModal">
+    <div class="lc-modal-card">
+      <h3>Host a New Circle</h3>
+      <form id="hostForm">
+        <div class="lc-modal-grid">
+          <input type="text" name="title" placeholder="e.g., WhatsApp for Beginners" required>
+          <select name="category" required>
+            <option value="Teach Me Tech">Teach Me Tech</option>
+            <option value="Wisdom Hour">Wisdom Hour</option>
+            <option value="Culture &amp; Memory">Culture &amp; Memory</option>
+            <option value="Creative Skills">Creative Skills</option>
+          </select>
+          <textarea name="description" placeholder="What will participants learn?" required></textarea>
+          <input type="text" name="schedule" placeholder="e.g., Every Monday, 3:00 PM" required>
+          <input type="text" name="duration" placeholder="e.g., 1.5 hours" required>
+          <select name="level" required>
+            <option value="Beginner">Beginner</option>
+            <option value="All levels">All levels</option>
+            <option value="Intermediate">Intermediate</option>
+          </select>
+        </div>
+        <div class="lc-modal-actions">
+          <button type="submit" class="btn btn-orange btn-sm">Create Circle</button>
+          <button type="button" class="btn btn-outline-teal btn-sm" id="hostCancelBtn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const circlesData = [
+      { id: 1, title: 'WhatsApp Basics for Seniors', category: 'Teach Me Tech', level: 'Beginner', desc: 'Learn how to send messages, photos, and make video calls on WhatsApp.', hosts: 'Sarah & Mdm Lee', host_type: 'community', schedule: 'Every Tuesday', duration: '1 hour', seats: '8/12', next: 'Today, 3:00 PM', color: '#3b82f6' },
+      { id: 2, title: 'Stories from 1960s Singapore', category: 'Wisdom Hour', level: 'All levels', desc: 'Hear first-hand accounts of life in Singapore during the 1960s.', hosts: 'Mdm Chen & Alyssa', host_type: 'community', schedule: 'Fridays', duration: '2 hours', seats: '15/20', next: 'This Friday, 10:00 AM', color: '#f59e0b' },
+      { id: 3, title: 'Traditional Kueh Making', category: 'Creative Skills', level: 'All levels', desc: 'Learn to make traditional kueh lapis, ondeh ondeh, and curry puffs.', hosts: 'Mdm Fatimah & Lisa', host_type: 'community', schedule: 'Saturdays', duration: '3 hours', seats: '6/10', next: 'This Saturday, 2:00 PM', color: '#ec4899' },
+      { id: 4, title: 'Instagram & Photo Sharing', category: 'Teach Me Tech', level: 'Beginner', desc: 'Post photos, write captions, and connect with family on Instagram.', hosts: 'Daniel & Mr Kumar', host_type: 'community', schedule: 'Wednesdays', duration: '1.5 hours', seats: '6/10', next: 'Tomorrow, 4:00 PM', color: '#2563eb' },
+      { id: 5, title: 'Peranakan Culture & Language', category: 'Culture & Memory', level: 'Beginner', desc: 'Discover Peranakan traditions, language, and heritage.', hosts: 'Mr Lee & Rachel', host_type: 'government', schedule: 'Thursdays', duration: '2 hours', seats: '10/15', next: 'Thursday, 5:00 PM', color: '#8b5cf6' },
+      { id: 6, title: 'DBS Scam Awareness 101', category: 'Teach Me Tech', level: 'All levels', desc: 'Spot scam red flags, protect your accounts, and stay safe online.', hosts: 'DBS Volunteers', host_type: 'corporate', schedule: 'Saturdays', duration: '2 hours', seats: '12/20', next: 'Feb 15, 2:00 PM', color: '#0f172a', is_partner: true, partner: 'DBS', curriculum: 'https://example.com/dbs-curriculum' },
+      { id: 7, title: 'Singtel Digital Safety Basics', category: 'Teach Me Tech', level: 'Beginner', desc: 'Learn SIM safety, scam avoidance, and secure mobile habits.', hosts: 'Singtel Mentors', host_type: 'corporate', schedule: 'Sundays', duration: '1.5 hours', seats: '10/18', next: 'Feb 22, 2:00 PM', color: '#2563eb', is_partner: true, partner: 'Singtel', curriculum: 'https://example.com/singtel-curriculum' }
+    ];
+
+    const grid = document.getElementById('lcGrid');
+    const tabs = document.getElementById('lcTabs');
+    let joinedTitles = [];
+    let activeFilter = 'all';
+
+    function demoHeaders(extra) {
+      const headers = extra ? Object.assign({}, extra) : {};
+      try {
+        const demoId = sessionStorage.getItem('demo_user_id');
+        if (demoId) headers['X-Demo-User'] = demoId;
+      } catch (e) {}
+      return headers;
+    }
+
+    async function loadJoined() {
+      try {
+        const res = await fetch('/api/circle_signups', { headers: demoHeaders() });
+        const out = await res.json();
+        if (out && out.ok) {
+          joinedTitles = (out.circles || []).map(c => c.title);
+        }
+      } catch (e) {}
+      updateTabCount();
+      renderCircles();
+    }
+
+    function updateTabCount() {
+      const myTab = tabs.querySelector('[data-filter="mine"]');
+      if (myTab) myTab.textContent = `My Circles (${joinedTitles.length})`;
+    }
+
+    function renderCircles() {
+      const hostBadge = (hostType) => {
+        if (hostType === 'government') return 'Gov Programme';
+        if (hostType === 'corporate') return 'Corporate Hosted';
+        if (hostType === 'community') return 'Community Hosted';
+        return 'User Hosted';
+      };
+      const filtered = circlesData.filter(c => {
+        if (activeFilter === 'all') return true;
+        if (activeFilter === 'mine') return joinedTitles.includes(c.title);
+        if (activeFilter === 'partner') return !!c.is_partner;
+        return c.category === activeFilter;
+      });
+
+      grid.innerHTML = filtered.map(c => {
+        const joined = joinedTitles.includes(c.title);
+        const joinLabel = joined ? 'Joined' : 'Join';
+        return `
+          <div class="lc-card" data-title="${c.title}">
+            <span class="lc-joined ${joined ? 'show' : ''}">&#x2713; Joined</span>
+            <div class="lc-tags">
+              <span class="lc-tag" style="background:${c.color}22;color:${c.color};border-color:${c.color}55;">${c.category}</span>
+              <span class="lc-tag level">${c.level}</span>
+              <span class="lc-partner-badge">${hostBadge(c.host_type)}</span>
+              ${c.is_partner ? `<span class="lc-partner-badge">Verified CSR</span>` : ''}
+            </div>
+            <h3 class="lc-title">${c.title}</h3>
+            <p class="lc-desc">${c.desc}</p>
+            <div class="lc-meta">
+              <div>&#x1F465; Hosted by ${c.hosts} ${c.is_partner ? `(Sponsored by ${c.partner})` : ''}</div>
+              <div>&#x1F4C5; ${c.schedule} &nbsp; &#x23F1;&#xFE0F; ${c.duration}</div>
+              <div>${c.seats} seats</div>
+              ${c.is_partner ? `<div>🏢 ${c.partner} Program · Certificate available</div>` : ''}
+            </div>
+            <div class="lc-actions">
+              <button class="lc-join-btn" data-join="${c.id}" ${joined ? 'disabled' : ''}>${joinLabel}</button>
+              <button class="lc-leave-btn ${joined ? 'show' : ''}" data-leave="${c.id}">Leave</button>
+            </div>
+            <div class="lc-joined-msg ${joined ? 'show' : ''}">&#x2713; You have joined this circle</div>
+          </div>
+        `;
+      }).join('') || '<p class="text-muted">No circles found.</p>';
+    }
+
+    async function joinCircle(circle) {
+      try {
+        const res = await fetch('/api/circle_signup', {
+          method: 'POST',
+          headers: demoHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ title: circle.title, time: circle.next, duration: circle.duration })
+        });
+        const out = await res.json();
+        if (!res.ok || !out.ok) return alert(out.error || 'Could not join circle');
+        if (!joinedTitles.includes(circle.title)) joinedTitles.push(circle.title);
+        updateTabCount();
+        renderCircles();
+      } catch (e) {
+        alert('Could not join circle');
+      }
+    }
+
+    async function leaveCircle(circle) {
+      try {
+        const res = await fetch('/api/circle_leave', {
+          method: 'POST',
+          headers: demoHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ title: circle.title })
+        });
+        const out = await res.json();
+        if (!res.ok || !out.ok) return alert(out.error || 'Could not leave circle');
+        joinedTitles = joinedTitles.filter(t => t !== circle.title);
+        updateTabCount();
+        renderCircles();
+      } catch (e) {
+        alert('Could not leave circle');
+      }
+    }
+
+    grid.addEventListener('click', (e) => {
+      const joinId = e.target.getAttribute('data-join');
+      const leaveId = e.target.getAttribute('data-leave');
+      if (joinId) {
+        const circle = circlesData.find(c => String(c.id) === joinId);
+        if (circle) joinCircle(circle);
+      }
+      if (leaveId) {
+        const circle = circlesData.find(c => String(c.id) === leaveId);
+        if (circle) leaveCircle(circle);
+      }
+    });
+
+    tabs.addEventListener('click', (e) => {
+      const btn = e.target.closest('.lc-tab');
+      if (!btn) return;
+      tabs.querySelectorAll('.lc-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.getAttribute('data-filter');
+      renderCircles();
+    });
+
+    const hostModal = document.getElementById('hostModal');
+    const hostBtn = document.getElementById('hostCircleBtn');
+    const hostBannerBtn = document.getElementById('hostBannerBtn');
+    const hostCancel = document.getElementById('hostCancelBtn');
+    const hostForm = document.getElementById('hostForm');
+
+    function openHost() { hostModal.classList.add('show'); }
+    function closeHost() { hostModal.classList.remove('show'); }
+
+    hostBtn.addEventListener('click', openHost);
+    hostBannerBtn.addEventListener('click', openHost);
+    hostCancel.addEventListener('click', closeHost);
+    hostModal.addEventListener('click', (e) => { if (e.target === hostModal) closeHost(); });
+
+    hostForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = new FormData(hostForm);
+      const newCircle = {
+        id: circlesData.length + 1,
+        title: data.get('title'),
+        category: data.get('category'),
+        level: data.get('level'),
+        desc: data.get('description'),
+        hosts: 'You',
+        schedule: data.get('schedule'),
+        duration: data.get('duration'),
+        seats: '1/10',
+        next: data.get('schedule'),
+        color: '#f97316'
+      };
+      circlesData.unshift(newCircle);
+      hostForm.reset();
+      closeHost();
+      renderCircles();
+    });
+
+    loadJoined();
+  </script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+</html>
+

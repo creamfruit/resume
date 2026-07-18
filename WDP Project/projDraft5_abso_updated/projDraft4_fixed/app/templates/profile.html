@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/messages.css">
+  <link rel="stylesheet" href="/static/css/ui-kit.css">
+  <link rel="stylesheet" href="/static/css/profile.css">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+  <style>
+    /* Page-specific tweaks requested */
+    .profile-main {
+      background: #ffffff;
+    }
+    .profile-cover.no-banner {
+      height: 0;
+      background: #ffffff;
+    }
+    .profile-main .interest-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .profile-main .interest-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.6rem 0.85rem;
+      border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+      border-radius: 12px;
+      background: var(--card, #ffffff);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      line-height: 1.1;
+    }
+
+    .profile-avatar-large {
+      background: #ffffff;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+
+    .profile-avatar-large img {
+      background: #ffffff;
+      border-radius: 50%;
+    }
+
+    .safety-score-card {
+      border: 2px solid #fde2c7;
+      border-radius: 16px;
+      padding: 1rem;
+      background: #fff7ed;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    }
+    .safety-score-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+    .safety-score-label { color: var(--muted-foreground); font-weight: 600; }
+    .safety-score-value { font-size: 2rem; font-weight: 800; color: #1f2937; }
+    .safety-badge {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .safety-score-meter {
+      height: 10px;
+      background: #f1f5f9;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .safety-score-fill {
+      height: 100%;
+      width: 0%;
+      background: #f97316;
+      transition: width 0.3s ease;
+    }
+    .safety-score-meta {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .safety-events {
+      margin-top: 0.75rem;
+      display: grid;
+      gap: 0.5rem;
+      color: #7c4c22;
+      font-weight: 600;
+    }
+    .profile-safety-entry {
+      display: none;
+      justify-content: flex-end;
+      margin-bottom: 0.75rem;
+    }
+    .profile-safety-entry.show {
+      display: flex;
+    }
+    .profile-safety-fab {
+      position: static;
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: none;
+      background: #dc2626;
+      color: #ffffff;
+      font-size: 1.55rem;
+      font-weight: 900;
+      line-height: 1;
+      box-shadow: 0 10px 22px rgba(220, 38, 38, 0.35);
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .profile-safety-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1300;
+      padding: 1rem;
+    }
+    .profile-safety-modal.show {
+      display: flex;
+    }
+    .profile-safety-card {
+      width: min(420px, 96vw);
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+      padding: 1rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+    .profile-safety-card h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    .profile-safety-card p {
+      margin: 0;
+      color: #475569;
+      font-size: 0.92rem;
+    }
+    .profile-safety-view {
+      display: none;
+      gap: 0.75rem;
+    }
+    .profile-safety-view.show {
+      display: grid;
+    }
+    .profile-safety-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.55rem;
+    }
+    .profile-safety-actions .btn {
+      width: 100%;
+    }
+    .profile-report-form {
+      display: grid;
+      gap: 0.65rem;
+    }
+    .profile-report-form input,
+    .profile-report-form select,
+    .profile-report-form textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      font-size: 0.92rem;
+    }
+    .profile-report-form input[readonly] {
+      background: #f8fafc;
+      color: #334155;
+    }
+    .compatibility-grid {
+      display: grid;
+      gap: 0.8rem;
+    }
+    .compatibility-block {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 0.75rem;
+    }
+    .compatibility-block h4 {
+      margin: 0 0 0.45rem;
+      font-size: 0.98rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .compatibility-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+    .compatibility-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.82rem;
+      line-height: 1.1;
+    }
+    .compatibility-empty {
+      color: #64748b;
+      font-size: 0.86rem;
+      margin: 0;
+    }
+    .wellbeing-actions {
+      display: flex;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      align-items: stretch;
+    }
+    .wellbeing-actions .btn {
+      min-height: 44px;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      padding: 0.65rem 1rem !important;
+      border-radius: 12px !important;
+      font-weight: 700 !important;
+      text-decoration: none !important;
+      border: 2px solid transparent;
+    }
+    .wellbeing-actions .btn.btn-orange {
+      background: #f97316 !important;
+      color: #ffffff !important;
+      border-color: #f97316 !important;
+      box-shadow: 0 10px 20px rgba(249, 115, 22, 0.2);
+    }
+    .wellbeing-actions .btn.btn-orange:hover {
+      background: #ea580c !important;
+      color: #ffffff !important;
+    }
+    .wellbeing-actions .btn.btn-outline-teal {
+      background: #f97316 !important;
+      color: #ffffff !important;
+      border-color: #f97316 !important;
+    }
+    .wellbeing-actions .btn.btn-outline-teal:hover {
+      background: #ea580c !important;
+      color: #ffffff !important;
+    }
+    .profile-scrapbook-header > a.btn,
+    .profile-scrapbook-header > a.btn.btn-orange,
+    .profile-scrapbook-header > a.btn.btn-orange.glow {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      background: #f97316 !important;
+      color: #ffffff !important;
+      border: 2px solid #f97316 !important;
+      border-radius: 12px !important;
+      padding: 0.65rem 1rem !important;
+      font-weight: 700 !important;
+      text-decoration: none !important;
+      box-shadow: 0 10px 20px rgba(249, 115, 22, 0.2);
+    }
+    .profile-scrapbook-header > a.btn:hover {
+      background: #ea580c !important;
+      border-color: #ea580c !important;
+      color: #ffffff !important;
+    }
+    /* Make unverified identity card visibly red (requested) */
+    .verification-status.not-verified {
+      background: #fef2f2 !important;
+      border-color: #ef4444 !important;
+    }
+    .verification-status.not-verified .verification-icon {
+      background: #ef4444 !important;
+      color: #ffffff !important;
+    }
+    .verification-status.not-verified .verification-title {
+      color: #b91c1c !important;
+    }
+    .verification-status.not-verified .verification-desc,
+    .verification-status.not-verified .verification-date {
+      color: #7f1d1d !important;
+    }
+    .verify-popup-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.42);
+      z-index: 2100;
+      padding: 1rem;
+    }
+    .verify-popup-modal.show {
+      display: flex;
+    }
+    .verify-popup-card {
+      width: min(420px, 92vw);
+      background: #ffffff;
+      border: 2px solid #fed7aa;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.22);
+      padding: 1rem 1rem 0.9rem;
+    }
+    .verify-popup-title {
+      margin: 0 0 0.35rem;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .verify-popup-message {
+      margin: 0;
+      color: #475569;
+      line-height: 1.45;
+    }
+    .verify-popup-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 0.9rem;
+    }
+    .verify-popup-ok {
+      min-width: 96px;
+    }
+  </style>
+
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+
+<body>
+  {% if false %}
+  <div class="profile-safety-modal" id="profile-safety-modal" aria-hidden="true">
+    <div class="profile-safety-card" role="dialog" aria-modal="true" aria-labelledby="profile-safety-title">
+      <div class="profile-safety-view show" id="profile-safety-action-view">
+        <h3 id="profile-safety-title">Safety Actions</h3>
+        <p>Use these actions if this profile violates community or safety rules.</p>
+        <div class="profile-safety-actions">
+          <button type="button" class="btn btn-outline-danger" id="profile-block-btn">Block User</button>
+          <button type="button" class="btn btn-orange glow" id="profile-report-btn">Report User</button>
+        </div>
+        <button type="button" class="btn btn-outline-teal" id="profile-safety-close">Close</button>
+      </div>
+
+      <div class="profile-safety-view" id="profile-safety-report-view">
+        <h3>Report User</h3>
+        <p>Submit a report with details. This user will be removed from your profile list after report.</p>
+        <div class="profile-report-form">
+          <input type="text" id="profile-report-target" readonly>
+          <select id="profile-report-reason">
+            <option value="">Select reason</option>
+            <option value="Harassment">Harassment</option>
+            <option value="Scam/Fraud">Scam/Fraud</option>
+            <option value="Inappropriate Content">Inappropriate Content</option>
+            <option value="Impersonation">Impersonation</option>
+            <option value="Other">Other</option>
+          </select>
+          <input type="date" id="profile-report-date">
+          <textarea id="profile-report-details" rows="4" placeholder="Describe what happened"></textarea>
+        </div>
+        <div class="profile-safety-actions">
+          <button type="button" class="btn btn-outline-teal" id="profile-report-back">Back</button>
+          <button type="button" class="btn btn-orange glow" id="profile-report-submit">Submit Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+
+      <ul class="nav-links icon-nav">
+        <li class="icon-nav-item">
+          <button class="icon-nav-btn" id="notif-btn" type="button" title="Notifications" aria-label="Notifications">
+            <span aria-hidden="true">&#x1F514;</span>
+            <span class="notification-badge">3</span>
+          </button>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/discover" class="icon-nav-link" title="Discover Matches" aria-label="Discover Matches">&#x2764;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/explore" class="icon-nav-link" title="Search" aria-label="Search">&#x1F50D;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/messages" class="icon-nav-link" title="Messages" aria-label="Messages">&#x1F4AC;</a>
+        </li>
+        <li class="icon-nav-item">
+          <a href="/profile" class="icon-nav-link active" title="Profile" aria-label="Profile">&#x1F464;</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Notifications Dropdown -->
+  <div class="notifications-dropdown" id="notifications-dropdown">
+    <div class="notifications-header">
+      <h3>Notifications</h3>
+      <button class="mark-read-btn">Mark all as read</button>
+    </div>
+    <div class="notifications-list">
+      <div class="notification-item unread">
+        <div class="notif-icon orange">&#x1F4AC;</div>
+        <div class="notif-content">
+          <p><strong>Mdm Chen</strong> sent you a message</p>
+          <span class="notif-time">5 minutes ago</span>
+        </div>
+      </div>
+      <div class="notification-item unread">
+        <div class="notif-icon teal">&#x1F91D;</div>
+        <div class="notif-content">
+          <p><strong>New match found!</strong> You have a 95% match with Uncle Tan</p>
+          <span class="notif-time">1 hour ago</span>
+        </div>
+      </div>
+      <div class="notification-item unread">
+        <div class="notif-icon success">&#x1F3C6;</div>
+        <div class="notif-content">
+          <p><strong>Badge unlocked:</strong> Hello There</p>
+          <span class="notif-time">2 hours ago</span>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="view-all-notif">View All Notifications</a>
+  </div>
+
+  <!-- Profile Content -->
+  <main class="profile-main" style="--profile-theme-bg: {{ profile_theme_bg|default('#f8fafc') }};">
+    <div class="container profile-page-container">
+      <!-- Profile Header -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div style="margin-bottom: 1rem;">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'success' if category == 'success' else 'info' }}" role="alert">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+  {% if false %}
+      <div class="profile-safety-entry" id="profile-safety-entry">
+        <button type="button" class="profile-safety-fab" id="profile-safety-fab" aria-label="Safety options">!</button>
+      </div>
+      {% endif %}
+      <div class="profile-header-card">
+        <div class="profile-header-tools profile-actions" aria-label="Profile actions">
+          {% if is_owner %}
+          <a href="/onboarding?edit=1" class="profile-header-tool edit" title="Edit Profile" aria-label="Edit Profile"><span class="material-symbols-outlined">edit</span><span class="label">Edit</span></a>
+          {% endif %}
+          {% if not is_owner %}
+          <button type="button" id="profile-report-block-btn" class="profile-header-tool edit" title="Report or Block" aria-label="Report or Block"><span class="material-symbols-outlined">warning</span><span class="label">Report/Block</span></button>
+          {% endif %}
+          <button type="button" id="share-profile-link-btn" class="profile-header-tool share" title="Share" aria-label="Share"><span class="material-symbols-outlined">share</span><span class="label">Share</span></button>
+        </div>
+        <div class="profile-cover{% if not banner_url %} no-banner{% endif %}" id="profile-cover"{% if banner_url %} style="background-image: url('{{ banner_url }}');"{% endif %}>
+          <input type="file" id="banner-input-camera" accept="image/*" capture="environment" style="display:none;">
+          <input type="file" id="banner-input-upload" accept="image/*" style="display:none;">
+        </div>
+        <div class="profile-header-content">
+          <div class="profile-avatar-large">
+            <img id="profile-avatar" src="{{ avatar_url if avatar_url else '/static/images/avatar-placeholder.svg' }}" alt="{{ user.full_name }}">
+            <button class="edit-avatar-btn" id="edit-avatar-btn">&#x1F4F7;</button>
+            <input type="file" id="avatar-input-camera" accept="image/*" capture="user" style="display:none;">
+            <input type="file" id="avatar-input-upload" accept="image/*" style="display:none;">
+          </div>
+          <div class="profile-header-info">
+            <div class="profile-name-section">
+              <h1 id="profile-name">{{ user.full_name }}</h1>
+            </div>
+            {% if not is_owner and not is_blocked %}
+            <div style="margin-bottom:0.4rem;">
+              <button type="button" id="profile-follow-btn" class="btn btn-secondary btn-sm" data-follow-status="{{ follow_status }}">{{ "Requested" if follow_status == "pending" else ("Following" if follow_status == "accepted" else "Follow") }}</button>
+            </div>
+            {% endif %}
+            {% if is_blocked and not is_owner %}
+            <p style="margin:0 0 0.45rem;color:#b91c1c;font-weight:700;">You cannot interact with this account.</p>
+            {% endif %}
+            {% set is_verified = verified_with in ["singpass", "nric", "email", "phone"] %}
+            <div id="equipped-title-pill" style="display:none;margin:0.2rem 0 0.35rem;"></div>
+            <div class="profile-badges-row">
+              <span class="verification-badge" id="verification-badge" style="{{ '' if is_verified else 'display:none;' }}">&#x2714; Verified</span>
+              {% for badge in verification_badges %}
+              <span class="verification-badge secondary">{{ badge }}</span>
+              {% endfor %}
+            </div>
+            <p class="profile-type profile-friends">Friends: <strong id="connections-count">{{ connections_count }}</strong></p>
+            <p class="bio-text compact" id="bio-text-header"></p>
+            {% set member_type = (user.member_type or "Youth") %}
+            {% set member_label = "Senior Member" if "senior" in member_type|lower else "Youth Member" %}
+            <p class="profile-type">{{ member_label }} &bull; Joined {{ user.created_at.strftime("%b %Y") }}</p>
+            <p class="profile-type" id="profile-completeness" style="margin-top: 0.2rem; font-weight: 700; color:#0f766e;">
+              Profile completeness: Not available yet
+            </p>
+            <div class="profile-stats">
+              <div class="stat-chip">
+                <span class="stat-label">Connections</span>
+                <span class="stat-number" id="connections-stat-count">{{ connections_count }}</span>
+              </div>
+              <div class="stat-chip">
+                <span class="stat-label">Memories</span>
+                <span class="stat-number" id="memories-count">{{ memories_count }}</span>
+              </div>
+              <div class="stat-chip">
+                <span class="stat-label">Re:Points</span>
+                <span class="stat-number" id="repoints-count">{{ repoints_count }}</span>
+              </div>
+              <div class="stat-chip">
+                <span class="stat-label">Volunteer Hours</span>
+                <span class="stat-number" id="volunteer-hours-count">{{ '%.1f'|format(total_volunteer_hours or 0) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="profile-action-bar" aria-label="Quick actions">
+          <a href="/feed" class="profile-action-icon" title="Feed" aria-label="Feed">&#x1F4F0;</a>
+          <a href="/events" class="profile-action-icon" title="Events" aria-label="Events">&#x1F4C5;</a>
+          <a href="/hangouts" class="profile-action-icon" title="Hangout Spots" aria-label="Hangout Spots">&#x1F4CD;</a>
+        </div>
+      </div>
+
+      <!-- Profile Tabs -->
+      <div class="profile-tabs">
+        <button class="profile-tab-btn active" data-tab="about">About</button>
+        <button class="profile-tab-btn" data-tab="scrapbook">Scrapbook</button>
+        <button class="profile-tab-btn" data-tab="wellbeing">Wellbeing</button>
+        <button class="profile-tab-btn" data-tab="safety">Safety</button>
+        {% if not is_friend_view %}
+        <button class="profile-tab-btn" data-tab="settings">Settings</button>
+        {% endif %}
+      </div>
+
+      <!-- Tab: About -->
+      <div class="profile-tab-content active" id="tab-about">
+        {% if not is_friend_view %}
+        <div class="profile-section">
+          <h3>About Me</h3>
+          <p class="bio-text" id="bio-text"></p>
+          {% if not is_friend_view %}
+          <button class="btn-edit" id="edit-bio-btn">Edit Bio</button>
+          {% endif %}
+        </div>
+
+        <div class="profile-section profile-volunteer-panel">
+          <h3>Volunteer Hours</h3>
+          <div class="profile-volunteer-metrics">
+            <div class="profile-volunteer-metric"><span class="k">Total Hours</span><strong id="volunteer-hours-total">{{ '%.1f'|format(total_volunteer_hours or 0) }}</strong></div>
+            <div class="profile-volunteer-metric"><span class="k">Meetups</span><strong id="volunteer-meetups-count">0</strong></div>
+            <div class="profile-volunteer-metric"><span class="k">Learning Circles</span><strong id="volunteer-circles-count">0</strong></div>
+            <div class="profile-volunteer-metric"><span class="k">Events</span><strong id="volunteer-events-count">0</strong></div>
+          </div>
+          {% if not is_friend_view %}
+          <a href="/volunteer/export" class="btn btn-secondary">Export Hours Report</a>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="profile-section">
+          <h3>Clubs Joined</h3>
+          {% if clubs_joined and clubs_joined|length > 0 %}
+          <div class="chip-row">
+            {% for club in clubs_joined %}
+            <a class="chip-link" href="/clubs/{{ club.id }}">{{ club.name }}</a>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="compatibility-empty" style="margin:0;">No clubs joined yet.</p>
+          {% endif %}
+        </div>
+
+        {% if not is_friend_view %}
+        <div class="profile-section">
+          <h3>Location</h3>
+          <p id="location-display">&#x1F4CD; {{ location_name if location_name else "Set your location" }}</p>
+          {% if is_friend_view %}
+          <div class="safety-score-card" style="margin-top:0.75rem;">
+            <div class="safety-score-label">Closest MRT meetup station</div>
+            <div class="safety-score-value" style="font-size:1.25rem;">
+              {{ meetup_midpoint_station if meetup_midpoint_station else "Not enough station data yet" }}
+            </div>
+            {% if meetup_safe_locations %}
+            <div class="safety-events">
+              {% for row in meetup_safe_locations %}
+              <div>{{ row.place_name }} ({{ row.station_name }}){% if row.walking_mins %} - {{ row.walking_mins }} min walk{% endif %}</div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="profile-mrt-selector">
+            <div class="profile-mrt-search">
+              <input type="text" id="profile-mrt-search" placeholder="Search MRT stations...">
+              <button type="button" class="btn btn-outline-teal" id="profile-mrt-save-btn">Save Stations</button>
+            </div>
+            <div class="profile-mrt-line-filters" id="profile-mrt-line-filters"></div>
+            <div class="profile-mrt-options" id="profile-mrt-options"></div>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="profile-section">
+          <h3>Interests</h3>
+          <div class="interest-tags">
+            {% set interest_map = {
+              "technology": "💻 Technology",
+              "cooking": "🍳 Cooking",
+              "gardening": "🌱 Gardening",
+              "music": "🎵 Music",
+              "art": "🎨 Arts & Crafts",
+              "reading": "📚 Reading",
+              "fitness": "💪 Fitness",
+              "photography": "📷 Photography",
+              "travel": "✈️ Travel",
+              "games": "🎮 Games",
+              "language": "🗣️ Languages",
+              "volunteering": "🤝 Volunteering"
+            } %}
+            {% for interest in onboarding.get('interests', []) %}
+              <span class="interest-tag">{{ interest_map.get(interest, interest|title) }}</span>
+            {% endfor %}
+          </div>
+          {% if not is_friend_view %}
+          <button class="btn-edit" id="edit-interests">Edit Interests</button>
+          {% endif %}
+        </div>
+
+        <div class="profile-section">
+          <h3>Skills I Can Teach</h3>
+          <ul class="skills-list" id="skills-teach-list">
+            {% set teach_items = user.skills_teach if user.skills_teach else onboarding.get('skills_teach', []) %}
+            {% if teach_items and teach_items|length > 0 %}
+              {% for skill in teach_items %}
+                <li>{{ skill }}</li>
+              {% endfor %}
+            {% else %}
+              <li class="text-muted">No teaching skills listed</li>
+            {% endif %}
+          </ul>
+          {% if not is_friend_view %}
+          <button class="btn-edit" id="edit-skills-teach">Edit Skills</button>
+          {% endif %}
+        </div>
+
+        <div class="profile-section">
+          <h3>Skills I Want to Learn</h3>
+          <ul class="skills-list" id="skills-learn-list">
+            {% set learn_items = user.skills_learn if user.skills_learn else onboarding.get('skills_learn', []) %}
+            {% if learn_items and learn_items|length > 0 %}
+              {% for skill in learn_items %}
+                <li>{{ skill }}</li>
+              {% endfor %}
+            {% else %}
+              <li class="text-muted">No learning goals listed</li>
+            {% endif %}
+          </ul>
+          {% if not is_friend_view %}
+          <button class="btn-edit" id="edit-skills-learn">Edit Skills</button>
+          {% endif %}
+        </div>
+
+        {% if is_friend_view %}
+        <div class="profile-section">
+          <h3>Compatibility with You</h3>
+          <div class="compatibility-grid">
+            <div class="compatibility-block">
+              <h4>Shared Interests</h4>
+              <div class="compatibility-list" id="compat-shared-interests"></div>
+            </div>
+            <div class="compatibility-block">
+              <h4>They Want to Learn, You Can Teach</h4>
+              <div class="compatibility-list" id="compat-they-learn-you-teach"></div>
+            </div>
+            <div class="compatibility-block">
+              <h4>You Want to Learn, They Can Teach</h4>
+              <div class="compatibility-list" id="compat-you-learn-they-teach"></div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="profile-section">
+          <h3>My Availability</h3>
+          <div class="availability-stack">
+            {% set day_label = {
+              "monday":"Monday","tuesday":"Tuesday","wednesday":"Wednesday","thursday":"Thursday",
+              "friday":"Friday","saturday":"Saturday","sunday":"Sunday"
+            } %}
+            {% set time_label = {"morning":"Morning","afternoon":"Afternoon","evening":"Evening"} %}
+            {% set profile_days = onboarding.get('days', []) %}
+            {% set profile_times = onboarding.get('time', []) %}
+            <div class="availability-card">
+            <div id="availability-days" class="availability-value">
+              {% if profile_days and profile_days|length > 0 %}
+                Days:
+                {% for d in profile_days %}
+                  {{ day_label.get(d, d)|title }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              {% else %}
+                No days selected yet
+              {% endif %}
+            </div>
+            </div>
+            <div class="availability-card">
+            <div id="availability-time" class="availability-value muted">
+              {% if profile_times and profile_times|length > 0 %}
+                Time:
+                {% for t in profile_times %}
+                  {{ time_label.get(t, t)|title }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              {% else %}
+                No time selected yet
+              {% endif %}
+            </div>
+            </div>
+          </div>
+          {% if not is_friend_view %}
+          <button class="btn-edit" id="edit-availability">Edit Availability</button>
+          {% endif %}
+        </div>
+
+        <div class="profile-section">
+          <h3>Languages</h3>
+          {% set profile_languages = onboarding.get('languages', user_languages) %}
+          {% set language_proficiency = onboarding.get('language_proficiency', {}) %}
+          <div class="lang-options language-pills" id="languages-display">
+            {% if profile_languages and profile_languages|length > 0 %}
+              {% for lang in profile_languages %}
+                <span class="language-pill">
+                  <span class="language-pill-name">{{ lang }}</span>
+                  <span class="language-pill-level">{{ language_proficiency.get(lang, 'Beginner') }}</span>
+                </span>
+              {% endfor %}
+            {% else %}
+              <span class="interest-tag">No languages listed</span>
+            {% endif %}
+          </div>
+          {% if not is_friend_view %}
+          <button class="btn-edit" id="edit-languages" type="button">Edit Languages</button>
+          {% endif %}
+        </div>
+
+        {% if not is_friend_view %}
+        <div class="profile-section">
+          <h3>My Titles</h3>
+          <div id="profile-titles-list" style="display:grid;gap:0.55rem;">
+            {% set empty_icon = "🏅" %}
+            {% set empty_title = "No titles unlocked yet" %}
+            {% set empty_text = "Unlock titles by volunteering, joining circles, and building trust." %}
+            {% set empty_cta_href = "/discover" %}
+            {% set empty_cta_label = "Discover Activities" %}
+            {% include "partials/empty_state.html" %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="profile-tab-content" id="tab-scrapbook">
+        <div class="profile-section">
+          <div class="profile-scrapbook-header">
+            <div>
+              <h3 style="margin-bottom:0.2rem;">Scrapbook</h3>
+              <p class="profile-scrapbook-subtitle">Moments shared by {{ user.full_name }}.</p>
+            </div>
+            {% if not is_friend_view %}
+            <a href="/scrapbook" class="btn btn-orange glow btn-sm" style="color:#fff;">Manage in Scrapbook Page</a>
+            {% endif %}
+          </div>
+          {% if not can_view and not is_owner %}
+          <div class="feed-empty" style="margin-top:0.6rem;">
+            This account is private.
+            {% if not is_blocked %}
+            <span style="display:block;margin-top:0.35rem;">Send a follow request to view posts and media.</span>
+            {% endif %}
+          </div>
+          {% endif %}
+          <div id="profile-scrapbook-grid" class="profile-scrapbook-grid"></div>
+          <p id="profile-scrapbook-empty" class="profile-scrapbook-empty" style="display:none;">No scrapbook posts to show yet.</p>
+        </div>
+      </div>
+
+      <div class="profile-tab-content" id="tab-wellbeing">
+        <div class="profile-section">
+          <h3>Wellbeing</h3>
+          <div class="ui-card" style="padding:0.8rem;">
+            <p style="margin:0 0 0.25rem; color:#334155;"><strong>Last check-in:</strong> None</p>
+            <p style="margin:0 0 0.7rem; color:var(--muted-foreground);">Track your mood to build healthier weekly habits.</p>
+            <div class="wellbeing-actions">
+              <a href="/wellbeing" class="btn btn-orange glow">Log Mood</a>
+              <a href="/wellbeing" class="btn btn-outline-teal">Open Wellbeing Dashboard</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Safety & Verification -->
+      <div class="profile-tab-content" id="tab-safety">
+        <div class="profile-section">
+          <h3>&#x1F512; Identity Verification</h3>
+          <div class="verification-status {{ 'verified' if is_verified else 'not-verified' }}" id="verification-status">
+            <div class="verification-icon">&#x2714;</div>
+            <div>
+              <p class="verification-title" id="verification-title">{{ "Account Verified" if is_verified else "Not Verified Yet" }}</p>
+              <p class="verification-desc" id="verification-desc">
+                {% if is_verified %}
+                  Your identity has been verified with {{ verified_with|upper }}
+                {% else %}
+                  Verify by NRIC, email or phone number.
+                {% endif %}
+              </p>
+              <p class="verification-date" id="verification-date">{% if is_verified %}Verified{% endif %}</p>
+            </div>
+          </div>
+          {% if not is_friend_view %}
+          <div style="display:flex; gap:0.75rem; margin-top:1rem;">
+            <button class="btn btn-outline-teal" type="button" id="link-nric">Add NRIC</button>
+          </div>
+          <div style="display:grid; gap:0.75rem; margin-top:0.85rem;">
+            <div id="email-verify-row-send" style="display:grid; grid-template-columns: 1fr auto auto; gap:0.5rem;">
+              <input type="text" id="verify-email" data-verified="{{ '1' if (is_verified and verified_with and verified_with|lower == 'email') else '0' }}" value="{{ user.email }}" readonly style="width: 100%; padding: 0.65rem; border: 1px solid #ddd; border-radius: 0.5rem; background:#f8fafc;">
+              <button class="btn btn-outline-teal" type="button" id="send-email-verify">Send Email Code</button>
+              <input type="text" id="email-verify-dev-code" readonly placeholder="Dev code" style="width: 120px; padding: 0.65rem; border: 1px dashed #f59e0b; border-radius: 0.5rem; display:none; background:#fff7ed;">
+            </div>
+            <div id="email-verify-row-confirm" style="display:grid; grid-template-columns: 1fr auto; gap:0.5rem;">
+              <input type="text" id="email-verify-code" maxlength="6" inputmode="numeric" placeholder="Enter 6-digit email code" style="width: 100%; padding: 0.65rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+              <button class="btn btn-outline-teal" type="button" id="confirm-email-verify">Verify Email</button>
+            </div>
+            <div style="display:grid; grid-template-columns: 120px 1fr auto auto; gap:0.5rem;">
+              <select id="verify-phone-country" style="width: 100%; padding: 0.65rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+                <option value="+65">+65</option>
+                <option value="+60">+60</option>
+                <option value="+62">+62</option>
+                <option value="+63">+63</option>
+                <option value="+66">+66</option>
+                <option value="+84">+84</option>
+                <option value="+86">+86</option>
+                <option value="+91">+91</option>
+                <option value="+1">+1</option>
+                <option value="+44">+44</option>
+                <option value="+61">+61</option>
+              </select>
+              <input type="tel" id="verify-phone-number" maxlength="15" inputmode="numeric" pattern="[0-9]*" placeholder="Phone number" style="width: 100%; padding: 0.65rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+              <button class="btn btn-outline-teal" type="button" id="send-phone-verify">Send SMS Code</button>
+              <input type="text" id="phone-verify-dev-code" readonly placeholder="Dev code" style="width: 120px; padding: 0.65rem; border: 1px dashed #f59e0b; border-radius: 0.5rem; display:none; background:#fff7ed;">
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr auto; gap:0.5rem;">
+              <input type="text" id="phone-verify-code" maxlength="6" inputmode="numeric" placeholder="Enter 6-digit phone code" style="width: 100%; padding: 0.65rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+              <button class="btn btn-outline-teal" type="button" id="confirm-phone-verify">Verify Phone</button>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="profile-section" id="safety-score">
+          <h3>&#x1F6E1;&#xFE0F; Safety & Trust</h3>
+          <div class="safety-score-card">
+            <div class="safety-score-header">
+              <div>
+                <div class="safety-score-label">Safety Score</div>
+                <div class="safety-score-value" id="safety-score-value">50</div>
+              </div>
+              <span class="safety-badge" id="safety-score-badge" style="display:none;">Trusted Member</span>
+            </div>
+            <div class="safety-score-meter">
+              <div class="safety-score-fill" id="safety-score-fill"></div>
+            </div>
+            <div class="safety-score-meta">
+              <button type="button" class="btn btn-outline-teal btn-sm" id="safety-score-info">What affects my score?</button>
+              <a href="/safety#trust-score" class="btn btn-outline-teal btn-sm">Learn more</a>
+            </div>
+            <p style="margin:0.55rem 0 0;color:#64748b;font-size:0.85rem;">If activity data is limited, a neutral baseline score is shown.</p>
+            <div class="safety-events" id="safety-events"></div>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>&#x1F6E1;&#xFE0F; Safety Features</h3>
+          <div class="safety-features">
+            <div class="safety-feature-item">
+              <input type="checkbox" id="chat-filter" checked>
+              <label for="chat-filter">
+                <strong>Enable Safe Chat Filters</strong>
+                <p>Automatically filter inappropriate content in messages</p>
+              </label>
+            </div>
+            <div class="safety-feature-item">
+              <input type="checkbox" id="activity-monitoring" checked>
+              <label for="activity-monitoring">
+                <strong>Activity Monitoring</strong>
+                <p>Allow Re:Connect to monitor for suspicious behavior</p>
+              </label>
+            </div>
+            <div class="safety-feature-item">
+              <input type="checkbox" id="public-profile">
+              <label for="public-profile">
+                <strong>Public Profile</strong>
+                <p>Allow other users to view your profile</p>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>&#x26A0;&#xFE0F; Report & Block</h3>
+          <p style="color: var(--muted-foreground); margin-bottom: 1rem;">
+            If you encounter any inappropriate behavior or content, please report it immediately.
+          </p>
+          <div style="display:grid; gap:0.75rem;">
+            <select id="report-connection" style="width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+              <option value="">Select connection</option>
+            </select>
+            <select id="report-reason" style="width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+              <option value="">Select reason</option>
+              <option value="Harassment">Harassment</option>
+              <option value="Scam/Fraud">Scam/Fraud</option>
+              <option value="Inappropriate Content">Inappropriate Content</option>
+              <option value="Impersonation">Impersonation</option>
+              <option value="Other">Other</option>
+            </select>
+            <input type="date" id="report-date" style="width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+            <textarea id="report-details" rows="3" placeholder="Describe what happened" style="width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 0.5rem;"></textarea>
+            <button class="btn-report" id="submit-report">Submit Report</button>
+            <button class="btn btn-outline-danger" id="block-connection" type="button">Block Selected Connection</button>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>&#x1F3F7;&#xFE0F; Verification Badges</h3>
+          <div id="verification-badges-list" style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+            {% for badge in verification_badges %}
+            <span style="padding:0.2rem 0.6rem;border-radius:999px;background:#ecfeff;border:1px solid #a5f3fc;color:#0f766e;font-weight:700;font-size:0.78rem;">{{ badge }}</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>&#x1F464; Emergency Contact</h3>
+          <div style="display:grid; gap:0.75rem;">
+            <input type="text" id="emergency-name" placeholder="Contact name" style="width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+            <select id="emergency-relationship" style="width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+              <option value="">Relationship</option>
+              <option value="Parent">Parent</option>
+              <option value="Sibling">Sibling</option>
+              <option value="Spouse">Spouse</option>
+              <option value="Child">Child</option>
+              <option value="Relative">Relative</option>
+              <option value="Friend">Friend</option>
+              <option value="Caregiver">Caregiver</option>
+              <option value="Guardian">Guardian</option>
+              <option value="Other">Other</option>
+            </select>
+            <div style="display:grid; grid-template-columns: 140px 1fr; gap:0.75rem;">
+              <select id="emergency-country-code" style="width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+                <option value="+65">+65</option>
+                <option value="+60">+60</option>
+                <option value="+62">+62</option>
+                <option value="+63">+63</option>
+                <option value="+66">+66</option>
+                <option value="+84">+84</option>
+                <option value="+86">+86</option>
+                <option value="+91">+91</option>
+                <option value="+1">+1</option>
+                <option value="+44">+44</option>
+                <option value="+61">+61</option>
+              </select>
+              <input type="tel" id="emergency-phone" inputmode="numeric" pattern="[0-9]*" maxlength="15" placeholder="Phone number" style="width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 0.5rem;">
+            </div>
+            <button class="btn-edit" id="save-emergency">Save Emergency Contact</button>
+          </div>
+        </div>
+
+        <div class="profile-section safety-tips">
+          <h3>&#x1F4A1; Safety Tips</h3>
+          <ul>
+            <li>Never share personal information (NRIC, bank details, address) in chats</li>
+            <li>Meet in public places for in-person activities</li>
+            <li>Report suspicious behavior immediately</li>
+            <li>Use Re:Connect's messaging system for all communications</li>
+            <li>Trust your instincts - if something feels wrong, report it</li>
+          </ul>
+        </div>
+      </div>
+
+      {% if not is_friend_view %}
+      <!-- Tab: Settings -->
+      <div class="profile-tab-content" id="tab-settings">
+        <div class="profile-section">
+          <h3>&#x1F514; Notification Preferences</h3>
+          <div class="settings-list">
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="notif-messages">
+                <span>New Messages</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="notif-matches">
+                <span>New Matches</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="notif-circles">
+                <span>Learning Circle Reminders</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="notif-challenges">
+                <span>Weekly Challenge Announcements</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="notif-badges">
+                <span>Badge Unlocks</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>&#x1F510; Privacy Settings</h3>
+          <div class="settings-list">
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="privacy-age">
+                <span>Show my age</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="privacy-location">
+                <span>Show my location (area only)</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="privacy-badges">
+                <span>Show my badges publicly</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="privacy-direct">
+                <span>Allow direct messages from matches</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section">
+          <h3>&#x1F310; Language & Accessibility</h3>
+          <div class="settings-list">
+            <div class="setting-item">
+              <label>
+                <span>Interface Language:</span>
+                <select class="setting-select">
+                  <option value="en">English</option>
+                  <option value="zh">ä¸­æ–‡ (Chinese)</option>
+                  <option value="ms">Bahasa Melayu</option>
+                  <option value="ta">à®¤à®®à®¿à®´à¯ (Tamil)</option>
+                </select>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox">
+                <span>Enable screen reader support</span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox">
+                <span>Simplified navigation mode</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-section danger-zone">
+          <h3>&#x26A0;&#xFE0F; Account Management</h3>
+          <button class="btn btn-secondary">Change Password</button>
+          <button class="btn btn-secondary">Download My Data</button>
+          <button class="btn-danger" id="delete-account-btn" type="button">Delete Account</button>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </main>
+
+  <!-- Language Modal -->
+  <div class="modal" id="lang-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Select Language / é€‰æ‹©è¯­è¨€</h3>
+        <button class="close-modal" id="close-lang-modal">&times;</button>
+      </div>
+      <div class="lang-options">
+        <button class="lang-option-big" data-lang="en">
+          <span class="lang-flag">&#x1F1EC;&#x1F1E7;</span>
+          <span class="lang-name">English</span>
+        </button>
+        <button class="lang-option-big" data-lang="zh">
+          <span class="lang-flag">&#x1F1E8;&#x1F1F3;</span>
+          <span class="lang-name">ä¸­æ–‡ (Chinese)</span>
+        </button>
+        <button class="lang-option-big" data-lang="ms">
+          <span class="lang-flag">&#x1F1F2;&#x1F1FE;</span>
+          <span class="lang-name">Bahasa Melayu</span>
+        </button>
+        <button class="lang-option-big" data-lang="ta">
+          <span class="lang-flag">&#x1F1EE;&#x1F1F3;</span>
+          <span class="lang-name">à®¤à®®à®¿à®´à¯ (Tamil)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="media-choice-modal" id="media-choice-modal" aria-hidden="true">
+    <div class="media-choice-card">
+      <h4>Update Photo</h4>
+      <p>Choose how you want to add a photo.</p>
+      <div class="media-choice-actions">
+        <button type="button" class="btn btn-orange glow" id="media-choice-avatar-edit">Edit avatar</button>
+        <button type="button" class="btn btn-orange glow" id="media-choice-camera">Take a photo</button>
+        <button type="button" class="btn btn-outline-teal" id="media-choice-upload">Upload from device</button>
+        <button type="button" class="btn btn-outline-teal" id="media-choice-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-post-modal" id="profile-post-modal" aria-hidden="true">
+    <div class="profile-post-modal-card" role="dialog" aria-modal="true" aria-labelledby="profile-post-title">
+      <button class="profile-post-close" id="profile-post-close" type="button" aria-label="Close">&times;</button>
+      <div class="profile-post-media-wrap">
+        <img id="profile-post-media" class="profile-post-media" alt="Scrapbook post media">
+      </div>
+      <div class="profile-post-body">
+        <h3 id="profile-post-title">Memory</h3>
+        <p id="profile-post-caption"></p>
+        <div class="profile-post-meta">
+          <span id="profile-post-visibility" class="profile-post-badge">private</span>
+          <span id="profile-post-time"></span>
+        </div>
+        <div class="profile-post-actions">
+          <button id="profile-post-like" class="btn btn-outline-orange btn-sm" type="button">&#x2764; Like</button>
+        </div>
+        <div class="profile-post-comments">
+          <h4>Comments</h4>
+          <div id="profile-post-comments-list" class="profile-post-comments-list"></div>
+          <div class="profile-post-comment-form">
+            <input id="profile-post-comment-input" type="text" placeholder="Write a comment..." maxlength="400">
+            <button id="profile-post-comment-send" class="btn btn-outline-teal btn-sm" type="button">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="verify-popup-modal" id="verify-popup-modal" aria-hidden="true">
+    <div class="verify-popup-card" role="dialog" aria-modal="true" aria-labelledby="verify-popup-title">
+      <h4 class="verify-popup-title" id="verify-popup-title">Verification</h4>
+      <p class="verify-popup-message" id="verify-popup-message">Done.</p>
+      <div class="verify-popup-actions">
+        <button type="button" class="btn btn-orange glow verify-popup-ok" id="verify-popup-ok">Okay</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/messages.js"></script>
+  <script src="/static/js/notifications.js"></script>
+  <script>
+    window.CSRF_TOKEN = {{ csrf_token|tojson }};
+    window.profileContext = {
+      ownerUserId: {{ user.id }},
+      isFriendView: {{ 'true' if is_friend_view else 'false' }},
+      isOwner: {{ 'true' if is_owner else 'false' }},
+      canView: {{ 'true' if can_view else 'false' }},
+      followStatus: {{ follow_status|tojson }},
+      profileUsername: {{ profile_username|tojson }},
+      viewerUserId: {{ session.get("user_id")|tojson }},
+      profileName: {{ user.full_name|tojson }},
+      targetOnboarding: {{ onboarding|tojson }},
+      targetSkillsTeach: {{ (user.skills_teach or [])|tojson }},
+      targetSkillsLearn: {{ (user.skills_learn or [])|tojson }},
+      profileUrl: window.location.href
+    };
+  </script>
+  <script src="/static/js/profile_scrapbook.js"></script>
+  {% if not is_friend_view %}
+  <script src="/static/js/profile.js"></script>
+  {% endif %}
+
+  <script>
+    (function () {
+      var ctx = window.profileContext || {};
+      function csrfHeaders(extra) {
+        var h = Object.assign({}, extra || {});
+        if (window.CSRF_TOKEN) h["X-CSRF-Token"] = window.CSRF_TOKEN;
+        var demoId = sessionStorage.getItem("demo_user_id");
+        if (demoId) h["X-Demo-User"] = demoId;
+        return h;
+      }
+      async function postJson(url, payload) {
+        var res = await fetch(url, {
+          method: "POST",
+          headers: csrfHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(payload || {}),
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || data.ok === false) throw new Error(data.error || "Request failed");
+        return data;
+      }
+
+      var shareBtn = document.getElementById("share-profile-link-btn");
+      if (shareBtn) {
+        shareBtn.addEventListener("click", async function () {
+          try {
+            await navigator.clipboard.writeText(window.location.href);
+            shareBtn.title = "Copied!";
+            setTimeout(function () { shareBtn.title = "Share"; }, 1200);
+          } catch (_) {
+            window.prompt("Copy this profile link:", window.location.href);
+          }
+        });
+      }
+
+      var followBtn = document.getElementById("profile-follow-btn");
+      if (followBtn && !ctx.isOwner) {
+        followBtn.addEventListener("click", async function () {
+          var status = String(followBtn.getAttribute("data-follow-status") || "none");
+          try {
+            var data;
+            if (status === "accepted" || status === "pending") {
+              data = await postJson("/api/follow/cancel", { target_user_id: Number(ctx.ownerUserId || 0) });
+              status = data.status || "none";
+            } else {
+              data = await postJson("/api/follow/request", { target_user_id: Number(ctx.ownerUserId || 0) });
+              status = data.status || "pending";
+            }
+            followBtn.setAttribute("data-follow-status", status);
+            followBtn.textContent = status === "accepted" ? "Following" : (status === "pending" ? "Requested" : "Follow");
+          } catch (err) {
+            window.alert(err.message || "Could not update follow status.");
+          }
+        });
+      }
+
+      var rbBtn = document.getElementById("profile-report-block-btn");
+      if (rbBtn && !ctx.isOwner) {
+        rbBtn.addEventListener("click", async function () {
+          var raw = window.prompt("Type R to report, B to block:");
+          var action = String(raw || "").trim().toLowerCase();
+          if (action === "b") {
+            if (!window.confirm("Block this user?")) return;
+            try {
+              await postJson("/api/block", { target_user_id: Number(ctx.ownerUserId || 0) });
+              window.alert("User blocked.");
+              window.location.href = "/feed";
+            } catch (err) {
+              window.alert(err.message || "Could not block user.");
+            }
+            return;
+          }
+          if (action === "r") {
+            var reason = window.prompt("Reason (5-300 chars):", "Harassment") || "";
+            if (!reason) return;
+            try {
+              await postJson("/api/report", { target_user_id: Number(ctx.ownerUserId || 0), reason: reason, details: "Profile report" });
+              window.alert("Report submitted.");
+            } catch (err) {
+              window.alert(err.message || "Could not submit report.");
+            }
+          }
+        });
+      }
+    })();
+  </script>
+
+  <script>
+    (function () {
+      var ctx = window.profileContext || {};
+      if (!ctx.isFriendView) return;
+      var tabBtns = Array.prototype.slice.call(document.querySelectorAll('.profile-tab-btn'));
+      var tabContents = Array.prototype.slice.call(document.querySelectorAll('.profile-tab-content'));
+      tabBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var tabName = btn.getAttribute('data-tab');
+          if (!tabName) return;
+          tabBtns.forEach(function (b) { b.classList.remove('active'); });
+          tabContents.forEach(function (c) { c.classList.remove('active'); });
+          btn.classList.add('active');
+          var target = document.getElementById('tab-' + tabName);
+          if (target) target.classList.add('active');
+          window.scrollTo({ top: 200, behavior: 'smooth' });
+        });
+      });
+
+      function normalizeList(list) {
+        if (!Array.isArray(list)) return [];
+        return list
+          .map(function (x) { return String(x || "").trim(); })
+          .filter(Boolean);
+      }
+      function uniqueLowerMap(list) {
+        var map = new Map();
+        normalizeList(list).forEach(function (item) {
+          var key = item.toLowerCase();
+          if (!map.has(key)) map.set(key, item);
+        });
+        return map;
+      }
+      function intersectDisplay(a, b) {
+        var ma = uniqueLowerMap(a);
+        var mb = uniqueLowerMap(b);
+        var out = [];
+        ma.forEach(function (label, key) {
+          if (mb.has(key)) out.push(label);
+        });
+        return out.sort(function (x, y) { return x.localeCompare(y); });
+      }
+      function renderPills(id, items, emptyText) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (!items || !items.length) {
+          el.innerHTML = '<p class="compatibility-empty">' + emptyText + '</p>';
+          return;
+        }
+        el.innerHTML = items.map(function (item) {
+          return '<span class="compatibility-pill">' + item.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>';
+        }).join('');
+      }
+
+      async function renderCompatibility() {
+        var targetOnboarding = ctx.targetOnboarding || {};
+        var targetInterests = normalizeList(targetOnboarding.interests || []);
+        var targetTeach = normalizeList((ctx.targetSkillsTeach && ctx.targetSkillsTeach.length ? ctx.targetSkillsTeach : targetOnboarding.skills_teach) || []);
+        var targetLearn = normalizeList((ctx.targetSkillsLearn && ctx.targetSkillsLearn.length ? ctx.targetSkillsLearn : targetOnboarding.skills_learn) || []);
+
+        var headers = {};
+        var demoId = sessionStorage.getItem('demo_user_id');
+        if (demoId) headers['X-Demo-User'] = demoId;
+        var res = await fetch('/api/profile', { headers: headers });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.ok || !data.profile) return;
+        var viewer = data.profile || {};
+        var viewerOnboarding = viewer.onboarding || {};
+        var viewerInterests = normalizeList(viewerOnboarding.interests || []);
+        var viewerTeach = normalizeList((viewer.skills_teach && viewer.skills_teach.length ? viewer.skills_teach : viewerOnboarding.skills_teach) || []);
+        var viewerLearn = normalizeList((viewer.skills_learn && viewer.skills_learn.length ? viewer.skills_learn : viewerOnboarding.skills_learn) || []);
+
+        renderPills('compat-shared-interests', intersectDisplay(targetInterests, viewerInterests), 'No shared interests yet.');
+        renderPills('compat-they-learn-you-teach', intersectDisplay(targetLearn, viewerTeach), 'No teach/learn overlap yet.');
+        renderPills('compat-you-learn-they-teach', intersectDisplay(viewerLearn, targetTeach), 'No teach/learn overlap yet.');
+      }
+
+      renderCompatibility().catch(function () {});
+
+      var entry = document.getElementById('profile-safety-entry');
+      var fab = document.getElementById('profile-safety-fab');
+      var modal = document.getElementById('profile-safety-modal');
+      var closeBtn = document.getElementById('profile-safety-close');
+      var blockBtn = document.getElementById('profile-block-btn');
+      var reportBtn = document.getElementById('profile-report-btn');
+      var actionView = document.getElementById('profile-safety-action-view');
+      var reportView = document.getElementById('profile-safety-report-view');
+      var reportBackBtn = document.getElementById('profile-report-back');
+      var reportSubmitBtn = document.getElementById('profile-report-submit');
+      var reportTargetInput = document.getElementById('profile-report-target');
+      var reportReasonInput = document.getElementById('profile-report-reason');
+      var reportDateInput = document.getElementById('profile-report-date');
+      var reportDetailsInput = document.getElementById('profile-report-details');
+      if (!entry || !fab || !modal || !closeBtn || !blockBtn || !reportBtn || !actionView || !reportView || !reportBackBtn || !reportSubmitBtn || !reportTargetInput || !reportReasonInput || !reportDateInput || !reportDetailsInput) return;
+
+      entry.classList.add('show');
+
+      function showActionView() {
+        actionView.classList.add('show');
+        reportView.classList.remove('show');
+      }
+      function showReportView() {
+        actionView.classList.remove('show');
+        reportView.classList.add('show');
+      }
+
+      function openModal() {
+        showActionView();
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+      function closeModal() {
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      fab.addEventListener('click', openModal);
+      closeBtn.addEventListener('click', closeModal);
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) closeModal();
+      });
+
+      async function postJson(url, body) {
+        var headers = { 'Content-Type': 'application/json' };
+        var demoId = sessionStorage.getItem('demo_user_id');
+        if (demoId) headers['X-Demo-User'] = demoId;
+        var res = await fetch(url, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(body || {})
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || data.ok === false) throw new Error(data.error || 'Action failed');
+        return data;
+      }
+
+      blockBtn.addEventListener('click', async function () {
+        var targetUserId = Number(ctx.ownerUserId || 0);
+        if (!targetUserId) return;
+        if (!window.confirm('Block ' + (ctx.profileName || 'this user') + '?')) return;
+        try {
+          await postJson('/api/friends/block', { user_id: targetUserId });
+          closeModal();
+          window.alert('User blocked.');
+          window.location.href = '/explore';
+        } catch (err) {
+          window.alert(err.message || 'Could not block user.');
+        }
+      });
+
+      reportBtn.addEventListener('click', function () {
+        reportReasonInput.value = '';
+        reportDateInput.value = new Date().toISOString().slice(0, 10);
+        reportDetailsInput.value = '';
+        reportTargetInput.value = (ctx.profileName || 'User') + ' (ID: ' + Number(ctx.ownerUserId || 0) + ')';
+        showReportView();
+      });
+
+      reportBackBtn.addEventListener('click', function () {
+        showActionView();
+      });
+
+      reportSubmitBtn.addEventListener('click', async function () {
+        var targetUserId = Number(ctx.ownerUserId || 0);
+        if (!targetUserId) return;
+        var reason = String(reportReasonInput.value || '').trim();
+        var incidentDate = String(reportDateInput.value || '').trim();
+        var detail = String(reportDetailsInput.value || '').trim();
+        if (!reason) {
+          window.alert('Please select a report reason.');
+          return;
+        }
+        if (!incidentDate) {
+          window.alert('Please select an incident date.');
+          return;
+        }
+        var details = 'Profile report for ' + (ctx.profileName || 'user') + ' (user_id: ' + targetUserId + ').\n' + detail;
+        try {
+          await postJson('/api/report', { reason: reason, incident_date: incidentDate, details: details });
+          await postJson('/api/friends/block', { user_id: targetUserId });
+          closeModal();
+          window.alert('Report submitted and user removed from your profile view.');
+          window.location.href = '/explore';
+        } catch (err) {
+          window.alert(err.message || 'Could not submit report.');
+        }
+      });
+    })();
+
+  </script>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('delete-account-btn');
+      if (!btn) return;
+
+      btn.addEventListener('click', function () {
+        var ok = window.confirm('Delete your account? This cannot be undone.');
+        if (!ok) return;
+
+        try {
+          // Demo behaviour: clear local/session storage that may represent a "signed-in" state
+          localStorage.removeItem('reconnect_user');
+          localStorage.removeItem('reconnect_auth');
+          localStorage.removeItem('reconnect_profile');
+          localStorage.removeItem('reconnect_messages');
+          localStorage.removeItem('reconnect_matches');
+          localStorage.removeItem('loggedIn');
+          localStorage.setItem('reconnect_account_deleted', 'true');
+          sessionStorage.clear();
+        } catch (e) { }
+
+        window.alert('Account deleted (demo). Returning to home page.');
+        window.location.href = '/';
+      });
+    })();
+  </script>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+
+</html>
+
+
+

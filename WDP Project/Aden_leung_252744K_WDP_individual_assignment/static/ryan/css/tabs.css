@@ -1,0 +1,239 @@
+/* Dashboard Tabs System */
+
+.dashboard-tabs {
+  background: white;
+  border-radius: 1rem 1rem 0 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 64px;
+  z-index: 50;
+}
+
+.tabs-nav {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 2px solid var(--border-color);
+  padding: 0 1rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tabs-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-button {
+  padding: 1rem 1.5rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--muted-foreground);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+  position: relative;
+}
+
+.tab-button:hover {
+  color: var(--orange);
+  background-color: rgba(244, 124, 32, 0.05);
+}
+
+.tab-button.active {
+  color: var(--orange);
+  border-bottom-color: var(--orange);
+}
+
+.tab-icon {
+  margin-right: 0.5rem;
+  font-size: 1.125rem;
+}
+
+.tab-content {
+  display: none;
+  padding: 2rem 0;
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Match Cards */
+.matches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.match-card {
+  background: white;
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  border: 2px solid var(--border-color);
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.match-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--orange), var(--teal));
+}
+
+.match-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(244, 124, 32, 0.15);
+  border-color: var(--orange);
+}
+
+.match-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.match-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--orange);
+}
+
+.match-info h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  color: var(--foreground);
+}
+
+.match-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+.age-badge {
+  background-color: var(--accent);
+  color: var(--teal);
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.match-score {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background-color: rgba(244, 124, 32, 0.05);
+  border-radius: 0.75rem;
+  border-left: 3px solid var(--orange);
+}
+
+.match-percentage {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--orange);
+}
+
+.match-interests {
+  margin: 1rem 0;
+}
+
+.match-interests h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  margin-bottom: 0.5rem;
+}
+
+.interest-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.interest-tag {
+  padding: 0.5rem 1.25rem;
+  background-color: var(--muted);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.match-bio {
+  color: var(--muted-foreground);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin: 1rem 0;
+}
+
+.say-hi-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background-color: var(--orange);
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.say-hi-btn:hover {
+  background-color: var(--orange-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 124, 32, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tabs-nav {
+    padding: 0 0.5rem;
+  }
+
+  .tab-button {
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .tab-icon {
+    margin-right: 0.25rem;
+  }
+
+  .matches-grid {
+    grid-template-columns: 1fr;
+  }
+}

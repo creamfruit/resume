@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/auth.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    /* Centre the main action buttons (visually centred, not full-bleed) */
+    .auth-box .btn-full {
+      display: block;
+      width: 100%;
+      max-width: 360px;
+      margin: 12px auto 0;
+      text-align: center;
+    }
+
+    /* Keep the divider aligned with the centred buttons */
+    .auth-box .auth-divider {
+      width: 100%;
+      max-width: 360px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .auth-box .btn-full.signup-submit {
+      background: #fff;
+      color: var(--orange);
+      border: 1px solid var(--orange);
+      box-shadow: 0 10px 24px rgba(255, 140, 0, 0.35), 0 0 14px rgba(255, 140, 0, 0.45);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    }
+
+    .auth-box .btn-full.signup-submit:hover {
+      background: #fff;
+      color: var(--orange);
+      border-color: var(--orange);
+      box-shadow: 0 14px 30px rgba(255, 140, 0, 0.45), 0 0 22px rgba(255, 140, 0, 0.6);
+      filter: brightness(1.02);
+      transform: translateY(-1px);
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+
+<body>
+  <div class="auth-container">
+    <div class="auth-box">
+      <div class="auth-header">
+        <a href="/" class="auth-back-link">&larr; Back</a>
+        <div class="logo-large">
+          <div class="logo-circle-large orange"></div>
+        </div>
+        <h1>Join Re:Connect</h1>
+        <p>Start building meaningful connections today</p>
+        {% if error %}
+        <p style="color: red; text-align: center;">{{ error }}</p>
+        {% endif %}
+      </div>
+
+      <form class="auth-form" action="/signup" method="post">
+        <div class="form-group">
+          <label for="fullname">Full Name</label>
+          <input type="text" id="fullname" name="fullname" placeholder="Enter your full name" value="{{ full_name|default('') }}" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="your.email@example.com" value="{{ email|default('') }}" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Create a password" minlength="8" required>
+          <p id="password-length-error" style="display:none; color: var(--danger, #d32f2f); margin: 0.5rem 0 0; font-size: 0.9rem;">Password must be at least 8 characters.</p>
+          <p id="password-strength-error" style="display:none; color: var(--danger, #d32f2f); margin: 0.5rem 0 0; font-size: 0.9rem;">
+            Must include uppercase, lowercase, number, and symbol.
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm-password">Confirm Password</label>
+          <input type="password" id="confirm-password" name="confirm-password" placeholder="Re-enter your password"
+            required>
+
+          <p id="password-match-error"
+            style="display:none; color: var(--danger, #d32f2f); margin: 0.5rem 0 0; font-size: 0.9rem;">
+            Passwords do not match.
+          </p>
+        </div>
+
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" name="terms" required>
+            <span>I agree to the <a href="/terms" class="link-orange" target="_blank" rel="noopener">Terms &
+                Conditions</a>
+            </span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-lg btn-full signup-submit">Create Account</button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already have an account? <a href="/login" class="link-orange">Log In</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.querySelector('form.auth-form');
+      var pw = document.getElementById('password');
+      var cpw = document.getElementById('confirm-password');
+      var err = document.getElementById('password-match-error');
+      if (!form || !pw || !cpw) return;
+
+      function todayISO() {
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+      }
+
+      function saveNewUserProfile() {
+        var fullname = document.getElementById('fullname');
+        var name = fullname && fullname.value ? fullname.value.trim() : '';
+        var memberType = ''; // set during onboarding
+
+        var user = {
+          name: name,
+          memberType: memberType,
+          joinedDate: todayISO(),
+          stats: { connections: 0, memories: 0, points: 0 },
+          isNewSignup: true
+        };
+
+        try {
+          localStorage.setItem('reconnect_user', JSON.stringify(user));
+          localStorage.setItem('reconnect_auth', JSON.stringify({
+            loggedIn: true,
+            lastLogin: new Date().toISOString(),
+            loginType: 'signup'
+          }));
+        } catch (e) { }
+
+        try {
+          sessionStorage.removeItem('reconnect_dashboard_welcome_shown');
+        } catch (e) { }
+      }
+
+      function syncPasswordValidity() {
+        var match = pw.value === cpw.value;
+        var strength = /[A-Z]/.test(pw.value) && /[a-z]/.test(pw.value) && /[0-9]/.test(pw.value) && /[^A-Za-z0-9]/.test(pw.value);
+
+        if (pw.value.length > 0 && pw.value.length < 8) {
+          pw.setCustomValidity('Password must be at least 8 characters');
+          document.getElementById('password-length-error').style.display = 'block';
+        } else {
+          pw.setCustomValidity('');
+          document.getElementById('password-length-error').style.display = 'none';
+        }
+
+        if (pw.value.length >= 8 && !strength) {
+          pw.setCustomValidity('Password must include uppercase, lowercase, number, and symbol');
+          document.getElementById('password-strength-error').style.display = 'block';
+        } else {
+          document.getElementById('password-strength-error').style.display = 'none';
+        }
+
+        if (cpw.value.length === 0) {
+          cpw.setCustomValidity('');
+          if (err) err.style.display = 'none';
+          return;
+        }
+
+        if (!match) {
+          cpw.setCustomValidity('Passwords do not match');
+          if (err) err.style.display = 'block';
+        } else {
+          cpw.setCustomValidity('');
+          if (err) err.style.display = 'none';
+        }
+      }
+
+      pw.addEventListener('input', syncPasswordValidity);
+      cpw.addEventListener('input', syncPasswordValidity);
+    })();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+
+</html>
+

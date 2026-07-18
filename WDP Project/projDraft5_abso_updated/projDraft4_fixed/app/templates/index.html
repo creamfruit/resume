@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Re:Connect SG - Bridge Generations, Build Real Connections</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      /* Landing page already manages hero spacing; avoid double top gap from global navbar offset */
+      padding-top: 0 !important;
+    }
+
+    .navbar {
+      overflow: visible;
+    }
+
+    .navbar .container {
+      min-height: auto;
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .nav-links li {
+      margin: 0;
+      padding: 0;
+    }
+
+    .auth-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .nav-links .auth-link + .auth-link {
+      margin-left: 0;
+    }
+
+    .nav-links .auth-link.btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.55rem 0.95rem !important;
+      line-height: 1;
+      border-radius: 12px;
+      white-space: nowrap;
+      min-height: 42px;
+      border: 2px solid #f97316 !important;
+      background: #f97316 !important;
+      color: #ffffff !important;
+      font-weight: 700;
+      box-shadow: 0 8px 18px rgba(249, 115, 22, 0.2);
+      text-decoration: none !important;
+    }
+
+    .nav-links .auth-link.btn:hover {
+      background: #ea580c !important;
+      border-color: #ea580c !important;
+      color: #ffffff !important;
+    }
+
+    .cta-box {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 1rem;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    .hero-buttons {
+      margin: 0;
+    }
+
+    /* Tighten the landing-page top spacing under the fixed navbar */
+    .hero {
+      padding-top: calc(var(--top-nav-height) + 0.75rem) !important;
+      padding-bottom: 4rem !important;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .cta-centre {
+      display: flex;
+      justify-content: center;
+    }
+
+    .logo-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-left: 0.75rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(44, 182, 165, 0.1);
+      font-weight: 700;
+      color: var(--teal-dark);
+    }
+    .logo-right .logo-mini {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 2px rgba(44, 182, 165, 0.2);
+    }
+
+    .btn-orange.clicked {
+      background: var(--teal);
+      border-color: var(--teal);
+      transform: translateY(1px) scale(0.98);
+    }
+
+    @media (max-width: 640px) {
+      .nav-links {
+        gap: 0.6rem;
+      }
+
+      .cta-row {
+        gap: 0.75rem;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="/static/css/fab.css">
+</head>
+
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ "/dashboard" if session.get("user_id") else "/" }}" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#home">Home</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#explore">Explore</a></li>
+        <li><a href="#about">About</a></li>
+        <li class="auth-links">
+            <a href="/login" class="btn btn-orange px-3 py-2 auth-link">Log in</a>
+            <a href="/signup" class="btn btn-orange px-3 py-2 auth-link">Sign up</a>
+          </li>
+        </ul>
+      </div>
+  </nav>
+
+  <section id="home" class="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <div class="hero-content">
+          <h1>
+            <span class="gradient-text">Where Generations Meet,</span><br>
+            <span class="hero-secondary-text">Learn &amp; Laugh Together</span>
+          </h1>
+          <p>
+            Re:Connect SG brings youth and seniors together through shared learning,
+            cultural exchange, and meaningful friendships across generations.
+          </p>
+          <div class="cta-row">
+            <div class="cta-box">
+              <div class="hero-buttons">
+                <a href="/signup" class="btn btn-orange btn-lg btn-hero" id="get-started-btn">Get Started</a>
+              </div>
+            </div>
+
+            <div class="cta-box">
+              <div class="hero-buttons">
+                <a href="#how-it-works" class="btn btn-orange btn-lg btn-hero">How It Works</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-illustration">
+          <div class="illustration-box">
+            <div class="illustration-content">
+              <div class="emoji-group">
+                <div class="emoji-circle emoji-teal">&#128118;</div>
+                <div class="emoji-circle emoji-orange">&#128102;</div>
+              </div>
+              <p style="color: var(--text-muted); font-weight: 500;">Youth + Senior Connecting</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how-it-works" class="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <h2>How Re:Connect Works</h2>
+        <p>Get started in a few simple steps.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-icon">&#128221;</div>
+          <h3>Tell us about you</h3>
+          <p>Choose your role and interests in a quick onboarding quiz.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-icon">&#129309;</div>
+          <h3>Get matched with others</h3>
+          <p>We connect you with people who share similar hobbies and goals.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <div class="step-icon">&#11088;</div>
+          <h3>Earn perks as you connect</h3>
+          <p>Join activities, stay active, and unlock rewards.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="explore" class="explore-preview">
+    <div class="container">
+      <div class="section-header">
+        <h2>Explore What's Happening</h2>
+        <p>Wisdom Forum, Matching, Learning Circles, and Achievements — all in one place.</p>
+      </div>
+
+      <div class="explore-preview-grid">
+        {% if explore_cards %}
+          {% for card in explore_cards %}
+          {% if card.link %}
+          <a class="preview-card {{ card.color }}" href="{{ card.link }}" style="text-decoration:none; color: inherit;">
+            <div class="preview-icon">{{ card.icon }}</div>
+            <h3>{{ card.title }}</h3>
+            <p>{{ card.description }}</p>
+          </a>
+          {% else %}
+          <div class="preview-card {{ card.color }}">
+            <div class="preview-icon">{{ card.icon }}</div>
+            <h3>{{ card.title }}</h3>
+            <p>{{ card.description }}</p>
+          </div>
+          {% endif %}
+          {% endfor %}
+        {% else %}
+          <div class="preview-card orange">
+            <div class="preview-icon">&#127919;</div>
+            <h3>Community Highlights</h3>
+            <p>New activities coming soon</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="cta-centre" style="margin-top: 2rem;">
+        <div class="cta-box">
+          <a href="/signup" class="btn btn-orange btn-lg btn-hero">Sign Up to Explore More</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="perks" class="perks">
+    <div class="container">
+      <div class="section-header">
+        <h2>Earn Perks While You Connect</h2>
+        <p>Stay active, build relationships, and unlock meaningful rewards</p>
+      </div>
+
+      <div class="perks-grid">
+        <a class="perk-card" href="/achievements#badgesTab" style="text-decoration:none; color: inherit;">
+          <div class="perk-icon teal">&#129309;</div>
+          <h3>Helper Badge</h3>
+          <p>Assisted a senior with tech</p>
+          <span class="badge">Unlockable</span>
+        </a>
+
+        <a class="perk-card" href="/achievements#badgesTab" style="text-decoration:none; color: inherit;">
+          <div class="perk-icon orange">&#128506;</div>
+          <h3>Community Explorer</h3>
+          <p>Joined 3 different activities</p>
+          <span class="badge">Unlockable</span>
+        </a>
+
+        <a class="perk-card" href="/achievements#badgesTab" style="text-decoration:none; color: inherit;">
+          <div class="perk-icon success">&#128293;</div>
+          <h3>Weekly Connector</h3>
+          <p>7-day interaction streak</p>
+          <span class="badge">Unlockable</span>
+        </a>
+
+        <a class="perk-card" href="/achievements#badgesTab" style="text-decoration:none; color: inherit;">
+          <div class="perk-icon info">&#11088;</div>
+          <h3>Rising Star</h3>
+          <p>Earned 100 connection points</p>
+          <span class="badge">Unlockable</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="safety">
+    <div class="container">
+      <div class="safety-grid">
+        <div class="safety-content">
+          <h2>Safe &amp; Simple for Everyone</h2>
+          <p>
+            We prioritize safety, accessibility, and ease of use. Re:Connect
+            is designed to be welcoming for both youths and seniors, with
+            features that ensure secure and meaningful interactions.
+          </p>
+          <a href="/safety" class="safety-link">
+            Learn more about our safety measures
+            <span>&rarr;</span>
+          </a>
+        </div>
+
+        <div class="features-list">
+          <div class="feature-item">
+            <div class="feature-icon">&#10003;</div>
+            <p>Verified profiles</p>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon">&#10003;</div>
+            <p>Clear activity descriptions</p>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon">&#10003;</div>
+            <p>Easy-to-use interface for all ages</p>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon">&#10003;</div>
+            <p>Secure messaging system</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand">
+            <div class="footer-logo"></div>
+            <span>Re:Connect SG</span>
+          </div>
+          <p class="footer-desc">
+            Bridging generations through shared interests and meaningful
+            connections.
+          </p>
+        </div>
+
+        <div>
+          <h3>Product</h3>
+          <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="#how-it-works">Activities</a></li>
+            <li><a href="#perks">Perks</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h3>Company</h3>
+          <ul>
+            <li><a href="#about">About</a></li>
+            <li><a href="#">Contact</a></li>
+            <li><a href="#">FAQ</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h3>Legal</h3>
+          <ul>
+            <li><a href="#">Privacy Policy</a></li>
+            <li><a href="#">Terms of Service</a></li>
+            <li><a href="/safety">Safety Guidelines</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span class="footer-bottom-text">&copy; 2025 Re:Connect SG. All rights reserved.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('get-started-btn');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        btn.classList.add('clicked');
+        setTimeout(function () {
+          btn.classList.remove('clicked');
+        }, 500);
+      });
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% include "partials/fab.html" %}
+  <script src="/static/js/fab.js"></script>
+</body>
+
+</html>
+

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Events - Re:Connect SG</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/ui-kit.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    .page-wrap { padding: 1.1rem 0 2.1rem; }
+    .layout { display:grid; grid-template-columns: 1.1fr 1fr; gap: 1rem; }
+    .layout.no-map { grid-template-columns: 1fr; }
+    .panel { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:0.8rem; box-shadow:0 8px 18px rgba(15,23,42,0.08); }
+    #events-map { height: 520px; border-radius: 10px; overflow: hidden; }
+    #events-map-unavailable { display:none; color:#b45309; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:0.75rem; margin-top:0.6rem; }
+    .event-list { display:grid; gap:0.65rem; }
+    .event-card { border:1px solid #e2e8f0; border-radius:12px; padding:0.85rem; }
+    .event-card.active { border-color:#fb923c; box-shadow:0 0 0 2px rgba(249, 115, 22, 0.16); }
+    .event-title { font-size:1.02rem; font-weight:800; color:#0f172a; margin:0; }
+    .event-meta { margin-top:6px; font-size:0.86rem; color:#64748b; }
+    .event-badge-row { margin-top:6px; display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap; }
+    .event-desc { margin:10px 0 0; color:#475569; font-size:0.9rem; line-height:1.45; }
+    .event-micro-stats { margin-top:8px; display:flex; gap:0.75rem; flex-wrap:wrap; font-size:0.83rem; color:#64748b; }
+    .event-actions { display:flex; gap:0.45rem; flex-wrap:wrap; margin-top:14px; }
+    .events-cta { border-radius:12px; padding:0.58rem 0.92rem; min-height:42px; font-size:0.9rem; font-weight:700; }
+    .events-checkin-cta { border-radius:12px; padding:0.58rem 0.92rem; min-height:42px; font-size:0.9rem; font-weight:700; }
+    .chip { transition: all 0.18s ease; }
+    .chip:hover { border-color:#fdba74; background:#fff7ed; color:#c2410c; }
+    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } #events-map { height: 360px; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/dashboard" class="logo"><div class="logo-circle"></div><span class="logo-text">Re:Connect <span class="logo-sg">SG</span></span></a>
+      <ul class="nav-links icon-nav">
+        <li class="icon-nav-item"><a href="/dashboard" class="icon-nav-link" title="Notifications">&#x1F514;</a></li>
+        <li class="icon-nav-item"><a href="/discover" class="icon-nav-link" title="Discover Matches">&#x2764;</a></li>
+        <li class="icon-nav-item"><a href="/explore" class="icon-nav-link" title="Search">&#x1F50D;</a></li>
+        <li class="icon-nav-item"><a href="/messages" class="icon-nav-link" title="Messages">&#x1F4AC;</a></li>
+        <li class="icon-nav-item"><a href="/profile" class="icon-nav-link" title="Profile">&#x1F464;</a></li>
+      </ul>
+    </div>
+  </nav>
+  <main class="page-wrap">
+    <div class="container">
+      <h1 style="margin:0;">Events</h1>
+      <p style="color:#64748b; margin:0.25rem 0 0.7rem;">Community events for learning, social connection and wellbeing.</p>
+      <div class="chip-row" id="events-category-chips" style="margin-bottom:0.7rem;">
+        <button class="chip active" data-category="">All</button>
+        <button class="chip" data-category="Learning Circle">Learning Circle</button>
+        <button class="chip" data-category="Walk & Talk">Walk & Talk</button>
+        <button class="chip" data-category="Workshop">Workshop</button>
+        <button class="chip" data-category="Games & Social">Games & Social</button>
+        <button class="chip" data-category="Heritage">Heritage</button>
+        <button class="chip" data-category="Wellness">Wellness</button>
+      </div>
+      <div class="layout" id="events-layout">
+        <section class="panel" id="events-map-panel">
+          <div id="events-map"></div>
+          <div id="events-map-unavailable">Map is shown when events include valid coordinates.</div>
+        </section>
+        <section class="panel">
+          <div id="events-list" class="event-list"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script>
+    window.RECONNECT_GOOGLE_MAPS_KEY = {{ (google_maps_key or "")|tojson }};
+  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/static/js/events.js"></script>
+  {% if google_maps_key %}
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_key|urlencode }}&callback=initEventsMap"></script>
+  {% endif %}
+</body>
+</html>

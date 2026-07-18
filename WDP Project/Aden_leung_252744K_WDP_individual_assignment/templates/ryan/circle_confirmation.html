@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circle Confirmed - Re:Connect SG</title>
+
+  <link rel="stylesheet" href="/static/ryan/css/styles.css" />
+  <link rel="stylesheet" href="/static/ryan/css/dashboard.css" />
+
+  <style>
+    .confirm-wrap { min-height: calc(100vh - 80px); display: flex; align-items: center; }
+    .confirm-card {
+      background: white;
+      border-radius: 1.5rem;
+      padding: 2rem;
+      border: 2px solid var(--border-color);
+      max-width: 720px;
+      width: 100%;
+      margin: 0 auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+    .confirm-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      font-weight: 700;
+      background: rgba(22, 163, 165, 0.12);
+      color: var(--teal);
+      margin-bottom: 1rem;
+    }
+    .confirm-title { font-size: 1.75rem; font-weight: 800; margin: 0 0 0.5rem; }
+    .confirm-sub { color: var(--muted-foreground); margin: 0 0 1.25rem; line-height: 1.6; }
+    .confirm-details {
+      background: var(--muted);
+      border-radius: 1rem;
+      padding: 1rem;
+      margin: 1.25rem 0 1.5rem;
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+    .detail-row { display: flex; gap: 0.75rem; margin: 0.25rem 0; color: var(--foreground); }
+    .detail-row span:first-child { width: 110px; color: var(--muted-foreground); }
+    .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    .actions a { text-decoration: none; }
+  </style>
+  <link rel="stylesheet" href="/static/shared/dialogs.css">
+</head>
+
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="logo">
+        <div class="logo-circle"></div>
+        <span class="logo-text">Re:Connect SG</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/ryan/dashboard" class="active">Dashboard</a></li>
+        <li><a href="/ryan/messages">Messages</a></li>
+        <li><a href="/ryan/profile">Profile</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="confirm-wrap">
+    <div class="container" style="max-width: 900px;">
+      <div class="confirm-card">
+        <div class="confirm-badge">✅ Joined</div>
+
+        <h1 class="confirm-title" id="circle-title">Learning Circle Confirmed</h1>
+        <p class="confirm-sub" id="circle-sub">
+          You’re all set. We’ll keep your spot and show this session in your dashboard.
+        </p>
+
+        <div class="confirm-details">
+          <div class="detail-row"><span>Circle</span><strong id="d-title">-</strong></div>
+          <div class="detail-row"><span>Date/Time</span><strong id="d-time">-</strong></div>
+          <div class="detail-row"><span>Duration</span><strong id="d-duration">-</strong></div>
+        </div>
+
+        <p class="confirm-sub" style="margin-bottom: 0;">
+          Want to say hello before it starts?
+        </p>
+
+        <div class="actions">
+          <a href="/ryan/dashboard" class="btn btn-orange btn-lg">Back to Dashboard</a>
+          <a href="/ryan/messages" class="btn btn-outline-teal btn-lg">Open Messages</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      function getParam(name) {
+        var params = new URLSearchParams(window.location.search);
+        return params.get(name) || "";
+      }
+
+      var title = decodeURIComponent(getParam("title") || "");
+      var time = decodeURIComponent(getParam("time") || "");
+      var duration = decodeURIComponent(getParam("duration") || "");
+
+      document.getElementById("d-title").textContent = title || "Learning Circle";
+      document.getElementById("d-time").textContent = time || "To be confirmed";
+      document.getElementById("d-duration").textContent = duration || "To be confirmed";
+
+      if (title) {
+        document.getElementById("circle-title").textContent = "Joined: " + title;
+      }
+    })();
+  </script>
+  <script src="/static/shared/dialogs.js"></script>
+</body>
+</html>
