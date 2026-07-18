@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+backend/.env
+backend/database/game_state.json
+backend/database/trade_requests.json
+backend/database/accounts/
+backend/database/accounts.json
