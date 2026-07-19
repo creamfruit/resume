@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runeted — Battle</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main id="battle-screen">
+    <header id="battle-header">
+      <h1>Runeted</h1>
+      <!-- Testing controls only; not final UI. -->
+      <div id="setup-bar">
+        <label>You: Lv <input id="setup-player-level" type="number" min="1" max="30" value="1"></label>
+        <label>Enemy: Lv <input id="setup-enemy-level" type="number" min="1" max="30" value="1"></label>
+        <label>Type
+          <select id="setup-archetype">
+            <option value="brute">Brute</option>
+            <option value="caster">Caster</option>
+            <option value="skirmisher">Skirmisher</option>
+            <option value="tank">Tank</option>
+            <option value="summoner">Summoner</option>
+          </select>
+        </label>
+        <button id="new-battle" type="button">New battle</button>
+      </div>
+      <div id="outcome-banner" class="hidden"></div>
+      <div id="notice" class="hidden"></div>
+    </header>
+
+    <div id="arena" aria-label="Battle arena">
+      <aside class="combatant" id="player-zone">
+        <div class="zone-label">You</div>
+        <div class="combatant-name" id="player-name">—</div>
+        <div class="figure-wrap">
+          <svg id="player-figure" class="figure" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 12c2.7 0 4.8-2.2 4.8-4.9S14.7 2.2 12 2.2 7.2 4.4 7.2 7.1 9.3 12 12 12zm0 2.2c-3.8 0-8 2-8 5.4v2.2h16v-2.2c0-3.4-4.2-5.4-8-5.4z"/>
+          </svg>
+          <div id="player-floaters" class="floaters"></div>
+        </div>
+        <div class="bar hp-bar"><div id="player-hp-fill" class="fill"></div><span id="player-hp-text" class="bar-text"></span></div>
+        <div class="bar stamina-bar"><div id="player-stamina-fill" class="fill"></div><span id="player-stamina-text" class="bar-text"></span></div>
+      </aside>
+
+      <div id="center-zone">
+        <section id="skills-panel" aria-label="Skill loadout">
+          <h2>Skills</h2>
+          <ul id="skill-list"></ul>
+        </section>
+
+        <section id="action-bar" aria-label="Actions">
+          <div id="confirm-bar" class="hidden">
+            <span id="confirm-text"></span>
+            <button id="confirm-use" type="button">Use it</button>
+            <button id="confirm-cancel" type="button">Cancel — back to battle menu</button>
+          </div>
+          <div id="main-actions">
+            <button id="hold-button" type="button">Hold (no skill)</button>
+            <button id="auto-toggle" type="button">Auto-battle: off</button>
+          </div>
+        </section>
+
+        <section id="battle-log-panel" aria-label="Battle log">
+          <h2>Battle log</h2>
+          <ol id="log-list"></ol>
+        </section>
+      </div>
+
+      <aside class="combatant" id="enemy-zone">
+        <div class="zone-label">Enemy</div>
+        <div class="combatant-name" id="enemy-name">—</div>
+        <div class="figure-wrap">
+          <svg id="enemy-figure" class="figure" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6.5 2 C5 4.4 4.9 6.4 5.7 8 A7.4 7.4 0 0 0 4.6 11.6 C4.6 16.6 7.9 20.2 12 22 C16.1 20.2 19.4 16.6 19.4 11.6 A7.4 7.4 0 0 0 18.3 8 C19.1 6.4 19 4.4 17.5 2 C16.6 4 15.6 5.1 14.3 5.7 A7.4 7.4 0 0 0 9.7 5.7 C8.4 5.1 7.4 4 6.5 2 Z"/>
+          </svg>
+          <div id="enemy-floaters" class="floaters"></div>
+        </div>
+        <div class="bar hp-bar"><div id="enemy-hp-fill" class="fill"></div><span id="enemy-hp-text" class="bar-text"></span></div>
+        <div class="bar stamina-bar"><div id="enemy-stamina-fill" class="fill"></div><span id="enemy-stamina-text" class="bar-text"></span></div>
+        <div id="telegraph" class="telegraph-card">
+          <div class="telegraph-title">Telegraphed move</div>
+          <div id="telegraph-name">—</div>
+          <div id="telegraph-desc" class="muted"></div>
+        </div>
+      </aside>
+    </div>
+
+    <div id="skill-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="skill-modal-title">
+      <div id="skill-modal-card">
+        <button id="skill-modal-close" type="button" aria-label="Close">✕</button>
+        <h3 id="skill-modal-title"></h3>
+        <p id="skill-modal-meta" class="muted"></p>
+        <p id="skill-modal-body"></p>
+      </div>
+    </div>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
