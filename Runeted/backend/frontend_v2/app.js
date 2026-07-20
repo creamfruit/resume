@@ -7,7 +7,9 @@
  * Skill buttons are a compact single line — icon, name, damage,
  * cooldown, and a status icon + duration when the skill applies one.
  * The full description lives behind the ⓘ affordance, which opens a
- * centered modal over a dimmed backdrop.
+ * centered modal over a dimmed backdrop. Equipped passive runes render
+ * as a chip row below the enemy panel; clicking a chip opens the same
+ * modal shell with the rune's type, rarity, cost, and description.
  */
 "use strict";
 
@@ -24,6 +26,9 @@ const SKILL_ICONS = {
   sigil: "◆",
 };
 const STATUS_ICONS = { exposed: "🎯", empowered: "⬆", poison: "☠" };
+// Passive-rune glyphs — a separate map from skill/status glyphs so the
+// three icon families never collide visually.
+const RUNE_ICONS = { ember: "❤️‍🔥", thorn: "🌵", zephyr: "🪶", ward: "🧿", brand: "💢", rune: "◈" };
 
 // ---------- API ----------
 
@@ -92,10 +97,15 @@ function render() {
     banner.className = "hidden";
   }
 
-  $("auto-toggle").textContent = `Auto-battle: ${state.auto ? "on" : "off"}`;
-  $("hold-button").textContent = state.auto ? "Play next round" : "Hold (no skill)";
+  $("auto-label").textContent = `Auto-battle: ${state.auto ? "on" : "off"}`;
+  // The toggle's icon spins while auto-battle is on so the mode is
+  // obvious at a glance.
+  $("auto-icon").classList.toggle("spinning", state.auto);
+  $("hold-icon").textContent = state.auto ? "▶" : "⏭";
+  $("hold-label").textContent = state.auto ? "Play next round" : "Pass (no skill)";
   $("hold-button").disabled = state.finished;
   renderSkills();
+  renderRunes();
   renderConfirmBar();
 }
 
@@ -135,8 +145,8 @@ function renderSkills() {
       button.append(sep, stat);
     };
 
-    addStat("skill-dmg", skill.damage > 0 ? String(Math.round(skill.damage)) : "—", "Damage");
-    addStat("skill-cd", String(skill.cooldown), "Cooldown (rounds)");
+    addStat("skill-dmg", `💥 ${skill.damage > 0 ? String(Math.round(skill.damage)) : "—"}`, "Damage");
+    addStat("skill-cd", `⏳ ${skill.cooldown}`, "Cooldown (rounds)");
     if (skill.applies_status) {
       const glyph = STATUS_ICONS[skill.applies_status.status] || "✦";
       addStat(
@@ -166,6 +176,33 @@ function renderSkills() {
   }
 }
 
+function renderRunes() {
+  // Equipped passive runes: a compact chip row below the enemy panel.
+  // Chips open the same centered modal the skill ⓘ affordance uses.
+  const row = $("rune-row");
+  row.textContent = "";
+  const info = state.runes;
+  if (!info) return;
+  $("rune-panel-title").textContent = `Equipped runes · cost ${info.cost_used}/${info.cost_cap}`;
+  for (const rune of info.equipped) {
+    const li = document.createElement("li");
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "rune-chip";
+    chip.title = rune.short;
+    const icon = document.createElement("span");
+    icon.className = "rune-icon";
+    icon.dataset.icon = rune.icon; // real icon ids slot in here later
+    icon.textContent = RUNE_ICONS[rune.icon] || RUNE_ICONS.rune;
+    const name = document.createElement("span");
+    name.textContent = rune.name;
+    chip.append(icon, name);
+    chip.addEventListener("click", () => openRuneModal(rune));
+    li.append(chip);
+    row.append(li);
+  }
+}
+
 function renderConfirmBar() {
   const bar = $("confirm-bar");
   if (!selectedSkill) {
@@ -190,6 +227,15 @@ function openSkillModal(skill) {
     `${skill.kind} · ${skill.stamina_cost} stamina · ${skill.cooldown}-round cooldown` +
     (skill.counters.length ? ` · counters ${skill.counters.join(", ")}` : "");
   $("skill-modal-body").textContent = skill.full_text;
+  $("skill-modal").className = "";
+}
+
+function openRuneModal(rune) {
+  // Runes reuse the skill modal shell: same centered card over the same
+  // dimmed backdrop, same close affordances.
+  $("skill-modal-title").textContent = `${RUNE_ICONS[rune.icon] || RUNE_ICONS.rune} ${rune.name}`;
+  $("skill-modal-meta").textContent = `Passive rune · ${rune.type} · ${rune.rarity} · cost ${rune.cost}`;
+  $("skill-modal-body").textContent = rune.full_text;
   $("skill-modal").className = "";
 }
 
@@ -252,12 +298,10 @@ async function toggleAuto() {
 }
 
 async function newBattle() {
+  // No manual parameters: the server derives the encounter from the
+  // persistent player's real level and picks the archetype itself.
   try {
-    state = await apiStart({
-      player_level: Number($("setup-player-level").value) || 1,
-      enemy_level: Number($("setup-enemy-level").value) || 1,
-      archetype: $("setup-archetype").value,
-    });
+    state = await apiStart({});
     selectedSkill = null;
     closeSkillModal();
     renderedRounds = 0;
@@ -300,7 +344,7 @@ function describeEvent(ev) {
       parts.push(`You used ${name} and recovered ${ev.player.stamina_restored} stamina.`);
       break;
     default:
-      parts.push("You held your ground.");
+      parts.push("You passed on skills and struck plainly.");
   }
 
   if (ev.player.damage_dealt > 0) {
@@ -367,7 +411,6 @@ $("confirm-use").addEventListener("click", () => selectedSkill && playRound(sele
 $("confirm-cancel").addEventListener("click", cancelSelection);
 $("hold-button").addEventListener("click", () => playRound(null));
 $("auto-toggle").addEventListener("click", toggleAuto);
-$("new-battle").addEventListener("click", newBattle);
 
 (async function boot() {
   try {

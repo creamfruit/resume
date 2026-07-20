@@ -3,8 +3,8 @@ from models.item import Item
 from models.passive import PassiveModel, PassiveEffect
 
 from ai.item_designer import design_item_with_ai
+from engine.affixes import roll_system_passives as _roll_system_passives
 from engine.passive_system import clamp_passives
-from models.passive import PassiveEffect, PassiveModel
 
 NAME_PREFIX = [
     "Rustbound", "Ashen", "Grim", "Moonlit", "Bone", "Iron", "Storm", "Dread",
@@ -33,33 +33,6 @@ def _roll_item_name(slot: str, rarity: str) -> str:
     if random.random() < suffix_ch:
         base = f"{base} {random.choice(NAME_SUFFIX)}"
     return base
-
-
-def _make_passive(
-    name: str,
-    trigger: str,
-    effect_type: str,
-    value: float,
-    target: str = "self",
-    chance_value: float = 1.0,
-    duration: int = 0,
-    scaling: str = "flat",
-) -> PassiveModel:
-    return PassiveModel(
-        name=name,
-        trigger=trigger,
-        chance=min(1.0, max(0.05, chance_value)),
-        effects=[
-            PassiveEffect(
-                type=effect_type,
-                value=value,
-                target=target,
-                chance=1.0,
-                duration=duration,
-                scaling=scaling,
-            )
-        ],
-    )
 
 
 def _roll_innate_weapon_abilities(rarity: str, risk: int, luck_bonus: float) -> list[PassiveModel]:
@@ -106,45 +79,6 @@ def _roll_innate_weapon_abilities(rarity: str, risk: int, luck_bonus: float) -> 
     return clamp_passives(abilities, rarity)
 
 
-def _roll_system_passives(rarity: str, risk: int, luck_bonus: float, is_boss: bool) -> list[PassiveModel]:
-    rarity = str(rarity).lower()
-    # Conservative baseline; clamp_passives remains the final safety net.
-    chance_map = {
-        "common": 0.0,
-        "rare": 0.10,
-        "epic": 0.28,
-        "legendary": 0.55,
-        "mythic": 0.72,
-        "relic": 0.88,
-    }
-    if random.random() > chance_map.get(rarity, 0.0):
-        return []
-
-    budget = {
-        "rare": 1,
-        "epic": 1 if random.random() < 0.65 else 2,
-        "legendary": random.randint(1, 2),
-        "mythic": random.randint(2, 3),
-        "relic": random.randint(2, 4),
-    }.get(rarity, 0)
-    if budget <= 0:
-        return []
-
-    scale = 1.0 + (risk * 0.08) + (0.10 if is_boss else 0.0) + (luck_bonus * 0.25)
-    templates = [
-        lambda: _make_passive("Sharpened Edge", "on_hit", "damage_mult", round(0.05 * scale, 3), "self", 1.0, 0, "percent"),
-        lambda: _make_passive("Blood Draw", "on_hit", "lifesteal", round(0.03 * scale, 3), "self", 0.65, 0, "percent"),
-        lambda: _make_passive("Bramble Skin", "on_take_hit", "thorns", round(0.05 * scale, 3), "self", 0.70, 0, "percent"),
-        lambda: _make_passive("Side Step", "on_dodge", "dodge_mod", round(0.05 * scale, 3), "self", 0.70, 0, "percent"),
-        lambda: _make_passive("Guard Matrix", "start_of_turn", "shield", round(6 * scale, 2), "self", 0.45, 0, "flat"),
-        lambda: _make_passive("Hemorrhage Cut", "on_hit", "bleed", round(0.10 * scale, 3), "enemy", 0.45, 2, "percent"),
-        lambda: _make_passive("Scorch Brand", "on_hit", "dot", round(3 * scale, 2), "enemy", 0.35, 2, "flat"),
-    ]
-    random.shuffle(templates)
-    passives = [maker() for maker in templates[:budget]]
-    return clamp_passives(passives, rarity)
-
-
 def roll_rarity(is_boss: bool, risk: int, luck_bonus: float) -> str:
     r = random.random()
 
@@ -180,10 +114,14 @@ def generate_loot(
     is_boss: bool = False,
     risk: int = 0,
     depth: int = 1,
-    luck_bonus: float = 0.0
+    luck_bonus: float = 0.0,
+    forced_rarity: str | None = None,
 ) -> Item:
     slot = random.choice(["weapon", "armor"])
-    rarity = roll_rarity(is_boss=is_boss, risk=risk, luck_bonus=luck_bonus)
+    # forced_rarity lets a caller (e.g. chest contents, clamped to a
+    # tier's floor/ceiling) pin the rarity while still reusing every bit
+    # of naming/power/passive generation below it — not a second roll.
+    rarity = forced_rarity or roll_rarity(is_boss=is_boss, risk=risk, luck_bonus=luck_bonus)
 
     # Use AI only for top rarities
     if rarity in ("legendary", "mythic", "relic"):

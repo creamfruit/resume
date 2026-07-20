@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PYTHONPATH=. python -m unittest discover -s ../tests -p \"test_*.py\")",
+      "Bash(tasklist //FI \"IMAGENAME eq python.exe\" //FO CSV)",
+      "Bash(netstat -ano)",
+      "Bash(PYTHONPATH=. python -m unittest discover -s ../tests -p \"test_chest_system.py\" -v)"
+    ]
+  }
+}

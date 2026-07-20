@@ -18,7 +18,22 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 from services.stash import get_stash, dismantle_item, reroll_item_affix
 from services.equipment import equip_item, unequip_item
 from services.dungeon_run import ROOM_AFFIXES, start_interactive_dungeon, complete_interactive_dungeon
-from services.auction_house import list_item, list_rune, get_auctions, get_auction_history, buy_item, offer_items, cancel_listing
+from services.auction_house import list_item, list_rune, list_currency, get_auctions, get_auction_history, buy_item, offer_items, cancel_listing
+from services.currency import (
+    BASE_CURRENCY,
+    CURRENCIES,
+    add_currency,
+    ascend_item,
+    ascend_rune,
+    chest_key_upgrade_tier,
+    currency_balance,
+    is_currency,
+    reroll_rune_effect,
+    spend_currency,
+    wallet as currency_wallet,
+)
+from services.currency_exchange import get_exchange_rates
+from services.chest import award_battle_chest, open_chest as open_reward_chest
 from services.trade_hub import all_requests as trade_all_requests, list_requests as trade_list_requests, create_request as trade_create_request, get_request as trade_get_request, update_request as trade_update_request
 from services import session
 from engine.combat import player_attack as engine_player_attack, enemy_attack as engine_enemy_attack
@@ -1045,6 +1060,8 @@ def _trade_request_summary(row: dict) -> dict:
         "status": str(row.get("status", "pending") or "pending"),
         "gold_offer": int(row.get("gold_offer", 0) or 0),
         "gold_request": int(row.get("gold_request", 0) or 0),
+        "currency_offer": dict(row.get("offered_currencies", {}) or {}),
+        "currency_request": dict(row.get("requested_currencies", {}) or {}),
         "note": str(row.get("note", "") or ""),
         "created_at": int(row.get("created_at", 0) or 0),
         "updated_at": int(row.get("updated_at", 0) or 0),
@@ -1097,6 +1114,8 @@ def _expire_pending_trades() -> int:
             except Exception:
                 continue
         sender_player.gold = int(sender_player.gold or 0) + gold_return
+        for cid, amount in dict(row.get("offered_currencies", {}) or {}).items():
+            add_currency(sender_player, cid, int(amount or 0))
         _save_account_player(sender, sender_raw, sender_player)
         trade_id = str(row.get("id", "") or "")
         trade_update_request(trade_id, status="expired")
@@ -2582,6 +2601,55 @@ def reroll_item_affix_endpoint(payload: dict):
     return reroll_item_affix(current_player, stash_index, affix_index=affix_index)
 
 
+@app.post("/player/reroll_rune_effect")
+def reroll_rune_effect_endpoint(payload: dict):
+    rune_id = str(payload.get("rune_id", "") or "")
+    effect_index = int(payload.get("effect_index", -1) or -1)
+    out = reroll_rune_effect(current_player, rune_id, effect_index=effect_index)
+    if out.get("ok"):
+        _persist_state()
+    return out
+
+
+@app.post("/player/ascend_item")
+def ascend_item_endpoint(payload: dict):
+    out = ascend_item(current_player, int(payload.get("stash_index", -1) or -1))
+    if out.get("ok"):
+        _persist_state()
+    return out
+
+
+@app.post("/player/ascend_rune")
+def ascend_rune_endpoint(payload: dict):
+    out = ascend_rune(current_player, str(payload.get("rune_id", "") or ""))
+    if out.get("ok"):
+        _persist_state()
+    return out
+
+
+@app.get("/player/wallet")
+def player_wallet():
+    return {
+        "wallet": currency_wallet(current_player),
+        "currencies": {cid: dict(meta) for cid, meta in CURRENCIES.items()},
+    }
+
+
+@app.get("/player/chests")
+def player_chests():
+    return {"chests": dict(current_player.chests)}
+
+
+@app.post("/chests/open")
+def open_chest_endpoint(payload: dict):
+    rarity = str(payload.get("rarity", "") or "")
+    risk = int(session.SESSION.get("risk", 0) or 0)
+    out = open_reward_chest(current_player, rarity, risk=risk, luck_bonus=current_player.loot_luck)
+    if out.get("ok"):
+        _persist_state()
+    return out
+
+
 @app.post("/player/prestige")
 def prestige():
     current_player.prestige_reset()
@@ -3162,8 +3230,8 @@ def _generate_rune_effects(rarity: str) -> list[dict]:
     return generate_rune_effects(rarity)
 
 
-def _generate_build_rune(player: Player) -> dict:
-    return generate_build_rune(player)
+def _generate_build_rune(player: Player, rarity_override: str | None = None) -> dict:
+    return generate_build_rune(player, rarity_override=rarity_override)
 
 
 
@@ -3243,11 +3311,26 @@ def rune_open_chest(payload: dict):
     if chests < count:
         return {"error": "Not enough chests", "required": count, "current": chests}
 
+    # Warden's Key upgrade mode: one key per chest shifts the roll one tier up.
+    use_keys = str(payload.get("key_mode", "") or "") == "upgrade"
+    if use_keys and currency_balance(current_player, "warden_key") < count:
+        return {
+            "error": "Not enough warden_key",
+            "required": count,
+            "current": currency_balance(current_player, "warden_key"),
+        }
+
     current_player.resources["arcane_chest"] = chests - count
+    if use_keys:
+        spend_currency(current_player, "warden_key", count)
     created = []
     relic_found = 0
     for _ in range(count):
-        r = _generate_build_rune(current_player)
+        if use_keys:
+            rolled = _roll_rune_rarity(current_player.loot_luck)
+            r = _generate_build_rune(current_player, rarity_override=chest_key_upgrade_tier(rolled))
+        else:
+            r = _generate_build_rune(current_player)
         current_player.rune_items.append(r)
         created.append(r)
 
@@ -3268,6 +3351,7 @@ def rune_open_chest(payload: dict):
     return {
         "ok": True,
         "opened": count,
+        "keys_used": count if use_keys else 0,
         "runes": created,
         "relic_found": relic_found,
         "state": rune_state(),
@@ -3907,18 +3991,17 @@ def _handle_enemy_defeat(enemy: Enemy, combat_payload: dict):
     current_player.add_resource("rune_essence", essence_gain)
     session.add_log(f"Found {essence_gain} Rune Essence")
 
-    chest_chance = 0.06 + (session.SESSION["risk"] * 0.03) + (current_player.loot_luck * 0.20)
-    if room_type == "boss":
-        chest_chance += 0.15
-    chest_gain = 0
-    if random.random() < chest_chance:
-        chest_gain = 2 if room_type == "boss" and random.random() < 0.25 else 1
-        current_player.add_resource("arcane_chest", chest_gain)
-        session.add_log(f"Found {chest_gain} Arcane Chest")
-    elif room_type == "boss" and _current_run_gain("arcane_chest") <= 0:
-        chest_gain = 1
-        current_player.add_resource("arcane_chest", chest_gain)
-        session.add_log("Boss cache yielded 1 guaranteed Arcane Chest")
+    # Tiered chest reward (services/chest.py): the chest's own rarity is
+    # driven by this specific enemy's level/tier/modifiers, independent
+    # of whether a bonus currency amount also drops this victory.
+    chest_award = award_battle_chest(current_player, enemy, risk=risk, room_type=str(room_type or ""))
+    chest_rarity_gain = chest_award.get("chest")
+    if chest_rarity_gain:
+        session.add_log(f"Found a {chest_rarity_gain} chest")
+    currency_award = chest_award.get("currency")
+    if currency_award:
+        cname = CURRENCIES.get(currency_award["currency_id"], {}).get("name", currency_award["currency_id"])
+        session.add_log(f"Found {currency_award['amount']} {cname}")
 
     relic_chance = 0.03 + (session.SESSION["risk"] * 0.02)
     if room_type == "boss":
@@ -3971,7 +4054,8 @@ def _handle_enemy_defeat(enemy: Enemy, combat_payload: dict):
                 "gold": int(gold_gain),
                 "stamina": restored,
                 "rune_essence": int(essence_gain),
-                "arcane_chest": int(chest_gain),
+                "chest": chest_rarity_gain,
+                "chest_currency": currency_award,
                 "rune_relic": int(relic_gain),
             },
         }
@@ -3983,7 +4067,8 @@ def _handle_enemy_defeat(enemy: Enemy, combat_payload: dict):
             "gold": int(gold_gain),
             "stamina": restored,
             "rune_essence": int(essence_gain),
-            "arcane_chest": int(chest_gain),
+            "chest": chest_rarity_gain,
+            "chest_currency": currency_award,
             "rune_relic": int(relic_gain),
         }
         return state_or_result
@@ -3995,7 +4080,8 @@ def _handle_enemy_defeat(enemy: Enemy, combat_payload: dict):
             "gold": int(gold_gain),
             "stamina": restored,
             "rune_essence": int(essence_gain),
-            "arcane_chest": int(chest_gain),
+            "chest": chest_rarity_gain,
+            "chest_currency": currency_award,
             "rune_relic": int(relic_gain),
         },
     }
@@ -5100,6 +5186,32 @@ def auction_list_rune(payload: dict):
     return out
 
 
+@app.post("/auction/list_currency")
+def auction_list_currency(payload: dict):
+    currency_id = str(payload.get("currency_id", "") or "").strip()
+    amount = int(payload.get("amount", 0) or 0)
+    price = int(payload.get("price", 0) or 0)
+    out = list_currency(current_player, currency_id, amount, price, seller=ACTIVE_ACCOUNT)
+    if not out.get("error"):
+        _persist_state()
+        _event_log_add(
+            "market",
+            "Currency listed on market",
+            f"{amount} × {currency_id} for {int(price)} gold",
+            meta={"type": "currency", "currency_id": currency_id, "amount": amount, "price": int(price)},
+        )
+    return out
+
+
+@app.get("/exchange/rates")
+def exchange_rates():
+    return {
+        "base": BASE_CURRENCY,
+        "rates": get_exchange_rates(),
+        "currencies": {cid: dict(meta) for cid, meta in CURRENCIES.items()},
+    }
+
+
 @app.post("/auction/buy")
 def auction_buy(auction_id: str):
     out = buy_item(current_player, auction_id, buyer=ACTIVE_ACCOUNT)
@@ -5235,7 +5347,20 @@ def trade_request_create(payload: dict):
         return {"error": "Invalid target stash index in trade request", "invalid_requested": invalid_requested}
     if gold_offer > int(current_player.gold or 0):
         return {"error": "Not enough gold to escrow", "gold": int(current_player.gold or 0), "required": gold_offer}
-    if not picked and gold_offer <= 0 and not requested and gold_request <= 0:
+
+    currency_offer = {str(k): int(v) for k, v in dict(payload.get("currency_offer", {}) or {}).items() if int(v or 0) > 0}
+    currency_request = {str(k): int(v) for k, v in dict(payload.get("currency_request", {}) or {}).items() if int(v or 0) > 0}
+    for cid in list(currency_offer) + list(currency_request):
+        if not is_currency(cid):
+            return {"error": f"Unknown currency '{cid}'"}
+        if cid == BASE_CURRENCY:
+            return {"error": "Use gold_offer/gold_request for gold"}
+    for cid, amount in currency_offer.items():
+        if currency_balance(current_player, cid) < amount:
+            return {"error": f"Not enough {cid} to escrow", "required": amount,
+                    "current": currency_balance(current_player, cid)}
+
+    if not picked and gold_offer <= 0 and not requested and gold_request <= 0 and not currency_offer and not currency_request:
         return {"error": "Trade must offer or request something"}
 
     offered_items = [current_player.stash[idx] for idx in picked]
@@ -5245,6 +5370,8 @@ def trade_request_create(payload: dict):
         current_player.stash.pop(idx)
     if gold_offer > 0:
         current_player.gold = int(current_player.gold or 0) - gold_offer
+    for cid, amount in currency_offer.items():
+        spend_currency(current_player, cid, amount)
 
     row = trade_create_request(
         sender=ACTIVE_ACCOUNT,
@@ -5254,6 +5381,8 @@ def trade_request_create(payload: dict):
         gold_request=gold_request,
         requested_items=requested_payloads,
         note=note,
+        offered_currencies=currency_offer,
+        requested_currencies=currency_request,
     )
     _persist_state()
     _event_log_add(
@@ -5283,6 +5412,8 @@ def trade_request_cancel(payload: dict):
         except Exception:
             continue
     current_player.gold = int(current_player.gold or 0) + int(row.get("gold_offer", 0) or 0)
+    for cid, amount in dict(row.get("offered_currencies", {}) or {}).items():
+        add_currency(current_player, cid, int(amount or 0))
     trade_update_request(trade_id, status="cancelled")
     _persist_state()
     _event_log_add("trade", "Trade request cancelled", trade_id, meta={"trade_id": trade_id})
@@ -5309,6 +5440,8 @@ def trade_request_decline(payload: dict):
         except Exception:
             continue
     sender_player.gold = int(sender_player.gold or 0) + int(row.get("gold_offer", 0) or 0)
+    for cid, amount in dict(row.get("offered_currencies", {}) or {}).items():
+        add_currency(sender_player, cid, int(amount or 0))
     _save_account_player(sender, sender_raw, sender_player)
     trade_update_request(trade_id, status="declined")
     _event_log_add("trade", "Trade request declined", trade_id, meta={"trade_id": trade_id, "sender": sender})
@@ -5330,6 +5463,11 @@ def trade_request_accept(payload: dict):
     gold_request = int(row.get("gold_request", 0) or 0)
     if int(current_player.gold or 0) < gold_request:
         return {"error": "Not enough gold to accept trade", "required": gold_request, "gold": int(current_player.gold or 0)}
+    requested_currencies = dict(row.get("requested_currencies", {}) or {})
+    for cid, amount in requested_currencies.items():
+        if currency_balance(current_player, cid) < int(amount or 0):
+            return {"error": f"Not enough {cid} to accept trade", "required": int(amount or 0),
+                    "current": currency_balance(current_player, cid)}
 
     sender = str(row.get("sender", "") or "")
     sender_raw, sender_player = _load_account_player(sender)
@@ -5350,6 +5488,11 @@ def trade_request_accept(payload: dict):
         requested_matches.append((found_idx, found_item))
     current_player.gold = int(current_player.gold or 0) - gold_request + int(row.get("gold_offer", 0) or 0)
     sender_player.gold = int(sender_player.gold or 0) + gold_request
+    for cid, amount in requested_currencies.items():
+        spend_currency(current_player, cid, int(amount or 0))
+        add_currency(sender_player, cid, int(amount or 0))
+    for cid, amount in dict(row.get("offered_currencies", {}) or {}).items():
+        add_currency(current_player, cid, int(amount or 0))
     for item_payload in list(row.get("offered_items", []) or []):
         try:
             current_player.stash.append(_item_from_payload(item_payload))

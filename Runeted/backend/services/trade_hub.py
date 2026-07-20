@@ -73,6 +73,18 @@ def list_requests(account: str) -> dict:
     }
 
 
+def _sanitize_currencies(currencies: dict | None) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for cid, amount in dict(currencies or {}).items():
+        try:
+            qty = int(amount)
+        except Exception:
+            continue
+        if qty > 0 and str(cid or "").strip():
+            out[str(cid).strip()] = qty
+    return out
+
+
 def create_request(
     sender: str,
     target: str,
@@ -81,6 +93,8 @@ def create_request(
     gold_request: int,
     requested_items: list[dict] | None = None,
     note: str = "",
+    offered_currencies: dict | None = None,
+    requested_currencies: dict | None = None,
 ) -> dict:
     sender_id = _normalize_account(sender)
     target_id = _normalize_account(target)
@@ -109,6 +123,8 @@ def create_request(
         "requested_items": requested_payloads,
         "gold_offer": int(max(0, gold_offer or 0)),
         "gold_request": int(max(0, gold_request or 0)),
+        "offered_currencies": _sanitize_currencies(offered_currencies),
+        "requested_currencies": _sanitize_currencies(requested_currencies),
         "note": str(note or "")[:180],
         "created_at": now,
         "updated_at": now,

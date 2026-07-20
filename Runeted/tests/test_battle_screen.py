@@ -7,16 +7,18 @@ import unittest
 from fastapi.testclient import TestClient
 
 import battle_app
+from core.player_state import PlayerState
 from core.skills import default_loadout, describe_skill
 
 
 def client() -> TestClient:
     battle_app.CURRENT["battle"] = None  # isolate tests
+    battle_app.CURRENT["player"] = PlayerState()  # fresh, level 1
     return TestClient(battle_app.app)
 
 
 def start(c: TestClient, **overrides):
-    payload = {"player_level": 1, "enemy_level": 1, "archetype": "brute", "seed": 2}
+    payload = {"archetype": "brute", "seed": 2}
     payload.update(overrides)
     res = c.post("/api/battle/start", json=payload)
     assert res.status_code == 200, res.text
@@ -100,7 +102,8 @@ class BattleApiSmokeTests(unittest.TestCase):
 
     def test_finished_battle_returns_409(self):
         c = client()
-        start(c, player_level=5, enemy_level=1, auto=True)
+        battle_app.CURRENT["player"].level = 5  # real progression, not a request field
+        start(c, enemy_level=1, auto=True)
         for _ in range(50):
             res = c.post("/api/battle/round", json={"response": None})
             if res.json()["state"]["finished"]:
@@ -128,7 +131,7 @@ class BattleScreenMarkupTests(unittest.TestCase):
 
     def setUp(self):
         c = client()
-        self.html = c.get("/").text
+        self.html = c.get("/battle").text
         self.js = c.get("/static/app.js").text
         self.css = c.get("/static/style.css").text
 
@@ -158,9 +161,17 @@ class BattleScreenMarkupTests(unittest.TestCase):
         self.assertIn("fill: #ffffff", self.css)
 
     def test_no_dropdowns_for_skills(self):
-        # The only <select> allowed is the pre-battle enemy archetype picker.
-        self.assertEqual(self.html.count("<select"), 1)
-        self.assertIn('id="setup-archetype"', self.html)
+        # No manual archetype picker either — the admin testing bar is gone.
+        self.assertEqual(self.html.count("<select"), 0)
+
+    def test_admin_testing_bar_is_gone(self):
+        # The manual level/enemy-type/new-battle controls never reflected
+        # real game state and must not ship. Battles start from the hub.
+        for element_id in ("setup-bar", "setup-player-level", "setup-enemy-level",
+                          "setup-archetype", "new-battle"):
+            self.assertNotIn(f'id="{element_id}"', self.html, element_id)
+        self.assertNotIn("setup-player-level", self.js)
+        self.assertIn('href="/"', self.html)  # a way back to the hub remains
 
     def test_js_builds_skill_buttons_with_info_and_cancel_affordances(self):
         for marker in ("skill-button", "skill-info-toggle", "skill-dmg", "skill-cd",
@@ -168,11 +179,88 @@ class BattleScreenMarkupTests(unittest.TestCase):
                        "spawnFloater", "appendLogEntry"):
             self.assertIn(marker, self.js, marker)
 
-    def test_battle_ui_no_longer_speaks_of_runes(self):
-        # "Runeted" (the title) is fine; the standalone word "rune" is not.
-        for name, text in (("index.html", self.html), ("app.js", self.js)):
-            self.assertIsNone(re.search(r"\brunes?\b", text, re.IGNORECASE),
-                              f"battle-screen concept rename incomplete in {name}")
+    def test_skill_ui_never_speaks_of_runes(self):
+        # The old mislabel called skills "equipped runes". Passive runes
+        # now legitimately have their own panel, so the rename guard is
+        # scoped to the skill UI: the skills panel keeps its name and the
+        # skill-button builder never mentions runes, and no hybrid
+        # skill/rune identifier exists anywhere.
+        self.assertIn("<h2>Skills</h2>", self.html)
+        skills_fn = self.js.split("function renderSkills")[1].split("function renderRunes")[0]
+        self.assertIsNone(re.search(r"\brunes?\b", skills_fn, re.IGNORECASE),
+                          "skill-button builder mentions runes")
+        self.assertIsNone(re.search(r"skill[-_]?rune|rune[-_]?skill", self.html + self.js, re.IGNORECASE))
+        # The passive-rune UI is its own separate panel + shared modal.
+        self.assertIn('id="rune-row"', self.html)
+        self.assertIn("openRuneModal", self.js)
+
+
+class HomeHubTests(unittest.TestCase):
+    """The persistent navigation hub outside of battle: real player
+    state, and one entry point per major system."""
+
+    def test_hub_serves_at_root_with_nav_tiles_for_every_system(self):
+        c = client()
+        html = c.get("/").text
+        js = c.get("/static/home.js").text
+        for element_id in ("home-screen", "home-nav", "nav-battle",
+                          "home-player-name", "home-player-level"):
+            self.assertIn(f'id="{element_id}"', html, element_id)
+        for href in ("/skills", "/runes", "/equipment", "/inventory", "/market", "/exchange"):
+            self.assertIn(f'href="{href}"', html, href)
+        self.assertIn("/api/battle/start", js)  # Start Battle triggers a real flow
+
+    def test_player_api_reflects_real_persistent_state_not_a_debug_value(self):
+        c = client()
+        battle_app.CURRENT["player"].level = 7
+        body = c.get("/api/player").json()
+        self.assertEqual(body["level"], 7)
+        # Starting a battle with no client-supplied level still uses it.
+        state = start(c, enemy_level=None)
+        self.assertEqual(state["player"]["level"], 7)
+
+    def test_battle_start_ignores_a_client_supplied_player_level(self):
+        # The old admin bar posted player_level directly; the field no
+        # longer exists on the contract, so a caller can't spoof it.
+        c = client()
+        battle_app.CURRENT["player"].level = 3
+        res = c.post("/api/battle/start", json={"player_level": 99, "archetype": "brute"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["player"]["level"], 3)
+
+    def test_battle_start_with_no_body_derives_everything(self):
+        # The hub's Start Battle action posts an empty object.
+        c = client()
+        res = c.post("/api/battle/start", json={})
+        self.assertEqual(res.status_code, 200, res.text)
+        self.assertEqual(res.json()["outcome"], "in_progress")
+
+    def test_unbuilt_nav_targets_serve_a_placeholder_not_a_dead_link(self):
+        c = client()
+        for slug, title in (("skills", "Skills"), ("runes", "Runes"),
+                            ("equipment", "Equipment"), ("inventory", "Inventory"),
+                            ("market", "Market"), ("exchange", "Currency Exchange")):
+            res = c.get(f"/{slug}")
+            self.assertEqual(res.status_code, 200, slug)
+            self.assertIn(title, res.text)
+            self.assertIn('href="/"', res.text)  # always a way back to the hub
+
+    def test_unknown_slug_is_a_real_404(self):
+        c = client()
+        self.assertEqual(c.get("/not-a-real-page").status_code, 404)
+
+    def test_battle_page_falls_back_to_a_real_start_with_no_active_battle(self):
+        # The hub's Start Battle action is the primary flow (POST then
+        # navigate), but a direct/bookmarked visit to /battle with no
+        # active battle must still work: boot() catches the 404 from
+        # /api/battle/state and starts one itself, no manual params.
+        c = client()
+        js = c.get("/static/app.js").text
+        boot_fn = js.split("(async function boot()")[1]
+        self.assertIn("newBattle()", boot_fn)
+        self.assertEqual(c.get("/api/battle/state").status_code, 404)
+        res = c.post("/api/battle/start", json={})
+        self.assertEqual(res.status_code, 200)
 
 
 class SkillDescriptionTests(unittest.TestCase):

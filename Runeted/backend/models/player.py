@@ -62,8 +62,15 @@ class Player(BaseModel):
         "raw_fish": 0,
         "ore": 0,
         "crafted_supplies": 0,
+        "ascension_sigil": 0,
+        "warden_key": 0,
     })
     runes: Dict[str, int] = Field(default_factory=dict)
+
+    # Chest rewards: quantity held per chest rarity tier (services/chest.py).
+    # A chest's own tier is separate from the rarity of whatever it
+    # contains, so this is its own dict rather than living in `resources`.
+    chests: Dict[str, int] = Field(default_factory=dict)
 
     # Slayer + Prayer
     slayer_level: int = 1
@@ -361,8 +368,11 @@ class Player(BaseModel):
             "raw_fish": 0,
             "ore": 0,
             "crafted_supplies": 0,
+            "ascension_sigil": 0,
+            "warden_key": 0,
         }
         self.runes = {}
+        self.chests = {}
         self.slayer_level = 1
         self.slayer_xp = 0
         self.slayer_xp_to_next = 100

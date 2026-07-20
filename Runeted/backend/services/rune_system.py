@@ -446,8 +446,8 @@ def generate_rune_effects(rarity: str) -> list[dict[str, Any]]:
     return effects
 
 
-def generate_build_rune(player: Player) -> dict[str, Any]:
-    rarity = roll_rune_rarity(player.loot_luck)
+def generate_build_rune(player: Player, rarity_override: str | None = None) -> dict[str, Any]:
+    rarity = str(rarity_override).lower() if rarity_override else roll_rune_rarity(player.loot_luck)
     rid = f"rune_{random.randint(100000, 999999)}_{random.randint(10, 99)}"
     name = f"{random.choice(RUNE_NAME_PARTS['prefix'])} {random.choice(RUNE_NAME_PARTS['core'])} {random.choice(RUNE_NAME_PARTS['suffix'])}"
 

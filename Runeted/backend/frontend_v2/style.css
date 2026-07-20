@@ -31,8 +31,6 @@ h2 { font-size: 0.95rem; margin: 0 0 6px; color: #aab0c0; }
 .muted { color: #9aa1b4; font-size: 0.85rem; }
 
 #battle-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-#setup-bar { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: #aab0c0; }
-#setup-bar input { width: 3.2em; }
 #outcome-banner {
   width: 100%;
   padding: 8px 12px;
@@ -98,6 +96,20 @@ h2 { font-size: 0.95rem; margin: 0 0 6px; color: #aab0c0; }
 .telegraph-card { background: #262b38; border-left: 3px solid #af8b4c; border-radius: 6px; padding: 8px 10px; }
 .telegraph-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #af8b4c; }
 
+/* Equipped passive runes: chip row below the enemy panel; chips open
+   the shared skill/rune info modal. */
+#rune-panel { background: #262b38; border-left: 3px solid #7a5caf; border-radius: 6px; padding: 8px 10px; }
+.rune-panel-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #a98fd6; }
+#rune-row { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; }
+.rune-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: #232838; color: inherit;
+  border: 1px solid #3a3350; border-radius: 6px;
+  padding: 4px 8px; cursor: pointer; font-size: 0.78rem;
+}
+.rune-chip:hover { border-color: #7a5caf; }
+.rune-icon { font-size: 13px; }
+
 /* Skill loadout: one compact single-line button per skill —
    icon · name | damage | cooldown | status icon + duration. */
 #skills-panel { background: #1a1d26; border-radius: 10px; padding: 12px 14px; }
@@ -131,6 +143,11 @@ h2 { font-size: 0.95rem; margin: 0 0 6px; color: #aab0c0; }
 .skill-sep { color: #4a5169; }
 .skill-dmg, .skill-cd, .skill-status { color: #aab0c0; font-variant-numeric: tabular-nums; }
 .skill-cooling { margin-left: auto; color: #e0a4a4; font-size: 0.7rem; }
+/* Action-bar icons; the auto-battle icon spins while the mode is on. */
+.action-icon { display: inline-block; margin-right: 6px; }
+.action-icon.spinning { animation: icon-spin 1.1s linear infinite; }
+@keyframes icon-spin { to { transform: rotate(360deg); } }
+
 .skill-info-toggle {
   flex: none; width: 34px;
   background: #1f2432; color: #9ecbff;
@@ -174,11 +191,11 @@ h2 { font-size: 0.95rem; margin: 0 0 6px; color: #aab0c0; }
 #action-bar { display: flex; flex-direction: column; gap: 8px; }
 #confirm-bar { display: flex; align-items: center; gap: 10px; background: #2c2c22; border: 1px solid #af8b4c; border-radius: 8px; padding: 8px 12px; }
 #main-actions { display: flex; gap: 10px; }
-#action-bar button, #setup-bar button {
+#action-bar button {
   background: #303750; color: inherit; border: none; border-radius: 6px;
   padding: 8px 14px; cursor: pointer; font-size: 0.9rem;
 }
-#action-bar button:hover, #setup-bar button:hover { background: #404970; }
+#action-bar button:hover { background: #404970; }
 #confirm-use { background: #af8b4c; color: #14161c; font-weight: 600; }
 #confirm-cancel { background: #262b38; }
 
@@ -194,3 +211,46 @@ h2 { font-size: 0.95rem; margin: 0 0 6px; color: #aab0c0; }
   #enemy-zone { grid-column: 2; grid-row: 1; }
   #center-zone { grid-column: 1 / -1; grid-row: 2; }
 }
+
+/* Shared header link back to the hub — the battle screen and every
+   placeholder page carry this, so the hub is always one click away. */
+.site-header { padding: 10px 16px; }
+.site-home-link, #battle-home-link {
+  color: #e8e8ec; text-decoration: none; font-weight: 600; font-size: 1rem;
+}
+.site-home-link:hover, #battle-home-link:hover { color: #af8b4c; }
+
+/* Home hub: the persistent navigation surface outside of battle —
+   real player identity, then one tile per entry point. Start Battle is
+   the only tile that leads somewhere built; it gets the same gold
+   accent used for primary actions elsewhere (confirm-use). */
+#home-screen { max-width: 900px; margin: 0 auto; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 20px; }
+#home-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+#home-header h1 { font-size: 1.4rem; }
+#home-player { display: flex; gap: 10px; color: #aab0c0; font-size: 0.9rem; }
+#home-player-level { font-variant-numeric: tabular-nums; }
+
+#home-nav { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.home-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: #1a1d26; border: 1px solid #303750; border-radius: 10px;
+  padding: 24px 12px; color: inherit; text-decoration: none;
+  font-size: 0.95rem; font-family: inherit; cursor: pointer;
+}
+.home-tile:hover { border-color: #5a6a9c; }
+.home-tile-icon { font-size: 1.6rem; }
+.home-tile-primary { background: #af8b4c; color: #14161c; border-color: #af8b4c; font-weight: 600; }
+.home-tile-primary:hover { background: #c19d5c; border-color: #c19d5c; }
+.home-tile-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Placeholder pages for sub-systems not built yet — one shared shell,
+   no decoration beyond what's needed to say "not here yet" and point
+   back to the hub. */
+.placeholder-page {
+  max-width: 640px; margin: 60px auto; padding: 0 16px;
+  text-align: center; display: flex; flex-direction: column;
+  align-items: center; gap: 12px;
+}
+.placeholder-page h1 { font-size: 1.3rem; margin: 0; }
+.placeholder-back { color: #9ecbff; text-decoration: none; font-size: 0.9rem; }
+.placeholder-back:hover { text-decoration: underline; }

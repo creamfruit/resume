@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runeted</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main id="home-screen">
+    <header id="home-header">
+      <h1>Runeted</h1>
+      <div id="home-player">
+        <span id="home-player-name">—</span>
+        <span id="home-player-level">Lv —</span>
+      </div>
+    </header>
+
+    <nav id="home-nav" aria-label="Main navigation">
+      <button id="nav-battle" type="button" class="home-tile home-tile-primary">
+        <span class="home-tile-icon">⚔</span>
+        <span class="home-tile-label">Start Battle</span>
+      </button>
+      <a class="home-tile" href="/skills">
+        <span class="home-tile-icon">✴</span>
+        <span class="home-tile-label">Skills</span>
+      </a>
+      <a class="home-tile" href="/runes">
+        <span class="home-tile-icon">◈</span>
+        <span class="home-tile-label">Runes</span>
+      </a>
+      <a class="home-tile" href="/equipment">
+        <span class="home-tile-icon">🛡</span>
+        <span class="home-tile-label">Equipment</span>
+      </a>
+      <a class="home-tile" href="/inventory">
+        <span class="home-tile-icon">🎒</span>
+        <span class="home-tile-label">Inventory</span>
+      </a>
+      <a class="home-tile" href="/market">
+        <span class="home-tile-icon">⚖</span>
+        <span class="home-tile-label">Market</span>
+      </a>
+      <a class="home-tile" href="/exchange">
+        <span class="home-tile-icon">💱</span>
+        <span class="home-tile-label">Currency Exchange</span>
+      </a>
+    </nav>
+  </main>
+  <script src="/static/home.js"></script>
+</body>
+</html>

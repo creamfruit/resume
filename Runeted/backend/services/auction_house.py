@@ -3,6 +3,7 @@ from typing import List
 
 from models.auction import AuctionListing
 from models.player import Player
+from services.currency import BASE_CURRENCY, CURRENCIES, add_currency, currency_balance, is_currency, spend_currency
 from services.stash import can_list_on_market
 from utils.validators import validate_item_object
 
@@ -48,6 +49,11 @@ def _market_power(item: object) -> int:
 
 
 def _grant_listing(player: Player, listing: AuctionListing):
+    if str(listing.kind or "item") == "currency":
+        cid = str(listing.currency_id or "")
+        amount = max(0, int(listing.amount or 0))
+        add_currency(player, cid, amount)
+        return {"kind": "currency", "currency_id": cid, "amount": amount}
     if str(listing.kind or "item") == "rune":
         rune = dict(listing.rune or {})
         if rune:
@@ -74,6 +80,9 @@ def _record_sale(listing: AuctionListing, method: str, paid: int = 0, offered_po
     label = ""
     if str(listing.kind or "item") == "rune":
         label = str((listing.rune or {}).get("name", "") or "Rune")
+    elif str(listing.kind or "item") == "currency":
+        meta = CURRENCIES.get(str(listing.currency_id or ""), {})
+        label = str(meta.get("name", "") or listing.currency_id or "Currency")
     else:
         label = str(getattr(listing.item, "name", "") or "Item")
     AUCTION_HISTORY.append({
@@ -82,6 +91,8 @@ def _record_sale(listing: AuctionListing, method: str, paid: int = 0, offered_po
         "buyer": str(buyer or ""),
         "kind": str(listing.kind or "item"),
         "name": label,
+        "currency_id": str(listing.currency_id or ""),
+        "amount": int(listing.amount or 0),
         "method": str(method or "gold"),
         "price": int(listing.price or 0),
         "paid": int(paid or 0),
@@ -170,6 +181,31 @@ def list_rune(player: Player, rune_id: str, price: int, allow_item_offers: bool 
     )
     AUCTIONS.append(listing)
     return listing.model_dump()
+
+def list_currency(player: Player, currency_id: str, amount: int, price: int, seller: str = "player"):
+    cid = str(currency_id or "").strip()
+    if not is_currency(cid):
+        return {"error": "Unknown currency"}
+    if cid == BASE_CURRENCY:
+        return {"error": "Gold is the trade medium and cannot be listed"}
+
+    amount = _to_int(amount, 0)
+    if amount <= 0:
+        return {"error": "Amount must be positive"}
+    if currency_balance(player, cid) < amount:
+        return {"error": "Not enough currency", "required": amount, "current": currency_balance(player, cid)}
+
+    price = _normalize_price(price)
+    spend_currency(player, cid, amount)
+    listing = AuctionListing.create_currency(
+        currency_id=cid,
+        amount=amount,
+        price=price,
+        seller=str(seller or "player"),
+    )
+    AUCTIONS.append(listing)
+    return listing.model_dump()
+
 
 def get_auctions(seller: str | None = None):
     seller_id = str(seller or "").strip().lower()

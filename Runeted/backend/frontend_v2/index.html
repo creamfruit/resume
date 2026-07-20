@@ -9,22 +9,7 @@
 <body>
   <main id="battle-screen">
     <header id="battle-header">
-      <h1>Runeted</h1>
-      <!-- Testing controls only; not final UI. -->
-      <div id="setup-bar">
-        <label>You: Lv <input id="setup-player-level" type="number" min="1" max="30" value="1"></label>
-        <label>Enemy: Lv <input id="setup-enemy-level" type="number" min="1" max="30" value="1"></label>
-        <label>Type
-          <select id="setup-archetype">
-            <option value="brute">Brute</option>
-            <option value="caster">Caster</option>
-            <option value="skirmisher">Skirmisher</option>
-            <option value="tank">Tank</option>
-            <option value="summoner">Summoner</option>
-          </select>
-        </label>
-        <button id="new-battle" type="button">New battle</button>
-      </div>
+      <a id="battle-home-link" class="site-home-link" href="/">🏠 Runeted</a>
       <div id="outcome-banner" class="hidden"></div>
       <div id="notice" class="hidden"></div>
     </header>
@@ -56,8 +41,8 @@
             <button id="confirm-cancel" type="button">Cancel — back to battle menu</button>
           </div>
           <div id="main-actions">
-            <button id="hold-button" type="button">Hold (no skill)</button>
-            <button id="auto-toggle" type="button">Auto-battle: off</button>
+            <button id="hold-button" type="button"><span id="hold-icon" class="action-icon">⏭</span><span id="hold-label">Pass (no skill)</span></button>
+            <button id="auto-toggle" type="button"><span id="auto-icon" class="action-icon">🔄</span><span id="auto-label">Auto-battle: off</span></button>
           </div>
         </section>
 
@@ -82,6 +67,10 @@
           <div class="telegraph-title">Telegraphed move</div>
           <div id="telegraph-name">—</div>
           <div id="telegraph-desc" class="muted"></div>
+        </div>
+        <div id="rune-panel">
+          <div id="rune-panel-title" class="rune-panel-title">Equipped runes</div>
+          <ul id="rune-row"></ul>
         </div>
       </aside>
     </div>

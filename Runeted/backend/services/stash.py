@@ -51,25 +51,5 @@ def can_list_on_market(item: Item | dict) -> bool:
 
 
 def reroll_item_affix(player: Player, stash_index: int, affix_index: int = -1) -> dict:
-    if stash_index < 0 or stash_index >= len(player.stash):
-        return {"ok": False, "error": "Invalid stash index"}
-
-    item = player.stash[stash_index]
-    afford = int(player.resources.get("crafted_supplies", 0) or 0)
-    if afford < 1:
-        return {"ok": False, "error": "Need at least 1 crafted_supplies to reroll an affix"}
-
-    player.resources["crafted_supplies"] = afford - 1
-    passives = list(getattr(item, "passives", []) or [])
-    if affix_index >= 0 and affix_index < len(passives):
-        passives[affix_index] = passives[affix_index]
-    else:
-        passives = list(passives)
-    if isinstance(item, Item):
-        item.passives = passives
-    return {
-        "ok": True,
-        "affix_rerolled": True,
-        "crafted_supplies": int(player.resources.get("crafted_supplies", 0) or 0),
-        "item": getattr(item, "name", "Unknown"),
-    }
+    from services.currency import reroll_item_affix as _reroll
+    return _reroll(player, stash_index, affix_index=affix_index)
