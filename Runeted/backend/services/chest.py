@@ -109,7 +109,7 @@ def _roll_content_kind() -> str:
     return random.choices(kinds, weights=weights, k=1)[0]
 
 
-def _roll_currency_reward(rarity: str) -> tuple[str, int]:
+def roll_currency_reward(rarity: str) -> tuple[str, int]:
     kinds = [c for c, _ in CHEST_CURRENCY_POOL]
     weights = [w for _, w in CHEST_CURRENCY_POOL]
     currency_id = random.choices(kinds, weights=weights, k=1)[0]
@@ -153,7 +153,7 @@ def open_chest(player: Player, chest_rarity: str, risk: int = 0, luck_bonus: flo
         player.rune_items.append(rune)
         result["rune"] = {"id": rune["id"], "name": rune["name"], "rarity": rune["rarity"]}
     else:  # currency
-        currency_id, amount = _roll_currency_reward(content_rarity)
+        currency_id, amount = roll_currency_reward(content_rarity)
         add_currency(player, currency_id, amount)
         result["currency"] = {"currency_id": currency_id, "amount": amount}
 
@@ -179,8 +179,29 @@ def award_battle_chest(player: Player, enemy: Enemy, risk: int = 0, room_type: s
 
     if random.random() < currency_chance:
         rarity = roll_chest_tier(enemy, luck_bonus=luck)
-        currency_id, amount = _roll_currency_reward(rarity)
+        currency_id, amount = roll_currency_reward(rarity)
         add_currency(player, currency_id, amount)
         result["currency"] = {"currency_id": currency_id, "amount": amount}
 
     return result
+
+
+def roll_guaranteed_reward(enemy: Enemy, luck_bonus: float = 0.0) -> dict[str, Any]:
+    """A push-your-luck win's reward (core/gauntlet.py): unlike
+    `award_battle_chest` above -- which independently rolls whether a
+    chest/currency appears *at all*, for the legacy per-victory hook --
+    a push-your-luck win always yields both. The escalating difficulty
+    of staying in the run is the risk; a guaranteed, growing reward is
+    the pull to keep going, which only works if "guaranteed" is real.
+
+    Both draws reuse the exact tables every other chest in the game
+    uses (`roll_chest_tier`, itself `_enemy_risk_score`-biased, and the
+    shared currency pool) -- nothing here is a second reward curve. The
+    escalation itself lives entirely in the *enemy*: core/gauntlet.py
+    generates progressively tougher encounters as the streak grows, and
+    a tougher enemy's higher risk score is what pushes both rolls
+    upward. This function has no streak parameter of its own.
+    """
+    chest_rarity = roll_chest_tier(enemy, luck_bonus=luck_bonus)
+    currency_id, amount = roll_currency_reward(chest_rarity)
+    return {"chest_rarity": chest_rarity, "currency_id": currency_id, "currency_amount": amount}

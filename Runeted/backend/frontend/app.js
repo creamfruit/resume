@@ -4784,6 +4784,47 @@ async function renderPrayerTab() {
   });
 }
 
+// Quick chest-unboxing flourish: one card per rune just pulled from a
+// chest, popping in with a short stagger so opening several at once
+// (the "Open 10" button) still finishes fast. Rare-and-above results
+// get a bigger, brighter "celebratory" pop instead of the plain one so
+// a good pull actually reads as a good pull.
+const CHEST_REVEAL_CELEBRATORY_RARITIES = new Set(["rare", "epic", "legendary", "mythic", "supreme", "relic"]);
+const CHEST_REVEAL_STAGGER_MS = 70;
+const CHEST_REVEAL_POP_MS = 480;
+
+function showChestRevealAnimation(runes) {
+  const items = Array.isArray(runes) ? runes : [];
+  if (!items.length) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "chest-reveal-overlay";
+  const grid = document.createElement("div");
+  grid.className = "chest-reveal-grid";
+  overlay.appendChild(grid);
+
+  items.forEach((rune, i) => {
+    const rarity = String(rune?.rarity || "common").toLowerCase();
+    const celebratory = CHEST_REVEAL_CELEBRATORY_RARITIES.has(rarity);
+    const card = document.createElement("div");
+    card.className = `chest-reveal-card ${rarity}${celebratory ? " celebratory" : ""}`;
+    card.style.animationDelay = `${i * CHEST_REVEAL_STAGGER_MS}ms`;
+    const rarityLabel = document.createElement("div");
+    rarityLabel.className = "chest-reveal-rarity";
+    rarityLabel.textContent = rarity;
+    const nameLabel = document.createElement("div");
+    nameLabel.className = "chest-reveal-name";
+    nameLabel.textContent = rune?.name || "Rune";
+    card.append(rarityLabel, nameLabel);
+    grid.appendChild(card);
+  });
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", () => overlay.remove());
+  const totalDuration = CHEST_REVEAL_POP_MS + items.length * CHEST_REVEAL_STAGGER_MS;
+  setTimeout(() => overlay.remove(), totalDuration);
+}
+
 async function renderRunesTab() {
   const state = await api('/runes/state');
   if (state?.error) {
@@ -4953,9 +4994,13 @@ async function renderRunesTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ count }),
       });
-      if (res?.error) setDebug(`Runes: ${res.error}`);
-      else if (Number(res?.relic_found || 0) > 0) setDebug(`Opened ${count} chest(s), found ${res.relic_found} rune relic(s).`);
-      else setDebug(`Opened ${count} chest(s).`);
+      if (res?.error) {
+        setDebug(`Runes: ${res.error}`);
+      } else {
+        showChestRevealAnimation(res?.runes);
+        if (Number(res?.relic_found || 0) > 0) setDebug(`Opened ${count} chest(s), found ${res.relic_found} rune relic(s).`);
+        else setDebug(`Opened ${count} chest(s).`);
+      }
       await renderRunesTab();
       await refreshStats();
       if (!res?.error) await syncProgressSave("runes saved");

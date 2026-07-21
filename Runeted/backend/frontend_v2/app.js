@@ -18,6 +18,8 @@ const $ = (id) => document.getElementById(id);
 let state = null;
 let selectedSkill = null;
 let renderedRounds = 0;
+let autoTimer = null;
+const AUTO_ROUND_DELAY_MS = 650;
 
 // Placeholder glyphs for server icon ids; swap for real art later.
 const SKILL_ICONS = {
@@ -63,6 +65,9 @@ const apiAuto = (enabled) =>
     body: JSON.stringify({ enabled }),
   });
 
+const apiBank = () => api("/api/battle/bank", { method: "POST" });
+const apiContinueGauntlet = () => api("/api/battle/continue", { method: "POST" });
+
 // ---------- Rendering ----------
 
 function setBar(fillId, textId, value, max) {
@@ -88,6 +93,7 @@ function render() {
     $("telegraph-name").textContent = "—";
     $("telegraph-desc").textContent = "";
   }
+  renderEnemyMoves();
 
   const banner = $("outcome-banner");
   if (state.finished) {
@@ -101,12 +107,67 @@ function render() {
   // The toggle's icon spins while auto-battle is on so the mode is
   // obvious at a glance.
   $("auto-icon").classList.toggle("spinning", state.auto);
-  $("hold-icon").textContent = state.auto ? "▶" : "⏭";
-  $("hold-label").textContent = state.auto ? "Play next round" : "Pass (no skill)";
+  // Auto-battle drives its own rounds (see maybeScheduleAutoRound below);
+  // the manual pass button only makes sense when the player is in
+  // control, so it disappears entirely while auto is on and reappears
+  // the moment auto is turned back off.
+  $("hold-button").className = state.auto ? "hidden" : "";
   $("hold-button").disabled = state.finished;
   renderSkills();
   renderRunes();
   renderConfirmBar();
+  renderPushLuck();
+  maybeScheduleAutoRound();
+}
+
+// ---------- Push your luck ----------
+//
+// After a victory the pending pool (this run's unbanked rewards) can
+// either be banked for good, or put at risk on one more, harder fight.
+// Both actions are only offered while state.push_luck says a decision
+// is actually pending -- never as a standing option.
+
+function renderPushLuck() {
+  const panel = $("push-luck-panel");
+  const info = state.push_luck;
+  if (!info || !info.can_bank) {
+    panel.className = "hidden";
+    return;
+  }
+  const p = info.pending;
+  const parts = [];
+  for (const [tier, count] of Object.entries(p.chests)) parts.push(`${count}× ${tier} chest`);
+  if (p.gold > 0) parts.push(`${p.gold} gold`);
+  for (const [id, amount] of Object.entries(p.resources)) parts.push(`${amount} ${id}`);
+  const pendingText = parts.length ? parts.join(", ") : "nothing yet";
+
+  $("push-luck-summary").textContent =
+    `Win streak ${p.streak}. Pending (unbanked): ${pendingText}. ` +
+    `Banking keeps it for good — continuing risks losing all of it on a tougher fight for a bigger reward.`;
+  panel.className = "";
+}
+
+async function bankPending() {
+  try {
+    await apiBank();
+    window.location.href = "/";
+  } catch (err) {
+    notify(err.message);
+  }
+}
+
+async function continuePushingLuck() {
+  try {
+    state = await apiContinueGauntlet();
+    selectedSkill = null;
+    closeSkillModal();
+    renderedRounds = 0;
+    $("log-list").textContent = "";
+    appendSystemLog(`Pushing your luck: a ${state.enemy.name} appears, tougher than before.`);
+    render();
+  } catch (err) {
+    notify(err.message);
+  }
 }
 
 function renderSkills() {
@@ -203,6 +264,26 @@ function renderRunes() {
   }
 }
 
+function renderEnemyMoves() {
+  // The enemy's full move pool, for reference — additive alongside the
+  // telegraph card above, which only ever shows the one specific move
+  // coming up next round.
+  const list = $("enemy-movelist");
+  list.textContent = "";
+  for (const move of state.enemy.moves || []) {
+    const li = document.createElement("li");
+    li.className = "enemy-move-row";
+    const name = document.createElement("span");
+    name.className = "enemy-move-name";
+    name.textContent = move.name;
+    const desc = document.createElement("span");
+    desc.className = "enemy-move-desc muted";
+    desc.textContent = move.description;
+    li.append(name, desc);
+    list.append(li);
+  }
+}
+
 function renderConfirmBar() {
   const bar = $("confirm-bar");
   if (!selectedSkill) {
@@ -276,14 +357,25 @@ function notify(message) {
 
 async function playRound(response) {
   try {
-    const { event, state: newState } = await apiRound(response);
-    state = newState;
+    const body = await apiRound(response);
+    state = body.state;
     selectedSkill = null;
-    appendLogEntry(event);
-    spawnFloaters(event);
+    appendLogEntry(body.event);
+    spawnFloaters(body.event);
     render();
+    describePushLuckResult(body.push_luck_result);
   } catch (err) {
     notify(err.message);
+  }
+}
+
+function describePushLuckResult(result) {
+  if (!result) return;
+  if (result.result === "win") {
+    const r = result.reward;
+    notify(`Win banked to pending: +1 ${r.chest_rarity} chest, +${r.currency_amount} ${r.currency_id} (streak ${result.pending.streak}).`);
+  } else if (result.result === "forfeit") {
+    notify(`Defeated — the pending pool from this run (streak ${result.lost.streak}) was forfeited.`);
   }
 }
 
@@ -295,6 +387,34 @@ async function toggleAuto() {
   } catch (err) {
     notify(err.message);
   }
+}
+
+// ---------- Auto-battle round loop ----------
+//
+// While auto-battle is on, rounds advance by themselves — there is no
+// manual "play next round" step. render() calls this after every state
+// update; it arms at most one pending round at a time, so it can never
+// fire a round while the previous one is still in flight, and it stops
+// itself the instant auto turns off or the battle finishes (a defeat,
+// or a victory that needs the push-your-luck decision).
+
+function stopAutoLoop() {
+  if (autoTimer !== null) {
+    clearTimeout(autoTimer);
+    autoTimer = null;
+  }
+}
+
+function maybeScheduleAutoRound() {
+  if (!state || !state.auto || state.finished) {
+    stopAutoLoop();
+    return;
+  }
+  if (autoTimer !== null) return; // a round is already queued
+  autoTimer = setTimeout(() => {
+    autoTimer = null;
+    playRound(null);
+  }, AUTO_ROUND_DELAY_MS);
 }
 
 async function newBattle() {
@@ -411,6 +531,8 @@ $("confirm-use").addEventListener("click", () => selectedSkill && playRound(sele
 $("confirm-cancel").addEventListener("click", cancelSelection);
 $("hold-button").addEventListener("click", () => playRound(null));
 $("auto-toggle").addEventListener("click", toggleAuto);
+$("push-luck-bank").addEventListener("click", bankPending);
+$("push-luck-continue").addEventListener("click", continuePushingLuck);
 
 (async function boot() {
   try {

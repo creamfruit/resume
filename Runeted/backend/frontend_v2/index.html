@@ -14,6 +14,14 @@
       <div id="notice" class="hidden"></div>
     </header>
 
+    <div id="push-luck-panel" class="hidden" aria-label="Push your luck">
+      <p id="push-luck-summary"></p>
+      <div id="push-luck-actions">
+        <button id="push-luck-bank" type="button">Bank &amp; return to hub</button>
+        <button id="push-luck-continue" type="button">Push your luck — continue</button>
+      </div>
+    </div>
+
     <div id="arena" aria-label="Battle arena">
       <aside class="combatant" id="player-zone">
         <div class="zone-label">You</div>
@@ -67,6 +75,10 @@
           <div class="telegraph-title">Telegraphed move</div>
           <div id="telegraph-name">—</div>
           <div id="telegraph-desc" class="muted"></div>
+        </div>
+        <div id="enemy-movelist-panel">
+          <div class="enemy-movelist-title">Known moves</div>
+          <ul id="enemy-movelist"></ul>
         </div>
         <div id="rune-panel">
           <div id="rune-panel-title" class="rune-panel-title">Equipped runes</div>

@@ -27,11 +27,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from core.battle import Battle
-from core.intent import ARCHETYPE_DECKS
+from core.gauntlet import PendingPool, bank, forfeit, next_encounter_enemy
+from core.intent import ARCHETYPE_DECKS, known_moves
 from core.player_state import PlayerState
 from core.runes import default_equipment, describe_rune
 from core.skills import cooldown_of, default_loadout, describe_skill, stamina_cost_of
 from core.stats import baseline_enemy
+from core.wallet import Wallet, wallet_payload
+from services.chest import roll_guaranteed_reward
 
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend_v2")
 
@@ -41,11 +44,27 @@ app = FastAPI(title="Runeted")
 # later phase. The player is one persistent object for the process
 # lifetime — battles read and write it directly, so level/HP/stamina
 # carry over between fights and are never a client-supplied value.
-CURRENT: dict[str, Any] = {"battle": None, "player": PlayerState()}
+# `wallet` is the persistent, banked economy; `pending` is the current
+# push-your-luck run's unbanked pool (core/gauntlet.py) — reset to
+# empty by every bank or forfeit, never by anything else.
+CURRENT: dict[str, Any] = {
+    "battle": None,
+    "player": PlayerState(),
+    "wallet": Wallet(),
+    "pending": PendingPool(),
+}
 
 
 def _player() -> PlayerState:
     return CURRENT["player"]
+
+
+def _wallet() -> Wallet:
+    return CURRENT["wallet"]
+
+
+def _pending() -> PendingPool:
+    return CURRENT["pending"]
 
 
 class StartRequest(BaseModel):
@@ -135,6 +154,16 @@ def _runes_payload(battle: Battle) -> dict[str, Any]:
     }
 
 
+def _push_luck_payload(battle: Battle) -> dict[str, Any]:
+    pending = _pending()
+    at_decision = battle.finished and battle.outcome.value == "victory" and not pending.is_empty()
+    return {
+        "pending": pending.summary(),
+        "can_bank": at_decision,
+        "can_continue": at_decision,
+    }
+
+
 def _state_payload(battle: Battle) -> dict[str, Any]:
     return {
         "outcome": battle.outcome.value,
@@ -158,7 +187,12 @@ def _state_payload(battle: Battle) -> dict[str, Any]:
             "max_hp": battle.enemy_stats.max_hp,
             "stamina": battle.enemy_stamina,
             "max_stamina": battle.enemy_stats.max_stamina,
+            # The enemy's full move pool, for reference — separate from
+            # "telegraph" above, which is only the specific move coming
+            # up next round.
+            "moves": known_moves(getattr(battle.enemy, "archetype", "brute")),
         },
+        "push_luck": _push_luck_payload(battle),
         "skills": _skills_payload(battle),
         "runes": _runes_payload(battle),
         "budget": {
@@ -176,6 +210,11 @@ def start_battle(req: StartRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=f"Unknown archetype '{req.archetype}'")
     player = _player()
     player.heal_full()  # every fresh engagement starts fully rested
+    # Starting a brand new encounter from the hub abandons any unresolved
+    # push-your-luck decision the same way walking away without banking
+    # would — the pool is forfeited, never silently carried into an
+    # unrelated fresh run.
+    forfeit(_pending())
     enemy_level = req.enemy_level if req.enemy_level is not None else player.level
     enemy = baseline_enemy(enemy_level, archetype=archetype)
     battle = Battle(
@@ -203,7 +242,66 @@ def play_round(req: RoundRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc))
     except RuntimeError as exc:  # battle already resolved
         raise HTTPException(status_code=409, detail=str(exc))
-    return {"event": event, "state": _state_payload(battle)}
+
+    pending = _pending()
+    push_luck_result: dict[str, Any] | None = None
+    if event["outcome"] == "victory":
+        # A win is always worth something -- the pending pool only ever
+        # grows on a win, and the choice next (bank vs. push on) is only
+        # meaningful if there's something real riding on it.
+        reward = roll_guaranteed_reward(battle.enemy)
+        pending.add_win(reward)
+        push_luck_result = {"result": "win", "reward": reward, "pending": pending.summary()}
+    elif event["outcome"] == "defeat" and not pending.is_empty():
+        lost = forfeit(pending)
+        push_luck_result = {"result": "forfeit", "lost": lost}
+
+    response: dict[str, Any] = {"event": event, "state": _state_payload(battle)}
+    if push_luck_result is not None:
+        response["push_luck_result"] = push_luck_result
+    return response
+
+
+def _require_victory_decision() -> Battle:
+    battle = _battle()
+    if not battle.finished or battle.outcome.value != "victory" or _pending().is_empty():
+        raise HTTPException(status_code=409, detail="No push-your-luck decision pending.")
+    return battle
+
+
+@app.post("/api/battle/bank")
+def bank_pending() -> dict[str, Any]:
+    """Exit the run: commit the entire pending pool into the wallet and
+    close out the battle. Whatever was banked here stays banked even if
+    a later run is lost outright."""
+    _require_victory_decision()
+    banked = bank(_pending(), _wallet())
+    CURRENT["battle"] = None
+    return {"banked": banked, "wallet": wallet_payload(_wallet())}
+
+
+@app.post("/api/battle/continue")
+def continue_gauntlet() -> dict[str, Any]:
+    """Push on: the pending pool stays at risk, and the next encounter
+    is generated harder (core/gauntlet.py's escalation curve over the
+    enemy-variety/modifier system) than a fresh hub-started fight.
+
+    Deliberately does NOT heal the player. `Battle` picks up whatever HP
+    and stamina the just-finished battle wrote back to `player` — this
+    is what makes "continue" a real risk instead of a free reroll of a
+    harder fight at full health. Only ending the run (a bank, or a
+    defeat) and starting a fresh battle from the hub heals to full."""
+    _require_victory_decision()
+    player = _player()
+    enemy = next_encounter_enemy(_pending().streak)
+    battle = Battle(player, enemy, loadout=default_loadout(), runes=default_equipment())
+    CURRENT["battle"] = battle
+    return _state_payload(battle)
+
+
+@app.get("/api/player/wallet")
+def get_wallet() -> dict[str, Any]:
+    return wallet_payload(_wallet())
 
 
 @app.post("/api/battle/auto")

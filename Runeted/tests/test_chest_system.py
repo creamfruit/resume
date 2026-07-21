@@ -196,7 +196,7 @@ class AwardBattleChestTests(unittest.TestCase):
     def test_chest_and_currency_can_both_drop(self):
         with patch("services.chest.random.random", side_effect=[0.0, 0.0]), \
              patch("services.chest.roll_chest_tier", return_value="rare"), \
-             patch("services.chest._roll_currency_reward", return_value=("gold", 42)):
+             patch("services.chest.roll_currency_reward", return_value=("gold", 42)):
             player = Player()
             out = award_battle_chest(player, self._enemy(), risk=0, room_type="combat")
         self.assertEqual(out["chest"], "rare")
@@ -214,7 +214,7 @@ class AwardBattleChestTests(unittest.TestCase):
     def test_currency_only_when_the_chest_roll_misses(self):
         with patch("services.chest.random.random", side_effect=[0.99, 0.0]), \
              patch("services.chest.roll_chest_tier", return_value="epic"), \
-             patch("services.chest._roll_currency_reward", return_value=("crafted_supplies", 3)):
+             patch("services.chest.roll_currency_reward", return_value=("crafted_supplies", 3)):
             out = award_battle_chest(Player(), self._enemy(), risk=0, room_type="combat")
         self.assertIsNone(out["chest"])
         self.assertEqual(out["currency"], {"currency_id": "crafted_supplies", "amount": 3})

@@ -140,3 +140,23 @@ class IntentTracker:
 
 def is_counter(counter_tags: list[str] | tuple[str, ...] | frozenset[str], intent: Intent) -> bool:
     return bool(frozenset(str(t).lower() for t in counter_tags) & intent.countered_by)
+
+
+def known_moves(archetype: str) -> list[dict[str, str]]:
+    """The distinct moves in this archetype's deck: a reference list of
+    everything the enemy can do, for display alongside (not instead of)
+    the single next-round telegraph from `IntentTracker.telegraph()`."""
+    archetype = str(archetype or DEFAULT_ARCHETYPE).lower()
+    deck = ARCHETYPE_DECKS.get(archetype, ARCHETYPE_DECKS[DEFAULT_ARCHETYPE])
+    seen: list[str] = []
+    for kind in deck:
+        if kind not in seen:
+            seen.append(kind)
+    return [
+        {
+            "kind": kind,
+            "name": str(INTENT_LIBRARY[kind]["name"]),
+            "description": str(INTENT_LIBRARY[kind]["description"]),
+        }
+        for kind in seen
+    ]

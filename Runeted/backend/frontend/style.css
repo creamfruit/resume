@@ -3284,6 +3284,71 @@ body {
 .rune-card.supreme { border-color: #b45575; }
 .rune-card.relic { border-color: #c79d4a; }
 
+/* Chest-unboxing flourish: a quick pop per rune pulled from a chest,
+   staggered so opening several at once (Open 10) still finishes fast.
+   Click anywhere, or wait, to dismiss. */
+.chest-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(6, 8, 12, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  cursor: pointer;
+}
+.chest-reveal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  max-width: 720px;
+}
+.chest-reveal-card {
+  min-width: 100px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #1a1d26;
+  border: 1px solid #5f6e83;
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.6);
+  animation: chestRevealPop 0.32s ease-out forwards;
+  cursor: default;
+}
+.chest-reveal-rarity {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #99aec7;
+}
+.chest-reveal-name {
+  font-weight: 600;
+  margin-top: 2px;
+  font-size: 14px;
+}
+.chest-reveal-card.rare { border-color: #4f8ac0; box-shadow: 0 0 10px rgba(79, 138, 192, 0.4); }
+.chest-reveal-card.epic { border-color: #8f69c8; box-shadow: 0 0 10px rgba(143, 105, 200, 0.4); }
+.chest-reveal-card.legendary { border-color: #ab8a47; box-shadow: 0 0 12px rgba(171, 138, 71, 0.45); }
+.chest-reveal-card.mythic { border-color: #b06d54; box-shadow: 0 0 12px rgba(176, 109, 84, 0.45); }
+.chest-reveal-card.supreme { border-color: #b45575; box-shadow: 0 0 12px rgba(180, 85, 117, 0.45); }
+.chest-reveal-card.relic { border-color: #c79d4a; box-shadow: 0 0 14px rgba(199, 157, 74, 0.55); }
+/* Rare-and-above: a bigger, brighter pop than the plain common reveal. */
+.chest-reveal-card.celebratory { animation: chestRevealBurst 0.5s ease-out forwards; }
+
+@keyframes chestRevealPop {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes chestRevealBurst {
+  0% { opacity: 0; transform: scale(0.4) rotate(-4deg); }
+  55% { opacity: 1; transform: scale(1.2) rotate(2deg); }
+  80% { transform: scale(0.95) rotate(0deg); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 .rune-card-sub {
   font-size: 12px;
   color: #99aec7;

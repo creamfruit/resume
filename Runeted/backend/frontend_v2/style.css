@@ -42,6 +42,23 @@ h2 { font-size: 0.95rem; margin: 0 0 6px; color: #aab0c0; }
 #outcome-banner.defeat { background: #4a1f24; color: #f0b8bc; }
 #notice { width: 100%; padding: 6px 12px; border-radius: 6px; background: #4a3a1f; color: #f0dcb8; font-size: 0.85rem; }
 
+/* Push-your-luck decision: shown after a victory, before the player
+   returns to the hub. Banking commits the pending pool for good;
+   continuing risks all of it on a harder encounter. */
+#push-luck-panel {
+  background: #2c2c22; border: 1px solid #af8b4c; border-radius: 8px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;
+}
+#push-luck-summary { margin: 0; font-size: 0.88rem; color: #e8ddc0; }
+#push-luck-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+#push-luck-actions button {
+  border: none; border-radius: 6px; padding: 9px 16px; cursor: pointer; font-size: 0.9rem;
+}
+#push-luck-bank { background: #af8b4c; color: #14161c; font-weight: 600; }
+#push-luck-bank:hover { background: #c19d5c; }
+#push-luck-continue { background: #4a1f24; color: #f0b8bc; font-weight: 600; }
+#push-luck-continue:hover { background: #5e2830; }
+
 /* Two combatant columns flanking the center panel. */
 #arena {
   display: grid;
@@ -95,6 +112,15 @@ h2 { font-size: 0.95rem; margin: 0 0 6px; color: #aab0c0; }
 
 .telegraph-card { background: #262b38; border-left: 3px solid #af8b4c; border-radius: 6px; padding: 8px 10px; }
 .telegraph-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #af8b4c; }
+
+/* Enemy's known moves: a reference list of its full move pool, shown
+   alongside the telegraph card above (not a replacement for it). */
+#enemy-movelist-panel { background: #262b38; border-left: 3px solid #5a6a9c; border-radius: 6px; padding: 8px 10px; }
+.enemy-movelist-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #9ab0e0; }
+#enemy-movelist { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.enemy-move-row { display: flex; flex-direction: column; font-size: 0.8rem; }
+.enemy-move-name { font-weight: 600; }
+.enemy-move-desc { font-size: 0.75rem; }
 
 /* Equipped passive runes: chip row below the enemy panel; chips open
    the shared skill/rune info modal. */
@@ -196,6 +222,10 @@ h2 { font-size: 0.95rem; margin: 0 0 6px; color: #aab0c0; }
   padding: 8px 14px; cursor: pointer; font-size: 0.9rem;
 }
 #action-bar button:hover { background: #404970; }
+/* Auto-battle toggle: no filled square behind the spinning icon — just
+   the icon and label sitting directly on the panel. */
+#auto-toggle { background: transparent; }
+#auto-toggle:hover { background: rgba(255, 255, 255, 0.06); }
 #confirm-use { background: #af8b4c; color: #14161c; font-weight: 600; }
 #confirm-cancel { background: #262b38; }
 

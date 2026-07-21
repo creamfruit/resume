@@ -226,50 +226,56 @@ class SkillLoadout:
 
 def describe_skill(skill: Skill) -> dict[str, str]:
     """Single source of the skill text the UI shows: `short` for compact
-    surfaces, `full` for the info modal (including what it counters)."""
-    cost = stamina_cost_of(skill)
-    cooldown = cooldown_of(skill)
-    tail = f"{cost} stamina · {cooldown}-round cooldown"
+    surfaces, `full` for the info modal.
+
+    Write both in plain language: say what actually happens in one or
+    two short sentences, using words a player already knows from
+    playing (attack, block, dodge, stamina) rather than restating game
+    jargon (telegraph, counter tags, effect_mult). A player should know
+    what pressing the button does from the description alone. The
+    modal already shows kind/cost/cooldown/counters as separate meta
+    text above `full`, so `full` shouldn't repeat those numbers — it
+    only needs to explain the effect. Any skill added later (the
+    skill-catalog phase) should read at this same level of plainness.
+    """
     counters = ", ".join(skill.counters) if skill.counters else "nothing"
 
     if skill.kind == "attack":
-        short = f"Counters {counters} · {tail}"
-        body = (
-            f"An attack: your strike lands, and if the enemy's telegraphed move is "
-            f"one it counters ({counters}), the move's effect is negated and the "
-            f"enemy is left exposed next round (your next strike deals bonus damage)."
+        short = f"Attack. Blocks {counters} moves for bonus damage next hit."
+        full = (
+            f"{skill.name}: a normal attack. If the enemy's incoming move is "
+            f"{counters}, you also cancel it completely and set up a bonus hit "
+            f"next round. If it isn't, you still deal damage, but the enemy's "
+            f"move still lands."
         )
     elif skill.kind == "defend":
-        short = f"Blocks any telegraphed effect · {tail}"
-        body = (
-            "A defend: you deal no damage this round, but the effect portion of the "
-            "enemy's telegraphed move is blocked no matter what it counters — only "
-            "the contact graze can land."
+        short = "Blocks the enemy's move. You deal no damage."
+        full = (
+            f"{skill.name}: you don't attack this round, but you block the "
+            f"dangerous part of whatever the enemy is about to do, no matter "
+            f"what it is. A small amount of damage can still slip through."
         )
     elif skill.kind == "dodge":
-        short = f"Evades the whole move · {tail}"
-        body = (
-            "A dodge: you deal no damage this round and evade the enemy's "
-            "telegraphed move entirely — contact and effect both miss."
+        short = "Dodges the enemy's move completely. You deal no damage."
+        full = (
+            f"{skill.name}: you don't attack this round, but you avoid the "
+            f"enemy's move entirely — no damage gets through at all."
         )
     elif skill.kind == "buff":
-        short = f"+{skill.buff_attack_mult:.0%} attack for {skill.buff_duration} rounds · {tail}"
-        body = (
-            f"A buff: you deal no damage this round, but your strikes deal "
-            f"+{skill.buff_attack_mult:.0%} damage for the next {skill.buff_duration} rounds."
+        short = f"Boosts your attack by {skill.buff_attack_mult:.0%} for {skill.buff_duration} rounds."
+        full = (
+            f"{skill.name}: you don't attack this round. Instead, your attacks "
+            f"hit {skill.buff_attack_mult:.0%} harder for the next "
+            f"{skill.buff_duration} rounds."
         )
     else:  # recovery
-        short = f"Restores {skill.stamina_restore:g} stamina · {tail}"
-        body = (
-            f"A recovery: costs nothing and restores {skill.stamina_restore:g} stamina, "
-            "so you always have a legal action even with an empty stamina bar. "
-            "You deal no damage this round."
+        short = f"Free. Restores {skill.stamina_restore:g} stamina."
+        full = (
+            f"{skill.name}: costs nothing and gives you back "
+            f"{skill.stamina_restore:g} stamina, so you're never stuck without "
+            f"a usable move. You deal no damage this round."
         )
 
-    full = (
-        f"{skill.name} ({skill.rarity} {skill.element} {skill.method} skill). {body} "
-        f"Costs {cost} stamina and cools down for {cooldown} round(s) whenever used."
-    )
     return {"short": short, "full": full}
 
 

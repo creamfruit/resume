@@ -63,6 +63,19 @@ class BattleApiSmokeTests(unittest.TestCase):
         c = client()
         self.assertEqual(c.get("/api/battle/state").status_code, 404)
 
+    def test_enemy_moves_lists_the_archetypes_full_pool_alongside_the_telegraph(self):
+        state = start(client(), archetype="brute")
+        # brute's deck is heavy/basic/heavy/multi -- the movelist is the
+        # deduplicated pool, not the raw cyclic deck order.
+        kinds = [m["kind"] for m in state["enemy"]["moves"]]
+        self.assertEqual(kinds, ["heavy", "basic", "multi"])
+        for move in state["enemy"]["moves"]:
+            self.assertIn("name", move)
+            self.assertIn("description", move)
+        # Additive: the specific next-round telegraph is still there too.
+        self.assertIn("name", state["telegraph"])
+        self.assertIn("description", state["telegraph"])
+
     def test_round_returns_structured_event_and_updated_state(self):
         c = client()
         start(c)
@@ -194,6 +207,25 @@ class BattleScreenMarkupTests(unittest.TestCase):
         self.assertIn('id="rune-row"', self.html)
         self.assertIn("openRuneModal", self.js)
 
+    def test_enemy_movelist_panel_ships_alongside_the_telegraph_card(self):
+        self.assertIn('id="telegraph"', self.html)  # the next-move telegraph stays
+        self.assertIn('id="enemy-movelist-panel"', self.html)
+        self.assertIn('id="enemy-movelist"', self.html)
+        self.assertIn("renderEnemyMoves", self.js)
+
+    def test_auto_battle_icon_has_no_background_shape(self):
+        self.assertIn("#auto-toggle { background: transparent; }", self.css)
+
+    def test_hold_button_disappears_entirely_while_auto_is_on(self):
+        # No more "play next round" relabeling -- the button is hidden
+        # outright, and only reappears once auto is switched off.
+        self.assertNotIn("Play next round", self.js)
+        self.assertIn('$("hold-button").className = state.auto ? "hidden" : ""', self.js)
+
+    def test_auto_battle_advances_rounds_without_a_manual_trigger(self):
+        for marker in ("maybeScheduleAutoRound", "stopAutoLoop", "autoTimer"):
+            self.assertIn(marker, self.js, marker)
+
 
 class HomeHubTests(unittest.TestCase):
     """The persistent navigation hub outside of battle: real player
@@ -264,14 +296,35 @@ class HomeHubTests(unittest.TestCase):
 
 
 class SkillDescriptionTests(unittest.TestCase):
+    """Descriptions are meant to be plain-language: a player should
+    understand what the button does from the text alone, without
+    needing to translate game jargon. The modal's meta line already
+    shows kind/cost/cooldown/counters as separate structured fields, so
+    `full` shouldn't repeat those as prose."""
+
     def test_descriptions_are_complete_for_every_default_skill(self):
         for skill in default_loadout().skills.values():
             text = describe_skill(skill)
-            self.assertIn("stamina", text["short"])
-            self.assertIn("cooldown", text["short"])
+            self.assertTrue(text["short"])
+            self.assertIn(skill.name, text["full"])
             for counter in skill.counters:
                 self.assertIn(counter, text["full"])
-            self.assertIn(skill.name, text["full"])
+
+    def test_full_text_does_not_repeat_the_meta_lines_cost_and_cooldown(self):
+        # Those numbers already appear in skill-modal-meta; repeating
+        # them as prose in the body is exactly the clutter being removed.
+        for skill in default_loadout().skills.values():
+            text = describe_skill(skill)
+            self.assertNotIn("cooldown", text["full"].lower())
+            self.assertNotIn("cools down", text["full"].lower())
+
+    def test_short_text_avoids_jargon_terms(self):
+        # "telegraph" and "effect_mult"-style wording are internal game
+        # vocabulary; a player reading the button tooltip shouldn't need
+        # to know them.
+        for skill in default_loadout().skills.values():
+            text = describe_skill(skill)
+            self.assertNotIn("telegraph", text["short"].lower())
 
 
 if __name__ == "__main__":
