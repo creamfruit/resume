@@ -28,8 +28,8 @@ from pydantic import BaseModel, Field
 
 from core.battle import Battle
 from core.gauntlet import PendingPool, bank, forfeit, next_encounter_enemy
-from core.intent import ARCHETYPE_DECKS, known_moves
-from core.player_state import PlayerState
+from core.intent import ARCHETYPE_DECKS
+from core.player_state import ATTRIBUTES, PlayerState, victory_exp
 from core.runes import default_equipment, describe_rune
 from core.skills import cooldown_of, default_loadout, describe_skill, stamina_cost_of
 from core.stats import baseline_enemy
@@ -170,7 +170,6 @@ def _state_payload(battle: Battle) -> dict[str, Any]:
         "finished": battle.finished,
         "round_no": battle.round_no,
         "auto": battle.auto,
-        "telegraph": None if battle.finished else battle.telegraph(),
         "player": {
             "name": battle.player.name,
             "level": battle.player.level,
@@ -187,10 +186,11 @@ def _state_payload(battle: Battle) -> dict[str, Any]:
             "max_hp": battle.enemy_stats.max_hp,
             "stamina": battle.enemy_stamina,
             "max_stamina": battle.enemy_stats.max_stamina,
-            # The enemy's full move pool, for reference — separate from
-            # "telegraph" above, which is only the specific move coming
-            # up next round.
-            "moves": known_moves(getattr(battle.enemy, "archetype", "brute")),
+            # The enemy's full move pool with live cooldown state — the
+            # only view the player gets into what it might do next, now
+            # that the specific upcoming move is never revealed ahead
+            # of time. A move with remaining_cooldown > 0 is unusable.
+            "moves": battle.movelist(),
         },
         "push_luck": _push_luck_payload(battle),
         "skills": _skills_payload(battle),
@@ -245,6 +245,7 @@ def play_round(req: RoundRequest) -> dict[str, Any]:
 
     pending = _pending()
     push_luck_result: dict[str, Any] | None = None
+    exp_result: dict[str, Any] | None = None
     if event["outcome"] == "victory":
         # A win is always worth something -- the pending pool only ever
         # grows on a win, and the choice next (bank vs. push on) is only
@@ -252,6 +253,26 @@ def play_round(req: RoundRequest) -> dict[str, Any]:
         reward = roll_guaranteed_reward(battle.enemy)
         pending.add_win(reward)
         push_luck_result = {"result": "win", "reward": reward, "pending": pending.summary()}
+
+        player = _player()
+        exp_gained = victory_exp(getattr(battle.enemy, "level", 1))
+        # gain_exp() heals to full on every level-up -- correct for that
+        # method in general, but a battle victory must never grant a
+        # free heal: that would undercut the very risk that continuing
+        # without healing exists to create (see continue_gauntlet's
+        # docstring). Restore whatever HP/stamina the battle itself just
+        # wrote back before the level-up touched it.
+        hp_before, stamina_before = player.hp, player.stamina
+        levels_gained = player.gain_exp(exp_gained)
+        if levels_gained > 0:
+            player.hp = hp_before
+            player.stamina = stamina_before
+        exp_result = {
+            "exp_gained": exp_gained,
+            "levels_gained": levels_gained,
+            "leveled_up": levels_gained > 0,
+            "stat_points": player.stat_points,
+        }
     elif event["outcome"] == "defeat" and not pending.is_empty():
         lost = forfeit(pending)
         push_luck_result = {"result": "forfeit", "lost": lost}
@@ -259,6 +280,8 @@ def play_round(req: RoundRequest) -> dict[str, Any]:
     response: dict[str, Any] = {"event": event, "state": _state_payload(battle)}
     if push_luck_result is not None:
         response["push_luck_result"] = push_luck_result
+    if exp_result is not None:
+        response["exp_result"] = exp_result
     return response
 
 
@@ -311,8 +334,7 @@ def set_auto(req: AutoRequest) -> dict[str, Any]:
     return _state_payload(battle)
 
 
-@app.get("/api/player")
-def get_player() -> dict[str, Any]:
+def _player_payload() -> dict[str, Any]:
     player = _player()
     return {
         "name": player.name,
@@ -320,7 +342,30 @@ def get_player() -> dict[str, Any]:
         "exp": player.exp,
         "exp_to_next": player.exp_to_next,
         "stat_points": player.stat_points,
+        # Charisma is included here like every other attribute (it's a
+        # real, allocatable stat) but combat never reads it — see
+        # core/player_state.py's module docstring.
+        "attributes": {stat: getattr(player, stat) for stat in ATTRIBUTES},
     }
+
+
+@app.get("/api/player")
+def get_player() -> dict[str, Any]:
+    return _player_payload()
+
+
+class SpendStatRequest(BaseModel):
+    stat: str
+    amount: int = Field(default=1, ge=1)
+
+
+@app.post("/api/player/spend_stat")
+def spend_stat(req: SpendStatRequest) -> dict[str, Any]:
+    if req.stat not in ATTRIBUTES:
+        raise HTTPException(status_code=400, detail=f"Unknown stat '{req.stat}'")
+    if not _player().spend_stat(req.stat, req.amount):
+        raise HTTPException(status_code=400, detail="Not enough stat points")
+    return _player_payload()
 
 
 @app.get("/")
@@ -331,6 +376,11 @@ def home() -> FileResponse:
 @app.get("/battle")
 def battle_page() -> FileResponse:
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
+
+@app.get("/stats")
+def stats_page() -> FileResponse:
+    return FileResponse(os.path.join(FRONTEND_DIR, "stats.html"))
 
 
 # Sub-pages linked from the hub that aren't built yet — every entry

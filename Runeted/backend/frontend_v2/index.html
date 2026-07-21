@@ -22,6 +22,13 @@
       </div>
     </div>
 
+    <div id="defeat-panel" class="hidden" aria-label="Defeat">
+      <p id="defeat-summary">You were defeated.</p>
+      <div id="defeat-actions">
+        <button id="defeat-return-button" type="button">Return to hub</button>
+      </div>
+    </div>
+
     <div id="arena" aria-label="Battle arena">
       <aside class="combatant" id="player-zone">
         <div class="zone-label">You</div>
@@ -71,13 +78,9 @@
         </div>
         <div class="bar hp-bar"><div id="enemy-hp-fill" class="fill"></div><span id="enemy-hp-text" class="bar-text"></span></div>
         <div class="bar stamina-bar"><div id="enemy-stamina-fill" class="fill"></div><span id="enemy-stamina-text" class="bar-text"></span></div>
-        <div id="telegraph" class="telegraph-card">
-          <div class="telegraph-title">Telegraphed move</div>
-          <div id="telegraph-name">—</div>
-          <div id="telegraph-desc" class="muted"></div>
-        </div>
         <div id="enemy-movelist-panel">
           <div class="enemy-movelist-title">Known moves</div>
+          <p class="enemy-movelist-hint muted">Its next move isn't shown — only what's off cooldown and could come next.</p>
           <ul id="enemy-movelist"></ul>
         </div>
         <div id="rune-panel">
@@ -95,6 +98,8 @@
         <p id="skill-modal-body"></p>
       </div>
     </div>
+
+    <div id="hover-tooltip" class="hidden" role="tooltip"></div>
   </main>
   <script src="/static/app.js"></script>
 </body>

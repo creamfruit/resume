@@ -3,15 +3,36 @@
 Equipment, stash, and runes live in their own modules. Anything combat
 reads (attack, defense, max HP) comes from the derived-stats pipeline in
 core/stats.py, never from raw fields here.
+
+Six attributes exist on the model, but only five feed combat through
+core/stats.py::compute_player_stats: strength (attack), vitality
+(defense/HP), luck (crit), dexterity (dodge), intelligence (stamina).
+`charisma` is deliberately excluded from that pipeline -- it doesn't
+touch combat at all. It's still a real, allocatable attribute (the
+same stat_points economy, the same spend_stat path); it exists now so
+a later event system has something to read, without combat ever
+growing a special case for it.
 """
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from core.stats import level_scale
+
 LEVEL_UP_STAT_POINTS = 5
 EXP_CURVE_MULT = 1.5
 
-ATTRIBUTES = ("strength", "dexterity", "intelligence", "vitality", "luck")
+# XP a battle victory grants, scaled by the defeated enemy's level on
+# the same per-level growth curve combat stats already use (level_scale)
+# -- one canonical curve, not a second one invented just for XP. A
+# tougher (higher-level) win is worth proportionally more.
+BASE_VICTORY_EXP = 20
+
+ATTRIBUTES = ("strength", "dexterity", "intelligence", "vitality", "luck", "charisma")
+
+
+def victory_exp(enemy_level: int) -> int:
+    return max(1, int(round(BASE_VICTORY_EXP * level_scale(enemy_level))))
 
 
 class PlayerState(BaseModel):
@@ -28,6 +49,7 @@ class PlayerState(BaseModel):
     intelligence: int = Field(default=5, ge=1)
     vitality: int = Field(default=5, ge=1)
     luck: int = Field(default=5, ge=1)
+    charisma: int = Field(default=5, ge=1)  # not read by compute_player_stats -- see module docstring
 
     # Runtime resources. None means "full"; the concrete ceilings are
     # DerivedStats.max_hp / max_stamina, which only core/stats.py may compute.

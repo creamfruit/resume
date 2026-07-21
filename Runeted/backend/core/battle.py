@@ -1,33 +1,48 @@
-"""Core combat loop: telegraph → response → resolution, one round at a time.
+"""Core combat loop: enemy move → player response → resolution, one
+round at a time.
+
+The enemy's move for the round is never announced to the player ahead
+of time — that "telegraph" design (name + effect shown a round before
+it resolves) was removed because it made every fight a solved puzzle:
+once the exact next move is known, there's always one exact correct
+counter. What the player sees instead is the enemy's full move pool
+with live cooldown state (`Battle.movelist()` / `core/intent.py`) — a
+move just used is briefly unavailable, so play is choosing the best
+response to what the enemy *could* do, not what a label says it will.
 
 Round order:
-1. The enemy's move for this round is already telegraphed (name + effect
-   description) before the player acts.
+1. The enemy has already picked its move for this round (decided by
+   the intent system from whichever of its moves are currently off
+   cooldown and affordable) — this is authoritative server state, not
+   shown to the player before it resolves.
 2. The player responds with one skill from their loadout (or holds).
    A response must be known, off cooldown, and affordable in stamina —
    otherwise it is rejected and nothing about the battle changes.
    Using a skill starts its cooldown and spends stamina whether or not
    it counters. What happens next depends on the skill's kind:
    - attack (or holding): the player's strike lands; a counter match
-     negates the telegraphed effect and exposes the enemy next round.
-   - defend: no strike; the telegraphed effect is blocked regardless of
-     counter tags — only the contact graze can land.
-   - dodge: no strike; the whole telegraphed move is evaded. This goes
+     negates the enemy move's effect and exposes the enemy next round.
+   - defend: no strike; the enemy move's effect is blocked regardless
+     of counter tags — only the contact graze can land.
+   - dodge: no strike; the whole enemy move is evaded. This goes
      through the same single dodge roll as passive dodge chance.
    - buff: no strike; grants a temporary attack bonus for the next
      `buff_duration` rounds.
    - recovery: no strike; costs 0 stamina and restores stamina, so the
      player always has a legal action.
-3. If the player struck and it kills, the battle ends and the
-   telegraphed move never resolves.
-4. The enemy's telegraphed move resolves (spending enemy stamina). The
-   dodge chance comes from DerivedStats plus any rune dodge bonus this
-   round (a dodge skill raises it to certainty) and this is the only
-   dodge calculation in the game. An uncountered, undodged, unblocked
-   move always chips, though a rune shield may absorb the chip.
+3. If the player struck and it kills, the battle ends and the enemy's
+   move never resolves.
+4. The enemy's move resolves (spending enemy stamina). The dodge
+   chance comes from DerivedStats plus any rune dodge bonus this round
+   (a dodge skill raises it to certainty) and this is the only dodge
+   calculation in the game. An uncountered, undodged, unblocked move
+   always chips, though a rune shield may absorb the chip.
 5. Cooldowns tick, buffs count down, both sides regenerate stamina, and
-   the next round's move is telegraphed (downgraded by the intent system
-   if the enemy cannot afford its deck move).
+   the enemy's next move is picked (from whatever is off cooldown and
+   affordable; a total lockout falls back to the cheapest move in the
+   library as a legal-action guarantee, reported as `downgraded_from`).
+   Still not shown to the player — only revealed, after the fact, in
+   the round event once it has already resolved.
 
 Passive runes (core/runes.py) hook into the round through the shared
 passive engine: battle fires the standard triggers — start_of_turn and
@@ -117,8 +132,9 @@ class Battle:
             enemy_stamina = self.enemy_stats.max_stamina
         self.enemy_stamina = round(min(float(enemy_stamina), self.enemy_stats.max_stamina), 2)
 
-        # The tracker draws from the rng first (deck start); dodge rolls
-        # draw later, so seed pinning of the opening telegraph is stable.
+        # The tracker draws from the rng for move selection each round;
+        # dodge/passive-chance rolls draw from the same stream, so a
+        # fixed seed still reproduces a whole battle deterministically.
         self._rng = random.Random(rng_seed)
         self.tracker = IntentTracker(
             getattr(enemy, "archetype", None) or "brute",
@@ -144,9 +160,13 @@ class Battle:
     def finished(self) -> bool:
         return self.outcome is not Outcome.IN_PROGRESS
 
-    def telegraph(self) -> dict[str, str]:
-        """The enemy move announced for the upcoming round."""
-        return self.tracker.telegraph()
+    def movelist(self) -> list[dict[str, Any]]:
+        """The enemy's full move pool with live cooldown state — see
+        core/intent.py:IntentTracker.movelist. Safe to call any time,
+        including after the battle has finished. Never reveals which
+        specific move is about to resolve, only what's currently off
+        cooldown and therefore possible."""
+        return self.tracker.movelist()
 
     def buff_attack_bonus(self) -> float:
         return sum(float(b["attack_mult"]) for b in self._buffs)
@@ -204,7 +224,8 @@ class Battle:
         return events
 
     def choose_auto_response(self) -> str | None:
-        """Safest available response to a dangerous telegraphed move: the
+        """Safest available response to the enemy's current (server-
+        authoritative, not player-visible) move, if it's dangerous: the
         cheapest matching counter-attack; failing that, the cheapest
         defend/dodge mitigation. Low-danger moves are held through, and
         auto never spends turns on buffs or recovery."""
@@ -356,7 +377,6 @@ class Battle:
         self.outcome = resolve(self.player_hp, self.enemy_hp)
         player_regen = 0.0
         enemy_regen = 0.0
-        next_telegraph = None
         if not self.finished:
             self.loadout.tick()
             for buff in list(self._buffs):
@@ -371,7 +391,6 @@ class Battle:
             enemy_regen = round(min(self.enemy_stats.stamina_regen, self.enemy_stats.max_stamina - self.enemy_stamina), 2)
             self.enemy_stamina = round(self.enemy_stamina + enemy_regen, 2)
             self.tracker.advance(stamina_budget=self.enemy_stamina)
-            next_telegraph = self.tracker.telegraph()
         else:
             self._write_back()
 
@@ -411,7 +430,6 @@ class Battle:
             statuses_applied=tuple(statuses_applied),
             statuses_removed=tuple(statuses_removed),
             rune_events=tuple(rune_events),
-            next_telegraph=next_telegraph,
         ).to_dict()
         self.rounds.append(event)
         return event

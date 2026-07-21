@@ -86,13 +86,6 @@ function render() {
   setBar("enemy-hp-fill", "enemy-hp-text", state.enemy.hp, state.enemy.max_hp);
   setBar("enemy-stamina-fill", "enemy-stamina-text", state.enemy.stamina, state.enemy.max_stamina);
 
-  if (state.telegraph) {
-    $("telegraph-name").textContent = state.telegraph.name;
-    $("telegraph-desc").textContent = state.telegraph.description;
-  } else {
-    $("telegraph-name").textContent = "—";
-    $("telegraph-desc").textContent = "";
-  }
   renderEnemyMoves();
 
   const banner = $("outcome-banner");
@@ -102,6 +95,10 @@ function render() {
   } else {
     banner.className = "hidden";
   }
+  // Defeat has no reward decision (any pending run was already
+  // forfeited server-side) -- just a clear, always-visible way back to
+  // the hub, so a loss never dead-ends on the battle screen.
+  $("defeat-panel").className = state.finished && state.outcome === "defeat" ? "" : "hidden";
 
   $("auto-label").textContent = `Auto-battle: ${state.auto ? "on" : "off"}`;
   // The toggle's icon spins while auto-battle is on so the mode is
@@ -182,7 +179,7 @@ function renderSkills() {
     button.className = "skill-button" + (selectedSkill === skill.id ? " selected" : "");
     button.dataset.skillId = skill.id;
     button.disabled = state.finished || state.auto || !skill.usable;
-    button.title = skill.description;
+    wireHoverPopup(button, skill.description);
 
     const icon = document.createElement("span");
     icon.className = "skill-icon";
@@ -250,7 +247,7 @@ function renderRunes() {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "rune-chip";
-    chip.title = rune.short;
+    wireHoverPopup(chip, rune.short);
     const icon = document.createElement("span");
     icon.className = "rune-icon";
     icon.dataset.icon = rune.icon; // real icon ids slot in here later
@@ -265,21 +262,41 @@ function renderRunes() {
 }
 
 function renderEnemyMoves() {
-  // The enemy's full move pool, for reference — additive alongside the
-  // telegraph card above, which only ever shows the one specific move
-  // coming up next round.
+  // The enemy's full move pool with live cooldown state -- the only
+  // view into what it might do next now that the specific upcoming
+  // move is never shown ahead of time. A move on cooldown is darkened
+  // and can't be used this round; the cooldown badge matches the style
+  // already used on the player's own skill buttons (⏳ stat + a
+  // "CD N" chip while it's cooling).
   const list = $("enemy-movelist");
   list.textContent = "";
   for (const move of state.enemy.moves || []) {
+    const onCooldown = move.remaining_cooldown > 0;
     const li = document.createElement("li");
-    li.className = "enemy-move-row";
+    li.className = "enemy-move-row" + (onCooldown ? " on-cooldown" : "");
+
     const name = document.createElement("span");
     name.className = "enemy-move-name";
     name.textContent = move.name;
+
+    const cd = document.createElement("span");
+    cd.className = "enemy-move-cd";
+    cd.textContent = `⏳ ${move.cooldown}`;
+    wireHoverPopup(cd, "Cooldown (rounds)");
+
     const desc = document.createElement("span");
     desc.className = "enemy-move-desc muted";
     desc.textContent = move.description;
-    li.append(name, desc);
+
+    li.append(name, cd, desc);
+
+    if (onCooldown) {
+      const chip = document.createElement("span");
+      chip.className = "enemy-move-cooling";
+      chip.textContent = `CD ${move.remaining_cooldown}`;
+      li.append(chip);
+    }
+
     list.append(li);
   }
 }
@@ -300,9 +317,44 @@ function renderConfirmBar() {
   bar.className = "";
 }
 
+// ---------- Hover popup ----------
+//
+// Skill buttons and rune chips show their plain-language description in
+// a small custom-styled popup that follows the cursor, instead of the
+// browser's default title tooltip. This is separate from the ⓘ / chip
+// click info modal below, which still opens on demand for full detail.
+
+const HOVER_OFFSET_X = 14;
+const HOVER_OFFSET_Y = 18;
+
+function positionHoverTooltip(ev) {
+  const tip = $("hover-tooltip");
+  const maxX = window.innerWidth - tip.offsetWidth - 8;
+  const maxY = window.innerHeight - tip.offsetHeight - 8;
+  tip.style.left = Math.max(0, Math.min(ev.clientX + HOVER_OFFSET_X, maxX)) + "px";
+  tip.style.top = Math.max(0, Math.min(ev.clientY + HOVER_OFFSET_Y, maxY)) + "px";
+}
+
+function hideHoverTooltip() {
+  $("hover-tooltip").className = "hidden";
+}
+
+function wireHoverPopup(el, text) {
+  if (!text) return;
+  el.addEventListener("mouseenter", (ev) => {
+    const tip = $("hover-tooltip");
+    tip.textContent = text;
+    tip.className = "";
+    positionHoverTooltip(ev);
+  });
+  el.addEventListener("mousemove", positionHoverTooltip);
+  el.addEventListener("mouseleave", hideHoverTooltip);
+}
+
 // ---------- Skill info modal ----------
 
 function openSkillModal(skill) {
+  hideHoverTooltip(); // the click-to-open modal owns detail display now
   $("skill-modal-title").textContent = `${SKILL_ICONS[skill.icon] || ""} ${skill.name}`.trim();
   $("skill-modal-meta").textContent =
     `${skill.kind} · ${skill.stamina_cost} stamina · ${skill.cooldown}-round cooldown` +
@@ -312,6 +364,7 @@ function openSkillModal(skill) {
 }
 
 function openRuneModal(rune) {
+  hideHoverTooltip();
   // Runes reuse the skill modal shell: same centered card over the same
   // dimmed backdrop, same close affordances.
   $("skill-modal-title").textContent = `${RUNE_ICONS[rune.icon] || RUNE_ICONS.rune} ${rune.name}`;
@@ -426,7 +479,7 @@ async function newBattle() {
     closeSkillModal();
     renderedRounds = 0;
     $("log-list").textContent = "";
-    appendSystemLog(`A ${state.enemy.name} appears. Its first move is telegraphed on the right.`);
+    appendSystemLog(`A ${state.enemy.name} appears. Check its known moves on the right to size up what it could do.`);
     render();
   } catch (err) {
     notify(err.message);
@@ -438,8 +491,9 @@ async function newBattle() {
 function describeEvent(ev) {
   const parts = [];
   const intent = ev.enemy.intent;
-  let move = `Enemy telegraphed ${intent.name}`;
-  if (intent.downgraded_from) move += ` (winded — downgraded from ${intent.downgraded_from})`;
+  let move = `The enemy used ${intent.name}`;
+  if (intent.downgraded_from === "cooldown") move += " (its usual moves were all still recovering — it fell back to something cheaper)";
+  else if (intent.downgraded_from === "stamina") move += " (too worn out for its usual move — it fell back to something cheaper)";
   parts.push(move + ".");
 
   const name = ev.player.response_name;
@@ -533,6 +587,11 @@ $("hold-button").addEventListener("click", () => playRound(null));
 $("auto-toggle").addEventListener("click", toggleAuto);
 $("push-luck-bank").addEventListener("click", bankPending);
 $("push-luck-continue").addEventListener("click", continuePushingLuck);
+// Same navigation bankPending() uses after a win -- there's nothing to
+// settle server-side on a loss (any pending pool was already forfeited).
+$("defeat-return-button").addEventListener("click", () => {
+  window.location.href = "/";
+});
 
 (async function boot() {
   try {

@@ -5,6 +5,7 @@ import os
 import unittest
 
 from core.battle import Battle
+from core.intent import build_intent
 from core.player_state import PlayerState
 from core.skills import Skill, default_loadout, stamina_cost_of
 from core.stats import (
@@ -15,16 +16,25 @@ from core.stats import (
     compute_player_stats,
 )
 
-SEED_BRUTE_OPENS_HEAVY = 2
-SEED_BRUTE_OPENS_BASIC = 1
+# Generic seed for tests that just need a reproducible battle -- move
+# selection is cooldown/stamina-gated random choice each round
+# (core/intent.py), not a fixed cyclic deck tied to the seed.
+SEED_A = 2
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def make_battle(player_level=1, enemy_level=1, archetype="brute", seed=SEED_BRUTE_OPENS_HEAVY, **kwargs):
+def make_battle(player_level=1, enemy_level=1, archetype="brute", seed=SEED_A, **kwargs):
     player = kwargs.pop("player", None) or PlayerState(level=player_level)
     enemy = kwargs.pop("enemy", None) or baseline_enemy(enemy_level, archetype=archetype)
     return Battle(player, enemy, loadout=default_loadout(), rng_seed=seed, **kwargs)
+
+
+def force_intent(battle, kind):
+    """Force the enemy's current (about-to-resolve) move for a
+    deterministic test setup -- see test_core_combat.py for why."""
+    battle.tracker.current = build_intent(kind, battle.tracker.archetype)
+    return battle.tracker.current
 
 
 class DodgeRetirementTests(unittest.TestCase):
@@ -107,11 +117,11 @@ class StaminaTests(unittest.TestCase):
         # the cheapest affordable mitigation (bulwark costs 1)...
         player = PlayerState(level=1, stamina=1)
         battle = make_battle(player=player, auto=True)
-        self.assertEqual(battle.tracker.current.kind, "heavy")
+        force_intent(battle, "heavy")
         self.assertEqual(battle.choose_auto_response(), "bulwark")
         # ...and with 0 stamina no counter or mitigation is affordable.
         broke = make_battle(player=PlayerState(level=1, stamina=0), auto=True)
-        self.assertEqual(broke.tracker.current.kind, "heavy")
+        force_intent(broke, "heavy")
         self.assertIsNone(broke.choose_auto_response())
 
     def test_enemy_pays_stamina_for_its_moves(self):
@@ -120,14 +130,15 @@ class StaminaTests(unittest.TestCase):
         result = battle.play_round(None)
         self.assertEqual(result["enemy"]["stamina_spent"], float(intent.stamina_cost))
 
-    def test_enemy_downgrades_unaffordable_telegraph(self):
+    def test_enemy_falls_back_to_the_cheapest_move_when_stamina_cant_afford_anything(self):
         starving = baseline_enemy(1)
-        starving.stamina = 1.0
-        starving.max_stamina = 1.0
-        battle = make_battle(enemy=starving, seed=SEED_BRUTE_OPENS_HEAVY)
-        # Deck wanted "heavy" (cost 3) but only 1 stamina is available.
+        starving.stamina = 0.0
+        starving.max_stamina = 0.0
+        battle = make_battle(enemy=starving, seed=SEED_A)
+        # Nothing in the pool is affordable at 0 stamina -- emergency
+        # fallback to the cheapest move in the whole library.
         self.assertEqual(battle.tracker.current.kind, "basic")
-        self.assertEqual(battle.tracker.current.downgraded_from, "heavy")
+        self.assertEqual(battle.tracker.current.downgraded_from, "stamina")
 
 
 class EnemyHpInvariantTests(unittest.TestCase):
@@ -183,7 +194,9 @@ class RoundEventSchemaTests(unittest.TestCase):
 
         self.assertIsInstance(event["statuses_applied"], list)
         self.assertIsInstance(event["statuses_removed"], list)
-        self.assertIsNotNone(event["next_telegraph"])
+        # The enemy's next move is never revealed in the event -- only
+        # what already resolved this round.
+        self.assertNotIn("next_telegraph", event)
 
     def test_deltas_are_consistent_with_damage(self):
         battle = make_battle()

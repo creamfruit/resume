@@ -136,16 +136,20 @@ class RuneEquipment:
 
 
 def describe_rune(rune: Rune) -> dict[str, str]:
-    """Single source of the rune text the UI shows in the info modal."""
-    short = f"{rune.type} · {rune.rarity} · cost {rune.cost}"
-    hooks = []
-    for p in rune.clamped_passives():
-        effects = ", ".join(f"{e.type} {e.value:g}" for e in p.effects)
-        hooks.append(f"{p.name} ({p.trigger}: {effects})")
-    mechanics = "; ".join(hooks) if hooks else "no active effects at this rarity"
+    """Single source of the rune text the UI shows: `short` for the
+    hover popup and chip tooltip, `full` for the info modal body.
+
+    Both are plain language only, written for the player, not the
+    developer: the modal's meta line already shows type/rarity/cost as
+    separate structured fields, so `full` doesn't repeat them, and
+    neither string surfaces the underlying trigger/effect data
+    (on_hit, damage_mult, ...) the passive engine actually runs on —
+    that's implementation detail, not something a player needs to read
+    to understand what the rune does."""
+    short = rune.description
     full = (
-        f"{rune.name} ({short}). Passive — always active while equipped; "
-        f"not a per-turn choice. {rune.description} Hooks: {mechanics}."
+        f"{rune.name}: {rune.description} Passive — always active once "
+        f"equipped, never a per-turn choice like a skill."
     )
     return {"short": short, "full": full}
 

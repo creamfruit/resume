@@ -1,13 +1,16 @@
 """Phase 1 regression tests: core combat loop and player state.
 
-Seeds pin the intent deck's starting index (random.Random(seed).randrange(4)):
-seed 2 -> index 0 (brute deck opens with "heavy"), seed 1 -> index 1
-(brute deck opens with "basic").
+Move selection is cooldown/stamina-gated random choice each round
+(core/intent.py), not a fixed cyclic deck with a seed-pinned starting
+index -- a seed alone no longer guarantees a specific opening move.
+Tests that need a specific enemy move for their setup force it
+directly via `force_intent()` instead.
 """
+import random
 import unittest
 
 from core.battle import EXPOSED_DAMAGE_BONUS, Battle
-from core.intent import ARCHETYPE_DECKS, IntentTracker, build_intent, is_counter
+from core.intent import ARCHETYPE_DECKS, INTENT_LIBRARY, IntentTracker, build_intent, is_counter
 from core.player_state import PlayerState
 from core.resolution import Outcome, resolve
 from core.skills import (
@@ -18,32 +21,52 @@ from core.skills import (
 )
 from core.stats import StatContribution, baseline_enemy, compute_player_stats
 
-SEED_BRUTE_OPENS_HEAVY = 2
-SEED_BRUTE_OPENS_BASIC = 1
+# Generic seeds for tests that just need a reproducible battle -- not
+# tied to any specific opening move.
+SEED_A = 2
+SEED_B = 1
 
 
-def make_battle(player_level=1, enemy_level=1, archetype="brute", seed=SEED_BRUTE_OPENS_HEAVY, auto=False):
+def make_battle(player_level=1, enemy_level=1, archetype="brute", seed=SEED_A, auto=False):
     player = PlayerState(level=player_level)
     enemy = baseline_enemy(enemy_level, archetype=archetype)
     return Battle(player, enemy, loadout=default_loadout(), rng_seed=seed, auto=auto)
 
 
-class TelegraphTests(unittest.TestCase):
-    def test_move_is_telegraphed_before_player_acts(self):
-        battle = make_battle()
-        telegraph = battle.telegraph()
-        self.assertEqual(telegraph["name"], "Brutal Swing")
-        self.assertTrue(telegraph["description"])
-        result = battle.play_round(None)
-        self.assertEqual(result["enemy"]["intent"]["name"], telegraph["name"])
+def force_intent(battle, kind):
+    """Force the enemy's current (about-to-resolve) move for a
+    deterministic test setup. Selection is live cooldown/stamina-gated
+    random choice each round, so tests needing a specific move force it
+    directly rather than relying on a seed to happen to produce it."""
+    battle.tracker.current = build_intent(kind, battle.tracker.archetype)
+    return battle.tracker.current
 
-    def test_round_result_telegraphs_next_round_one_ahead(self):
+
+class NoForeknowledgeTests(unittest.TestCase):
+    """The enemy's move for the round is decided by the engine and is
+    never revealed to the player before it resolves -- these tests lock
+    in every surface that used to leak it a round in advance."""
+
+    def test_battle_has_no_telegraph_method(self):
+        battle = make_battle()
+        self.assertFalse(hasattr(battle, "telegraph"))
+
+    def test_intent_tracker_has_no_telegraph_method(self):
+        battle = make_battle()
+        self.assertFalse(hasattr(battle.tracker, "telegraph"))
+
+    def test_round_event_never_carries_the_next_move(self):
         battle = make_battle()
         result = battle.play_round(None)
-        self.assertIsNotNone(result["next_telegraph"])
-        self.assertEqual(result["next_telegraph"], battle.telegraph())
-        # Brute deck: heavy -> basic
-        self.assertEqual(battle.telegraph()["name"], "Measured Strike")
+        self.assertNotIn("next_telegraph", result)
+
+    def test_movelist_reveals_no_specific_upcoming_move(self):
+        # The movelist is the pool plus live cooldown state only -- it
+        # never says which one is about to resolve.
+        battle = make_battle()
+        for move in battle.movelist():
+            self.assertNotIn("is_next", move)
+            self.assertNotIn("upcoming", move)
 
     def test_intent_system_never_writes_onto_the_enemy(self):
         battle = make_battle(auto=True)
@@ -55,8 +78,7 @@ class TelegraphTests(unittest.TestCase):
 class CounterResolutionTests(unittest.TestCase):
     def test_correct_counter_negates_effect_and_exposes_enemy(self):
         battle = make_battle()
-        intent = battle.tracker.current
-        self.assertEqual(intent.kind, "heavy")
+        intent = force_intent(battle, "heavy")
 
         r1 = battle.play_round("breaker_lunge")  # breaker_lunge counters heavy
         self.assertTrue(r1["player"]["matched"])
@@ -81,7 +103,7 @@ class CounterResolutionTests(unittest.TestCase):
 
     def test_missing_response_takes_the_full_effect(self):
         battle = make_battle()
-        intent = battle.tracker.current
+        intent = force_intent(battle, "heavy")
         result = battle.play_round(None)
         full = round(max(1.0, battle.enemy_stats.attack * (intent.contact_mult + intent.effect_mult) - battle.stats.defense), 2)
         self.assertFalse(result["player"]["matched"])
@@ -89,7 +111,7 @@ class CounterResolutionTests(unittest.TestCase):
 
     def test_wrong_skill_takes_full_effect_and_still_burns_cooldown(self):
         battle = make_battle()
-        intent = battle.tracker.current
+        intent = force_intent(battle, "heavy")
         result = battle.play_round("flurry_break")  # counters multi, not heavy
         full = round(max(1.0, battle.enemy_stats.attack * (intent.contact_mult + intent.effect_mult) - battle.stats.defense), 2)
         self.assertFalse(result["player"]["matched"])
@@ -160,8 +182,7 @@ class SkillMoveTests(unittest.TestCase):
 
     def test_defend_blocks_the_effect_without_dealing_damage(self):
         battle = make_battle()
-        intent = battle.tracker.current
-        self.assertEqual(intent.kind, "heavy")
+        intent = force_intent(battle, "heavy")
         result = battle.play_round("bulwark")
         self.assertEqual(result["player"]["action"], "defend")
         self.assertEqual(result["player"]["damage_dealt"], 0.0)
@@ -212,7 +233,7 @@ class SkillMoveTests(unittest.TestCase):
     def test_recovery_costs_nothing_and_restores_stamina(self):
         player = PlayerState(level=1, stamina=0)
         battle = Battle(player, baseline_enemy(1), loadout=default_loadout(),
-                        rng_seed=SEED_BRUTE_OPENS_HEAVY)
+                        rng_seed=SEED_A)
         # With an empty stamina bar there is still a legal skill.
         result = battle.play_round("second_wind")
         self.assertEqual(result["player"]["action"], "recovery")
@@ -225,6 +246,7 @@ class SkillMoveTests(unittest.TestCase):
 
     def test_exposed_carries_over_non_strike_rounds(self):
         battle = make_battle(enemy_level=3)
+        force_intent(battle, "heavy")
         battle.play_round("breaker_lunge")  # counter -> enemy exposed
         r2 = battle.play_round("bulwark")   # no strike -> exposure not consumed
         self.assertNotIn(
@@ -237,15 +259,15 @@ class SkillMoveTests(unittest.TestCase):
 
 class AutoBattleTests(unittest.TestCase):
     def test_auto_holds_on_low_danger_moves(self):
-        battle = make_battle(seed=SEED_BRUTE_OPENS_BASIC, auto=True)
-        self.assertEqual(battle.tracker.current.kind, "basic")
+        battle = make_battle(seed=SEED_B, auto=True)
+        force_intent(battle, "basic")
         self.assertIsNone(battle.choose_auto_response())
         r1 = battle.play_round()
         self.assertIsNone(r1["player"]["response"])
 
     def test_auto_counters_dangerous_moves_with_matching_skill(self):
-        battle = make_battle(seed=SEED_BRUTE_OPENS_HEAVY, auto=True)
-        self.assertEqual(battle.tracker.current.kind, "heavy")
+        battle = make_battle(seed=SEED_A, auto=True)
+        force_intent(battle, "heavy")
         r1 = battle.play_round()
         self.assertEqual(r1["player"]["response"], "breaker_lunge")
         self.assertTrue(r1["player"]["matched"])
@@ -253,8 +275,8 @@ class AutoBattleTests(unittest.TestCase):
     def test_auto_falls_back_to_mitigation_without_a_matching_counter(self):
         loadout = SkillLoadout([skill_by_id("bulwark"), skill_by_id("sidestep")])
         battle = Battle(PlayerState(level=1), baseline_enemy(1),
-                        loadout=loadout, rng_seed=SEED_BRUTE_OPENS_HEAVY, auto=True)
-        self.assertEqual(battle.tracker.current.kind, "heavy")
+                        loadout=loadout, rng_seed=SEED_A, auto=True)
+        force_intent(battle, "heavy")
         # Cheapest affordable mitigation: bulwark (1) over sidestep (2).
         self.assertEqual(battle.choose_auto_response(), "bulwark")
 
@@ -283,7 +305,7 @@ class DerivedStatsPipelineTests(unittest.TestCase):
             baseline_enemy(1),
             loadout=default_loadout(),
             contributions=(StatContribution(source="test", attack_mult=0.5),),
-            rng_seed=SEED_BRUTE_OPENS_HEAVY,
+            rng_seed=SEED_A,
         )
         self.assertEqual(boosted.stats.attack, round(plain.stats.attack * 1.5, 2))
         r_plain = plain.play_round(None)
@@ -361,14 +383,58 @@ class PlayerStateTests(unittest.TestCase):
 
 
 class IntentSystemTests(unittest.TestCase):
-    def test_every_archetype_deck_cycles_through_known_intents(self):
-        import random
+    def test_every_archetype_pool_eventually_produces_every_known_move(self):
+        # Selection is cooldown/stamina-gated random choice, not a fixed
+        # cycle -- over enough rounds every pool member should still
+        # appear (generous stamina so only cooldown gates selection).
         for archetype, deck in ARCHETYPE_DECKS.items():
-            tracker = IntentTracker(archetype, random.Random(0))
-            seen = [tracker.current.kind]
-            for _ in range(len(deck) - 1):
-                seen.append(tracker.advance().kind)
-            self.assertEqual(sorted(seen), sorted(deck))
+            pool = set(deck)
+            tracker = IntentTracker(archetype, random.Random(0), stamina_budget=99)
+            seen = {tracker.current.kind}
+            for _ in range(40):
+                seen.add(tracker.advance(stamina_budget=99).kind)
+            self.assertEqual(seen, pool, archetype)
+
+    def test_a_move_just_used_is_not_selectable_again_immediately(self):
+        # A cooldown of 1 (basic's) nets to 0 the same round it's used --
+        # same convention as the player's own cooldown=1 skills, where
+        # there's no real gate either. Only cooldown > 1 moves (heavy,
+        # guard_break, multi) should still show as cooling right after.
+        tracker = IntentTracker("brute", random.Random(1), stamina_budget=99)
+        for _ in range(30):
+            used_kind = tracker.current.kind
+            tracker.advance(stamina_budget=99)
+            if tracker.current.downgraded_from is None and INTENT_LIBRARY[used_kind]["cooldown"] > 1:
+                self.assertGreater(tracker.remaining_cooldown(used_kind), 0)
+
+    def test_remaining_cooldown_counts_down_to_zero(self):
+        tracker = IntentTracker("brute", random.Random(1))
+        tracker.current = build_intent("multi", "brute")  # cooldown 3
+        tracker.advance(stamina_budget=99)
+        self.assertEqual(tracker.remaining_cooldown("multi"), 2)
+        tracker.advance(stamina_budget=99)
+        self.assertEqual(tracker.remaining_cooldown("multi"), 1)
+        tracker.advance(stamina_budget=99)
+        self.assertEqual(tracker.remaining_cooldown("multi"), 0)
+
+    def test_movelist_reports_the_full_pool_with_live_cooldowns(self):
+        tracker = IntentTracker("brute", random.Random(2))
+        kinds = {m["kind"] for m in tracker.movelist()}
+        self.assertEqual(kinds, {"heavy", "basic", "multi"})  # brute's distinct pool
+        for move in tracker.movelist():
+            self.assertEqual(move["remaining_cooldown"], 0)  # nothing used yet
+        tracker.current = build_intent("heavy", "brute")
+        tracker.advance(stamina_budget=99)
+        heavy = next(m for m in tracker.movelist() if m["kind"] == "heavy")
+        self.assertGreater(heavy["remaining_cooldown"], 0)
+
+    def test_falls_back_to_the_cheapest_move_when_every_pool_move_is_on_cooldown(self):
+        tracker = IntentTracker("brute", random.Random(3))
+        for kind in tracker._pool:
+            tracker._cooldowns[kind] = 5
+        forced = tracker._roll(stamina_budget=99)
+        self.assertEqual(forced.kind, "basic")  # cheapest in the whole library
+        self.assertEqual(forced.downgraded_from, "cooldown")
 
     def test_counter_matches_archetype_or_kind(self):
         intent = build_intent("heavy", "brute")

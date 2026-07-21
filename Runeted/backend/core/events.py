@@ -40,7 +40,7 @@ class PlayerTurn:
     action: str                   # skill kind used, or "strike" when holding
     response: str | None          # skill id used, or None (held)
     response_name: str | None
-    matched: bool                 # response countered the telegraphed move
+    matched: bool                 # response countered the enemy's move this round
     exposed_bonus_applied: bool
     damage_dealt: float
     stamina_spent: float
@@ -70,7 +70,7 @@ class EnemyTurn:
     intent_kind: str
     intent_name: str
     intent_description: str
-    downgraded_from: str | None   # deck move skipped for lack of stamina
+    downgraded_from: str | None   # "cooldown" or "stamina" when every pool move was unusable and this one is the emergency fallback
     resolved: bool                # False when the enemy died before acting
     effect_negated: bool
     dodged: bool
@@ -110,7 +110,6 @@ class RoundEvent:
     # Passive rune hooks that fired this round (trigger, passive, type,
     # value, applied amount) — resolved by the shared passive engine.
     rune_events: tuple[dict[str, Any], ...] = field(default=())
-    next_telegraph: dict[str, str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -121,5 +120,4 @@ class RoundEvent:
             "statuses_applied": [s.to_dict() for s in self.statuses_applied],
             "statuses_removed": [s.to_dict() for s in self.statuses_removed],
             "rune_events": [dict(e) for e in self.rune_events],
-            "next_telegraph": self.next_telegraph,
         }

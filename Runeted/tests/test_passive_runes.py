@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 import battle_app
 from core.battle import Battle
+from core.intent import build_intent
 from core.player_state import PlayerState
 from core.runes import (
     RUNE_COST_BUDGET,
@@ -86,13 +87,29 @@ class EquipBudgetTests(unittest.TestCase):
         # clamp, or the rune would silently do nothing.
         for rune in catalog_runes():
             self.assertTrue(rune.clamped_passives(), rune.id)
-            self.assertIn(rune.type, describe_rune(rune)["full"])
+            self.assertIn(rune.description, describe_rune(rune)["full"])
+
+    def test_rune_text_never_leaks_the_underlying_trigger_or_effect_data(self):
+        # "Hooks: Emberheart Drain (on_hit: lifesteal 0.1)"-style dumps
+        # are developer/debug text, not something a player reads to
+        # understand what the rune does -- describe_rune must not
+        # surface passive-engine internals in either string.
+        for rune in catalog_runes():
+            text = describe_rune(rune)
+            for internal in ("Hooks:", "trigger", "on_hit", "on_take_hit",
+                              "start_of_turn", "below_hp"):
+                self.assertNotIn(internal, text["short"], rune.id)
+                self.assertNotIn(internal, text["full"], rune.id)
 
 
 class PassiveFiringTests(unittest.TestCase):
     def test_on_hit_lifesteal_heals_a_share_of_strike_damage(self):
         battle = battle_with(["emberheart"])
         battle.player_hp = 10.0  # headroom so the heal is visible
+        # Force the weakest enemy move so this round's hit can't be
+        # lethal -- move selection is random now, and a heavier move
+        # would clamp HP at 0 and break the exact accounting below.
+        battle.tracker.current = build_intent("basic", battle.tracker.archetype)
         event = battle.play_round(None)  # holding strikes
 
         dealt = event["player"]["damage_dealt"]
