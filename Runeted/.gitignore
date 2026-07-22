@@ -7,3 +7,5 @@ backend/database/game_state.json
 backend/database/trade_requests.json
 backend/database/accounts/
 backend/database/accounts.json
+backend/database/users.json
+backend/database/auth_secret.key

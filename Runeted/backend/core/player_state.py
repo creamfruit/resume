@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 LEVEL_UP_STAT_POINTS = 5
 EXP_CURVE_MULT = 1.5
 
-ATTRIBUTES = ("strength", "dexterity", "intelligence", "vitality", "luck")
+ATTRIBUTES = ("strength", "dexterity", "intelligence", "vitality", "luck", "charisma")
 
 
 class PlayerState(BaseModel):
@@ -28,6 +28,7 @@ class PlayerState(BaseModel):
     intelligence: int = Field(default=5, ge=1)
     vitality: int = Field(default=5, ge=1)
     luck: int = Field(default=5, ge=1)
+    charisma: int = Field(default=5, ge=1)
 
     # Runtime resources. None means "full"; the concrete ceilings are
     # DerivedStats.max_hp / max_stamina, which only core/stats.py may compute.

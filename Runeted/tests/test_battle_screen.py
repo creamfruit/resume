@@ -7,14 +7,14 @@ import unittest
 from fastapi.testclient import TestClient
 
 import battle_app
-from core.player_state import PlayerState
+from _account_test_helpers import authed_client, bundle_for
 from core.skills import default_loadout, describe_skill
 
 
 def client() -> TestClient:
-    battle_app.CURRENT["battle"] = None  # isolate tests
-    battle_app.CURRENT["player"] = PlayerState()  # fresh, level 1
-    return TestClient(battle_app.app)
+    # A brand-new, never-before-used account per call -- nothing stale
+    # to reset, unlike the single shared global this used to reach into.
+    return authed_client()
 
 
 def start(c: TestClient, **overrides):
@@ -95,7 +95,7 @@ class BattleApiSmokeTests(unittest.TestCase):
     def test_recovery_is_always_a_legal_action(self):
         c = client()
         start(c)
-        battle = battle_app.CURRENT["battle"]
+        battle = bundle_for(c)["battle"]
         battle.player_stamina = 0.0
         state = c.get("/api/battle/state").json()
         usable = {s["id"] for s in state["skills"] if s["usable"]}
@@ -115,7 +115,7 @@ class BattleApiSmokeTests(unittest.TestCase):
 
     def test_finished_battle_returns_409(self):
         c = client()
-        battle_app.CURRENT["player"].level = 5  # real progression, not a request field
+        bundle_for(c)["player"].level = 5  # real progression, not a request field
         start(c, enemy_level=1, auto=True)
         for _ in range(50):
             res = c.post("/api/battle/round", json={"response": None})
@@ -244,7 +244,7 @@ class HomeHubTests(unittest.TestCase):
 
     def test_player_api_reflects_real_persistent_state_not_a_debug_value(self):
         c = client()
-        battle_app.CURRENT["player"].level = 7
+        bundle_for(c)["player"].level = 7
         body = c.get("/api/player").json()
         self.assertEqual(body["level"], 7)
         # Starting a battle with no client-supplied level still uses it.
@@ -254,16 +254,21 @@ class HomeHubTests(unittest.TestCase):
     def test_battle_start_ignores_a_client_supplied_player_level(self):
         # The old admin bar posted player_level directly; the field no
         # longer exists on the contract, so a caller can't spoof it.
+        # seed=2 pins this to a "combat" roll under core/events.py's
+        # encounter gate (random.Random(2).random() == 0.956) -- this
+        # test is about the player-level contract, not events.
         c = client()
-        battle_app.CURRENT["player"].level = 3
-        res = c.post("/api/battle/start", json={"player_level": 99, "archetype": "brute"})
+        bundle_for(c)["player"].level = 3
+        res = c.post("/api/battle/start", json={"player_level": 99, "archetype": "brute", "seed": 2})
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["player"]["level"], 3)
 
     def test_battle_start_with_no_body_derives_everything(self):
-        # The hub's Start Battle action posts an empty object.
+        # The hub's Start Battle action posts an empty object -- pin the
+        # encounter roll to "combat" with a known-safe seed so this test
+        # (about deriving level/archetype, not about events) isn't flaky.
         c = client()
-        res = c.post("/api/battle/start", json={})
+        res = c.post("/api/battle/start", json={"seed": 2})
         self.assertEqual(res.status_code, 200, res.text)
         self.assertEqual(res.json()["outcome"], "in_progress")
 

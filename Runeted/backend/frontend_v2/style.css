@@ -284,3 +284,40 @@ h2 { font-size: 0.95rem; margin: 0 0 6px; color: #aab0c0; }
 .placeholder-page h1 { font-size: 1.3rem; margin: 0; }
 .placeholder-back { color: #9ecbff; text-decoration: none; font-size: 0.9rem; }
 .placeholder-back:hover { text-decoration: underline; }
+
+/* Non-combat special-event screen (core/events.py) — its own page, not
+   a battle-screen overlay, so an event genuinely reads as a different
+   kind of encounter rather than a fight with different flavor text. */
+#event-screen { max-width: 640px; margin: 24px auto 40px; padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+#event-card {
+  background: #1a1d26; border: 1px solid #303750; border-radius: 10px;
+  padding: 20px; display: flex; flex-direction: column; gap: 8px;
+}
+#event-type-tag { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; }
+#event-card h1 { font-size: 1.3rem; margin: 0; }
+#event-tier-banner {
+  align-self: flex-start; padding: 4px 10px; border-radius: 6px;
+  font-weight: 600; font-size: 0.85rem; background: #2a2f3d;
+}
+#event-tier-banner.fail { background: #4a1f24; color: #f0b8bc; }
+#event-tier-banner.partial { background: #2a2f3d; color: #cfd6e8; }
+#event-tier-banner.success { background: #1e4620; color: #b8f0b8; }
+#event-tier-banner.great { background: #4a3a1f; color: #f0dcb8; }
+#event-outcome-list { margin: 6px 0 0; padding-left: 20px; font-size: 0.9rem; }
+#event-outcome-list li { margin-bottom: 4px; }
+
+/* Same visual language as #push-luck-panel on the battle screen — this
+   is the same decision, just reached by a different kind of encounter. */
+#event-push-luck-panel {
+  background: #2c2c22; border: 1px solid #af8b4c; border-radius: 8px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;
+}
+#event-push-luck-summary { margin: 0; font-size: 0.88rem; color: #e8ddc0; }
+#event-push-luck-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+#event-push-luck-actions button {
+  border: none; border-radius: 6px; padding: 9px 16px; cursor: pointer; font-size: 0.9rem;
+}
+#event-bank { background: #af8b4c; color: #14161c; font-weight: 600; }
+#event-bank:hover { background: #c19d5c; }
+#event-continue { background: #4a1f24; color: #f0b8bc; font-weight: 600; }
+#event-continue:hover { background: #5e2830; }

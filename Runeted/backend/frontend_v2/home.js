@@ -9,7 +9,7 @@ const $ = (id) => document.getElementById(id);
 
 async function loadPlayer() {
   try {
-    const res = await fetch("/api/player");
+    const res = await authFetch("/api/player");
     if (!res.ok) throw new Error("player fetch failed");
     const player = await res.json();
     $("home-player-name").textContent = player.name;
@@ -23,17 +23,22 @@ async function startBattle() {
   const btn = $("nav-battle");
   btn.disabled = true;
   try {
-    const res = await fetch("/api/battle/start", {
+    const res = await authFetch("/api/battle/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     });
     if (!res.ok) throw new Error("battle start failed");
-    window.location.href = "/battle";
+    const body = await res.json();
+    // Some encounters roll into a non-combat event instead of a fight
+    // (core/events.py) -- those get their own screen, not the arena.
+    window.location.href = body.kind === "event" ? "/event" : "/battle";
   } catch {
     btn.disabled = false;
   }
 }
 
-$("nav-battle").addEventListener("click", startBattle);
-loadPlayer();
+if (requireAuthToken()) {
+  $("nav-battle").addEventListener("click", startBattle);
+  loadPlayer();
+}

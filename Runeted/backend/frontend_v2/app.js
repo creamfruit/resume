@@ -35,7 +35,7 @@ const RUNE_ICONS = { ember: "❤️‍🔥", thorn: "🌵", zephyr: "🪶", ward
 // ---------- API ----------
 
 async function api(path, options) {
-  const res = await fetch(path, options);
+  const res = await authFetch(path, options);
   const body = await res.json();
   if (!res.ok) {
     const detail = body && body.detail ? body.detail : `Request failed (${res.status})`;
@@ -158,7 +158,16 @@ async function bankPending() {
 
 async function continuePushingLuck() {
   try {
-    state = await apiContinueGauntlet();
+    const result = await apiContinueGauntlet();
+    // Continuing sometimes rolls a non-combat event instead of a fight
+    // (core/events.py) -- that gets its own screen, not the arena. The
+    // battle underneath is untouched, so coming back from /event lands
+    // on this same bank/continue decision.
+    if (result.kind === "event") {
+      window.location.href = "/event";
+      return;
+    }
+    state = result;
     selectedSkill = null;
     closeSkillModal();
     renderedRounds = 0;
@@ -421,7 +430,14 @@ async function newBattle() {
   // No manual parameters: the server derives the encounter from the
   // persistent player's real level and picks the archetype itself.
   try {
-    state = await apiStart({});
+    const result = await apiStart({});
+    // Some encounters roll into a non-combat event instead of a fight
+    // (core/events.py) -- that gets its own screen, not the arena.
+    if (result.kind === "event") {
+      window.location.href = "/event";
+      return;
+    }
+    state = result;
     selectedSkill = null;
     closeSkillModal();
     renderedRounds = 0;
@@ -535,6 +551,7 @@ $("push-luck-bank").addEventListener("click", bankPending);
 $("push-luck-continue").addEventListener("click", continuePushingLuck);
 
 (async function boot() {
+  if (!requireAuthToken()) return;
   try {
     state = await api("/api/battle/state");
     for (const ev of state.rounds) appendLogEntry(ev);
