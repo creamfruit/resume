@@ -1,17 +1,35 @@
-/* Non-combat special-event screen (core/events.py). A real alternative
- * to fighting: its own page, not a battle-screen overlay. The event has
- * already been rolled and resolved server-side by the time this page
- * loads (deterministic, seeded, no live/generative call involved) --
- * this page only fetches and displays what already happened, then lets
- * the player either return to the hub or, if this event was reached
- * mid push-your-luck run, make the same bank/continue decision the
- * battle screen would have offered.
+/* Non-combat special-event screen (core/special_events.py). A real
+ * alternative to fighting: its own page, not a battle-screen overlay.
+ * Landing here never means an outcome has already happened -- the
+ * server hands back an *unresolved* event (`resolved: false`) that
+ * only presents a choice (engage or walk away). Nothing about the
+ * outcome is decided until the player picks one; engaging is the only
+ * path that rolls anything (deterministic, seeded, weighted by
+ * whichever single stat this event type is gated on -- charisma or
+ * luck), and walking away leaves the player exactly as they were.
  */
 "use strict";
 
 const $ = (id) => document.getElementById(id);
 
 const TIER_LABELS = { fail: "No luck", partial: "Modest", success: "Good", great: "Great!" };
+
+const ENGAGE_LABELS = {
+  merchant: "Trade with the merchant",
+  shrine: "Approach the shrine",
+  hazard: "Investigate",
+  treasure: "Open it",
+};
+const WALK_AWAY_LABELS = {
+  merchant: "Walk away",
+  shrine: "Walk away",
+  hazard: "Leave it alone",
+  treasure: "Leave it alone",
+};
+const GOVERNING_STAT_HINTS = {
+  charisma: "Your charisma will decide how this goes.",
+  luck: "Your luck will decide how this goes.",
+};
 
 async function api(path, options) {
   const res = await authFetch(path, options);
@@ -39,6 +57,10 @@ function renderOutcomeLines(event) {
     li.textContent = text;
     list.append(li);
   };
+  if (event.walked_away) {
+    add("You walked away. Nothing gained, nothing lost.");
+    return;
+  }
   if (event.gold_delta) add(`+${event.gold_delta} gold`);
   if (event.resource_id && event.resource_amount) add(`+${event.resource_amount} ${event.resource_id}`);
   if (event.chest_rarity) add(`+1 ${event.chest_rarity} chest`);
@@ -58,18 +80,46 @@ function render(data) {
   $("event-type-tag").textContent = event.type;
   $("event-name").textContent = event.name;
   $("event-description").textContent = event.description;
-  $("event-tier-banner").textContent = TIER_LABELS[event.tier] || event.tier;
-  $("event-tier-banner").className = `event-tier ${event.tier}`;
-  renderOutcomeLines(event);
+
+  const unresolved = !event.resolved;
+  $("event-choice-panel").className = unresolved ? "" : "hidden";
+  $("event-engage").textContent = ENGAGE_LABELS[event.type] || "Engage";
+  $("event-walk-away").textContent = WALK_AWAY_LABELS[event.type] || "Walk away";
+  $("event-governing-stat").className = unresolved ? "muted" : "muted hidden";
+  $("event-governing-stat").textContent = GOVERNING_STAT_HINTS[event.governing_stat] || "";
+
+  $("event-tier-banner").className = unresolved ? "hidden" : `event-tier ${event.tier || "walked-away"}`;
+  $("event-tier-banner").textContent = unresolved ? "" : event.walked_away ? "Walked away" : (TIER_LABELS[event.tier] || event.tier);
+  $("event-outcome-list").className = unresolved ? "hidden" : "";
+  if (!unresolved) renderOutcomeLines(event);
 
   const pushLuck = data.push_luck;
   const midRun = Boolean(pushLuck && pushLuck.can_bank);
-  $("event-push-luck-panel").className = midRun ? "" : "hidden";
-  $("event-return-hub").className = midRun ? "placeholder-back hidden" : "placeholder-back";
-  if (midRun) {
+  const showPushLuck = !unresolved && midRun;
+  $("event-push-luck-panel").className = showPushLuck ? "" : "hidden";
+  $("event-return-hub").className = (!unresolved && !midRun) ? "placeholder-back" : "placeholder-back hidden";
+  if (showPushLuck) {
     const p = pushLuck.pending;
     $("event-push-luck-summary").textContent =
       `Still pending from this run: ${p.gold} gold, ${totalChests(p.chests)} chest(s), streak ${p.streak}.`;
+  }
+}
+
+async function engage() {
+  try {
+    const data = await api("/api/event/engage", { method: "POST" });
+    render(data);
+  } catch (err) {
+    notify(err.message);
+  }
+}
+
+async function walkAway() {
+  try {
+    const data = await api("/api/event/walk_away", { method: "POST" });
+    render(data);
+  } catch (err) {
+    notify(err.message);
   }
 }
 
@@ -95,6 +145,8 @@ async function continuePushingLuck() {
   }
 }
 
+$("event-engage").addEventListener("click", engage);
+$("event-walk-away").addEventListener("click", walkAway);
 $("event-bank").addEventListener("click", bank);
 $("event-continue").addEventListener("click", continuePushingLuck);
 

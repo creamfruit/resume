@@ -15,23 +15,28 @@ import unittest
 
 from fastapi.testclient import TestClient
 
-import battle_app
-from core.gauntlet import PendingPool
-from core.player_state import ATTRIBUTES, BASE_VICTORY_EXP, PlayerState, victory_exp
-from core.stats import compute_player_stats
-from core.wallet import Wallet
+from _account_test_helpers import authed_client, bundle_for
+from core.player_state import ATTRIBUTES, BASE_VICTORY_EXP, LEVEL_UP_STAT_POINTS, PlayerState, victory_exp
+from core.stats import (
+    ATTACK_PER_STRENGTH,
+    HP_PER_VITALITY,
+    baseline_enemy,
+    compute_player_stats,
+    derive_enemy_stats,
+)
 
 
 def client() -> TestClient:
-    battle_app.CURRENT["battle"] = None
-    battle_app.CURRENT["player"] = PlayerState()
-    battle_app.CURRENT["wallet"] = Wallet()
-    battle_app.CURRENT["pending"] = PendingPool()
-    return TestClient(battle_app.app)
+    # A brand-new, never-before-used account per call -- nothing stale
+    # to reset, unlike the single shared global this used to reach into.
+    return authed_client()
 
 
 def start(c: TestClient, **overrides):
-    payload = {"archetype": "brute"}
+    # seed=2 is a known "combat" roll under core/events.py's encounter
+    # gate -- this suite is about leveling, not events, so every call
+    # needs a fight, deterministically.
+    payload = {"archetype": "brute", "seed": 2}
     payload.update(overrides)
     res = c.post("/api/battle/start", json=payload)
     assert res.status_code == 200, res.text
@@ -39,13 +44,19 @@ def start(c: TestClient, **overrides):
 
 
 def force_a_win(c: TestClient) -> dict:
-    """Player level 10 vs. a level-1 enemy on auto-battle reliably wins
-    (the same technique test_push_your_luck.py uses)."""
-    battle_app.CURRENT["player"].level = 10
-    start(c, enemy_level=1, auto=True)
+    """Player level 10 vs. a level-1 enemy reliably wins if every round
+    is answered with the auto-battle policy's own counter choice --
+    computed directly from the battle here rather than via
+    `battle.auto = True`, so a win doesn't itself trigger auto-battle's
+    bank-or-continue decision (test_push_your_luck.py covers that
+    behavior on its own terms; this suite is about leveling, and needs
+    the battle to actually stop at exactly one victory)."""
+    bundle_for(c)["player"].level = 10
+    start(c, enemy_level=1)
     last = None
     for _ in range(50):
-        last = c.post("/api/battle/round", json={"response": None})
+        response = bundle_for(c)["battle"].choose_auto_response()
+        last = c.post("/api/battle/round", json={"response": response})
         assert last.status_code == 200, last.text
         if last.json()["state"]["finished"]:
             break
@@ -58,7 +69,7 @@ def force_a_loss(c: TestClient) -> dict:
     """Crash the active battle's HP to near-zero and answer with a
     non-striking, non-blocking, non-dodging skill so the enemy's
     guaranteed contact chip finishes the player off deterministically."""
-    battle = battle_app.CURRENT["battle"]
+    battle = bundle_for(c)["battle"]
     battle._rune_passives = []
     battle.player_hp = 0.5
     res = c.post("/api/battle/round", json={"response": "second_wind"})
@@ -125,13 +136,91 @@ class AllocatedStatsFeedDerivedStatsTests(unittest.TestCase):
         player = PlayerState(stat_points=10)
         before = compute_player_stats(player)
         self.assertTrue(player.spend_stat("charisma", 10))
-        self.assertEqual(player.charisma, 15)
+        self.assertEqual(player.charisma, 10)
         after = compute_player_stats(player)
         self.assertEqual(before, after)
 
     def test_charisma_is_registered_as_a_real_attribute(self):
         self.assertIn("charisma", ATTRIBUTES)
-        self.assertEqual(PlayerState().charisma, 5)
+        self.assertEqual(PlayerState().charisma, 0)
+
+
+# ---------- The rebalanced growth curve itself ----------
+#
+# A simulation in the same spirit as test_core_combat.py's auto-battle
+# balance matrix: levels and stat allocations in, resulting combat
+# numbers out, checked at several sample points rather than one. This
+# is what the ATK/HP rebalance (LEVEL_UP_STAT_POINTS=3,
+# ATTACK_PER_STRENGTH, HP_PER_VITALITY in core/stats.py) was tuned
+# against. Before the fix, allocating stat points multiplied them by
+# the same exponential level_scale the base stats use, so 5 levels of
+# pure-strength investment (25 points at the old 5/level rate) turned
+# a 7-damage hit into 29 -- and the more levels gained, the worse the
+# compounding got. The fix makes a stat point's contribution flat
+# (added after level scaling, not before it), so it buys the same
+# absolute bonus at every level.
+
+def _damage_at(level: int, strength: int = 0) -> float:
+    """The plain hit-vs-defense damage a level-`level` player with
+    `strength` points invested deals to a same-level baseline enemy --
+    the same differential core/battle.py and the skill-preview payload
+    in battle_app.py both compute for an unmodified attack."""
+    player_atk = compute_player_stats(PlayerState(level=level, strength=strength)).attack
+    enemy_def = derive_enemy_stats(baseline_enemy(level)).defense
+    return round(player_atk - enemy_def, 2)
+
+
+class DerivedStatGrowthCurveTests(unittest.TestCase):
+    FIVE_LEVELS_OF_POINTS = LEVEL_UP_STAT_POINTS * 5  # 15 at the current 3/level rate
+
+    def test_baseline_damage_at_zero_investment_is_unchanged(self):
+        # The rebalance must not disturb the existing zero-investment
+        # curve (the per-level base growth is out of scope here).
+        self.assertEqual(_damage_at(1), 7.0)
+
+    def test_five_levels_of_strength_investment_lands_in_the_target_band(self):
+        # The brief's own target: "something like 7 to 9" over a
+        # 5-level span, replacing the old 7-to-29 blowup.
+        before = _damage_at(1, strength=0)
+        after = _damage_at(1, strength=self.FIVE_LEVELS_OF_POINTS)
+        self.assertEqual(before, 7.0)
+        self.assertGreaterEqual(after, 8.0)
+        self.assertLessEqual(after, 10.0)
+        # Nowhere near the old, broken 29 -- guards against reintroducing
+        # the pre-scaling compounding bug.
+        self.assertLess(after, 15.0)
+
+    def test_stat_point_damage_bonus_does_not_compound_with_level(self):
+        # The actual bug: the same number of invested points must buy
+        # the same absolute damage bonus regardless of how many levels
+        # the player has also gained, not a bonus that grows with level.
+        expected_bonus = round(ATTACK_PER_STRENGTH * self.FIVE_LEVELS_OF_POINTS, 2)
+        for level in (1, 3, 6, 10):
+            with self.subTest(level=level):
+                bonus = _damage_at(level, strength=self.FIVE_LEVELS_OF_POINTS) - _damage_at(level, strength=0)
+                self.assertAlmostEqual(bonus, expected_bonus, places=2)
+
+    def test_hp_gain_per_level_of_full_vitality_investment_is_capped_near_15(self):
+        one_level_of_points = LEVEL_UP_STAT_POINTS
+        for level in (1, 3, 6, 10):
+            with self.subTest(level=level):
+                before = compute_player_stats(PlayerState(level=level)).max_hp
+                after = compute_player_stats(PlayerState(level=level, vitality=one_level_of_points)).max_hp
+                gain = round(after - before, 2)
+                self.assertAlmostEqual(gain, HP_PER_VITALITY * one_level_of_points, places=2)
+                self.assertLessEqual(gain, 15.0 + 1e-6)
+
+    def test_hp_gain_scales_linearly_with_points_not_exponentially_with_level(self):
+        # 5 levels' worth of vitality should buy ~5x a single level's
+        # HP gain at every sampled level -- not a growing multiple of it.
+        one_level = LEVEL_UP_STAT_POINTS
+        five_levels = self.FIVE_LEVELS_OF_POINTS
+        for level in (1, 5, 10):
+            with self.subTest(level=level):
+                base = compute_player_stats(PlayerState(level=level)).max_hp
+                one_gain = compute_player_stats(PlayerState(level=level, vitality=one_level)).max_hp - base
+                five_gain = compute_player_stats(PlayerState(level=level, vitality=five_levels)).max_hp - base
+                self.assertAlmostEqual(five_gain, one_gain * 5, places=1)
 
 
 # ---------- Battle-victory XP wiring ----------
@@ -143,18 +232,18 @@ class BattleVictoryExpTests(unittest.TestCase):
         self.assertIn("exp_result", body)
         self.assertGreater(body["exp_result"]["exp_gained"], 0)
         self.assertFalse(body["exp_result"]["leveled_up"])
-        self.assertEqual(battle_app.CURRENT["player"].exp, body["exp_result"]["exp_gained"])
+        self.assertEqual(bundle_for(c)["player"].exp, body["exp_result"]["exp_gained"])
 
     def test_defeat_awards_no_exp(self):
         c = client()
         start(c, enemy_level=20)
         body = force_a_loss(c)
         self.assertNotIn("exp_result", body)
-        self.assertEqual(battle_app.CURRENT["player"].exp, 0)
+        self.assertEqual(bundle_for(c)["player"].exp, 0)
 
     def test_leveling_up_grants_the_configured_stat_points(self):
         c = client()
-        player = battle_app.CURRENT["player"]
+        player = bundle_for(c)["player"]
         player.exp = player.exp_to_next - 1  # this win's XP crosses the threshold
         body = force_a_win(c)
         self.assertTrue(body["exp_result"]["leveled_up"])
@@ -168,7 +257,7 @@ class BattleVictoryExpTests(unittest.TestCase):
         # must never grant a free heal: that would undercut the very
         # risk continuing-without-healing exists to create (Phase 6).
         c = client()
-        player = battle_app.CURRENT["player"]
+        player = bundle_for(c)["player"]
         player.exp = player.exp_to_next - 1
         body = force_a_win(c)
         self.assertTrue(body["exp_result"]["leveled_up"])
@@ -186,36 +275,36 @@ class SpendStatEndpointTests(unittest.TestCase):
         self.assertIn("attributes", body)
         for stat in ATTRIBUTES:
             self.assertIn(stat, body["attributes"])
-            self.assertEqual(body["attributes"][stat], 5)
+            self.assertEqual(body["attributes"][stat], 0)
 
     def test_spend_stat_applies_and_returns_the_updated_player(self):
         c = client()
-        battle_app.CURRENT["player"].stat_points = 3
+        bundle_for(c)["player"].stat_points = 3
         res = c.post("/api/player/spend_stat", json={"stat": "strength"})
         self.assertEqual(res.status_code, 200)
         body = res.json()
-        self.assertEqual(body["attributes"]["strength"], 6)
+        self.assertEqual(body["attributes"]["strength"], 1)
         self.assertEqual(body["stat_points"], 2)
 
     def test_spend_stat_respects_a_custom_amount(self):
         c = client()
-        battle_app.CURRENT["player"].stat_points = 3
+        bundle_for(c)["player"].stat_points = 3
         res = c.post("/api/player/spend_stat", json={"stat": "charisma", "amount": 3})
         self.assertEqual(res.status_code, 200)
         body = res.json()
-        self.assertEqual(body["attributes"]["charisma"], 8)
+        self.assertEqual(body["attributes"]["charisma"], 3)
         self.assertEqual(body["stat_points"], 0)
 
     def test_spend_stat_rejects_an_unknown_stat(self):
         c = client()
-        battle_app.CURRENT["player"].stat_points = 3
+        bundle_for(c)["player"].stat_points = 3
         res = c.post("/api/player/spend_stat", json={"stat": "not_a_stat"})
         self.assertEqual(res.status_code, 400)
-        self.assertEqual(battle_app.CURRENT["player"].stat_points, 3)
+        self.assertEqual(bundle_for(c)["player"].stat_points, 3)
 
     def test_spend_stat_rejects_when_no_points_are_available(self):
         c = client()
-        battle_app.CURRENT["player"].stat_points = 0
+        bundle_for(c)["player"].stat_points = 0
         res = c.post("/api/player/spend_stat", json={"stat": "strength"})
         self.assertEqual(res.status_code, 400)
 

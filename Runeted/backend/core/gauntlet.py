@@ -45,6 +45,23 @@ POST_CAP_DEPTH_STEP = 0.18
 MAX_RISK = 30
 MAX_DEPTH = 12
 
+# Auto-battle's safety net for the continue decision below: continuing
+# never heals (see battle_app.continue_gauntlet's docstring), so pushing
+# on with an unattended auto-battle indefinitely would eventually walk
+# it into a defeat it never needed to risk. Below this fraction of max
+# HP, auto-battle banks the run instead of pushing on into a harder,
+# escalated encounter.
+AUTO_BANK_HP_THRESHOLD = 0.3
+
+
+def should_auto_bank(hp_pct: float, threshold: float = AUTO_BANK_HP_THRESHOLD) -> bool:
+    """Whether auto-battle should bank the pending run instead of
+    continuing, given the player's HP as a fraction of max HP carried
+    into the next encounter. `hp_pct` uses the *current* HP, since
+    continuing never heals -- so this is the actual risk being weighed,
+    not an optimistic one."""
+    return hp_pct < threshold
+
 
 def escalation_for_streak(streak: int) -> tuple[int, int]:
     """(depth, risk) fed to `engine.enemy_factory.create_enemy` for a

@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 import battle_app
 from _account_test_helpers import authed_client, bundle_for
 from core.gauntlet import (
+    AUTO_BANK_HP_THRESHOLD,
     MAX_DEPTH,
     MAX_RISK,
     SOFT_CAP_STREAK,
@@ -24,6 +25,7 @@ from core.gauntlet import (
     escalation_for_streak,
     forfeit,
     next_encounter_enemy,
+    should_auto_bank,
 )
 from core.player_state import PlayerState
 from core.wallet import Wallet, wallet_payload
@@ -207,18 +209,45 @@ def continue_(c: TestClient, **overrides):
 
 
 def force_a_win(c: TestClient) -> dict:
-    """Player level 10 vs. a level-1 enemy on auto-battle reliably wins
-    (the same technique test_battle_screen.py uses for its 409 test)."""
+    """Player level 10 vs. a level-1 enemy reliably wins if every round
+    is answered with the auto-battle policy's own counter choice --
+    computed directly from the battle here rather than via
+    `battle.auto = True`, so this helper lands on the plain manual
+    decision (auto off) that most of this suite's tests are about. See
+    force_a_win_with_auto below for the auto-battle-on version, which
+    deliberately does flip the flag."""
     bundle_for(c)["player"].level = 10
-    start(c, enemy_level=1, auto=True)
+    start(c, enemy_level=1)
     last = None
     for _ in range(50):
-        last = c.post("/api/battle/round", json={"response": None})
+        response = bundle_for(c)["battle"].choose_auto_response()
+        last = c.post("/api/battle/round", json={"response": response})
         assert last.status_code == 200, last.text
         if last.json()["state"]["finished"]:
             break
     body = last.json()
     assert body["state"]["outcome"] == "victory", body["state"]["outcome"]
+    return body
+
+
+def force_a_win_with_auto(c: TestClient, *, hp_pct: float | None = None) -> dict:
+    """Same forced win as force_a_win, but with auto-battle switched on
+    for the whole flow, so the winning round's own bank-or-continue
+    decision (battle_app._maybe_auto_advance) actually fires instead of
+    landing on the manual push-your-luck panel. Level 10 vs. level 1 is
+    a same-round, full-HP win (verified empirically -- see
+    AutoContinueEndpointTests below), so `hp_pct`, when given, only
+    needs to force the player's HP once, right after start, to land
+    deterministically on one side of the safety threshold or the other."""
+    bundle_for(c)["player"].level = 10
+    start(c, enemy_level=1, auto=True)
+    if hp_pct is not None:
+        battle = bundle_for(c)["battle"]
+        battle.player_hp = round(hp_pct * battle.stats.max_hp, 2)
+    res = c.post("/api/battle/round", json={"response": None})
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["push_luck_result"]["result"] == "win", body
     return body
 
 
@@ -395,6 +424,172 @@ class LosingForfeitsOnlyTheUnbankedRunTests(unittest.TestCase):
         wallet = c.get("/api/player/wallet").json()
         self.assertEqual(wallet["gold"], 0)
         self.assertEqual(wallet["chests"], {})
+
+
+# ---------- Auto-battle's own bank-or-continue decision ----------
+#
+# When auto-battle is on, a win never waits for the manual push-your-
+# luck panel: battle_app._maybe_auto_advance decides for itself and
+# reports what it did as `auto_advance` on the response. Below the HP
+# safety threshold (core.gauntlet.AUTO_BANK_HP_THRESHOLD) it banks the
+# run outright, since continuing never heals (ContinueEndpointTests
+# above); at or above it, it continues straight into the next escalated
+# encounter with auto-battle still on, so the next fight also plays
+# itself with no manual step in between.
+
+class AutoBankThresholdTests(unittest.TestCase):
+    """core.gauntlet.should_auto_bank in isolation -- no HTTP, no float
+    noise from a real battle's HP, so the exact boundary is unambiguous
+    here even though it isn't safe to assert via a live battle's HP
+    (see the "clear margin, not the exact boundary" note below)."""
+
+    def test_default_threshold_is_thirty_percent(self):
+        self.assertEqual(AUTO_BANK_HP_THRESHOLD, 0.3)
+
+    def test_below_threshold_banks(self):
+        self.assertTrue(should_auto_bank(0.1))
+        self.assertTrue(should_auto_bank(0.299))
+
+    def test_at_or_above_threshold_continues(self):
+        self.assertFalse(should_auto_bank(AUTO_BANK_HP_THRESHOLD))  # exactly at cutoff
+        self.assertFalse(should_auto_bank(0.5))
+        self.assertFalse(should_auto_bank(1.0))
+
+    def test_custom_threshold_is_respected(self):
+        self.assertTrue(should_auto_bank(0.4, threshold=0.5))
+        self.assertFalse(should_auto_bank(0.6, threshold=0.5))
+
+
+class AutoContinueEndpointTests(unittest.TestCase):
+    def test_healthy_hp_auto_continues_without_a_manual_decision(self):
+        c = client()
+        # The continuation roll is a real, unseeded random draw here (it
+        # fires from inside the server's own decision, not a client
+        # request that could carry a seed) -- pin it to "combat" so this
+        # test is about the bank-or-continue call, not the independent
+        # ~22% event chance (that gets its own dedicated test below).
+        with patch("battle_app.roll_encounter_kind", return_value="combat"):
+            body = force_a_win_with_auto(c)
+        advance = body["auto_advance"]
+        self.assertEqual(advance["action"], "continue")
+        self.assertEqual(advance["hp_pct"], 1.0)
+
+        state = body["state"]
+        # The response's state is already the *next* battle, in progress
+        # -- not the finished, decision-pending one the manual flow
+        # leaves in place (ContinueEndpointTests above).
+        self.assertFalse(state["finished"])
+        self.assertEqual(state["outcome"], "in_progress")
+        self.assertTrue(state["auto"])  # auto-battle carries into the next fight
+        self.assertFalse(state["push_luck"]["can_bank"])
+        self.assertFalse(state["push_luck"]["can_continue"])
+        # The pending pool from the win is untouched -- continuing keeps
+        # it at risk, exactly like the manual /continue endpoint does.
+        self.assertEqual(state["push_luck"]["pending"]["streak"], 1)
+
+    def test_low_hp_auto_banks_instead_of_continuing(self):
+        c = client()
+        body = force_a_win_with_auto(c, hp_pct=0.1)
+        advance = body["auto_advance"]
+        self.assertEqual(advance["action"], "bank")
+        # Not an exact-value check: the winning strike can itself heal a
+        # little (e.g. a lifesteal rune firing on the killing blow), so
+        # the actual hp_pct the decision saw can land a bit above the
+        # 0.1 this forced -- the only thing that matters here is that it
+        # stayed clearly under the bank threshold.
+        self.assertLess(advance["hp_pct"], AUTO_BANK_HP_THRESHOLD)
+        self.assertEqual(advance["banked"]["streak"], 1)
+
+        # The run is closed out exactly like a manual bank: no active
+        # battle, and the reward actually landed in the wallet.
+        self.assertEqual(c.get("/api/battle/state").status_code, 404)
+        wallet = c.get("/api/player/wallet").json()
+        self.assertEqual(wallet["chests"], advance["banked"]["chests"])
+        self.assertEqual(wallet["gold"], advance["banked"]["gold"])
+
+    def test_clear_margin_either_side_of_the_threshold(self):
+        # A live battle's HP goes through a couple of roundings (and
+        # possibly a small on-hit heal) on the way to `hp_pct`, so this
+        # checks a clear margin on each side rather than the exact
+        # cutoff (AutoBankThresholdTests above already covers the exact
+        # boundary, free of any of that noise).
+        with patch("battle_app.roll_encounter_kind", return_value="combat"):
+            c = client()
+            self.assertEqual(force_a_win_with_auto(c, hp_pct=0.9)["auto_advance"]["action"], "continue")
+            c2 = client()
+            self.assertEqual(force_a_win_with_auto(c2, hp_pct=0.05)["auto_advance"]["action"], "bank")
+
+    def test_manual_auto_off_win_never_reports_auto_advance(self):
+        # Regression: the plain (auto=False) win must be unaffected by
+        # this feature -- no auto_advance key at all, and the manual
+        # decision is still offered exactly as before this change.
+        c = client()
+        body = force_a_win(c)
+        self.assertNotIn("auto_advance", body)
+        self.assertTrue(body["state"]["push_luck"]["can_bank"])
+        self.assertTrue(body["state"]["push_luck"]["can_continue"])
+
+    def test_auto_continue_is_never_auto_resolved_into_an_event(self):
+        # A non-combat event landing on the continuation roll is always
+        # an explicit choice (core/special_events.py) -- auto-battle
+        # must not silently engage or walk away from it on the player's
+        # behalf. The finished, victorious battle stays exactly where a
+        # manual continue would have left it, and the event sits
+        # unresolved for the player to act on.
+        c = client()
+        with patch("battle_app.roll_encounter_kind", side_effect=["combat", "event"]), \
+                patch("battle_app.roll_event_type", return_value="shrine"):
+            body = force_a_win_with_auto(c)
+        advance = body["auto_advance"]
+        self.assertEqual(advance["action"], "event")
+        self.assertEqual(advance["event"]["type"], "shrine")
+        self.assertFalse(advance["event"]["resolved"])
+
+        state = body["state"]
+        self.assertTrue(state["finished"])
+        self.assertEqual(state["outcome"], "victory")
+        self.assertEqual(state["push_luck"]["pending"]["streak"], 1)  # not yet banked
+
+        pending = c.get("/api/event/state").json()
+        self.assertFalse(pending["event"]["resolved"])
+
+
+class AutoToggleActsOnAPendingDecisionTests(unittest.TestCase):
+    """Flipping auto-battle on doesn't just change how future rounds are
+    answered -- if it lands on an already-pending bank/continue decision
+    (won manually, then auto switched on instead of clicking), it makes
+    the same call immediately rather than leaving the decision stuck
+    until a round that will never come (the battle is finished)."""
+
+    def test_switching_auto_on_immediately_continues_a_pending_decision(self):
+        c = client()
+        win_body = force_a_win(c)  # auto off -- decision sits pending
+        self.assertTrue(win_body["state"]["push_luck"]["can_continue"])
+
+        # Pinned to "combat" for the same reason as the tests above: this
+        # is a real, unseeded roll fired from the server's own decision.
+        with patch("battle_app.roll_encounter_kind", return_value="combat"):
+            res = c.post("/api/battle/auto", json={"enabled": True})
+        self.assertEqual(res.status_code, 200, res.text)
+        body = res.json()
+        self.assertEqual(body["auto_advance"]["action"], "continue")
+        self.assertFalse(body["finished"])
+        self.assertTrue(body["auto"])
+
+    def test_switching_auto_on_with_no_pending_decision_is_a_plain_toggle(self):
+        c = client()
+        start(c)  # battle in progress, nothing pending
+        body = c.post("/api/battle/auto", json={"enabled": True}).json()
+        self.assertNotIn("auto_advance", body)
+        self.assertTrue(body["auto"])
+
+    def test_switching_auto_off_never_triggers_the_decision(self):
+        c = client()
+        force_a_win(c)
+        body = c.post("/api/battle/auto", json={"enabled": False}).json()
+        self.assertNotIn("auto_advance", body)
+        # Still sitting there, untouched, for a manual bank/continue.
+        self.assertTrue(body["push_luck"]["can_bank"])
 
 
 class WalletPayloadTests(unittest.TestCase):

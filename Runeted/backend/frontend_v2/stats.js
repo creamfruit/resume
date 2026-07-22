@@ -19,15 +19,15 @@ const STAT_LABELS = {
 };
 
 // What each point actually does, for the player reading this screen.
-// Charisma is the one attribute with nothing here yet -- it feeds a
-// later event system, not combat.
+// Charisma is the one attribute with no combat effect -- it feeds
+// non-combat event outcomes (core/special_events.py) instead.
 const STAT_EFFECTS = {
   strength: "Raises attack.",
   dexterity: "Raises dodge chance.",
   intelligence: "Raises max stamina.",
   vitality: "Raises defense and max HP.",
-  luck: "Raises crit chance.",
-  charisma: "No combat effect yet.",
+  luck: "Raises crit chance. Also improves event outcomes.",
+  charisma: "No combat effect. Improves outcomes at random events.",
 };
 
 let player = null;
@@ -73,7 +73,7 @@ function render() {
 
 async function spend(stat) {
   try {
-    const res = await fetch("/api/player/spend_stat", {
+    const res = await authFetch("/api/player/spend_stat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stat, amount: 1 }),
@@ -87,9 +87,11 @@ async function spend(stat) {
 }
 
 async function load() {
-  const res = await fetch("/api/player");
+  const res = await authFetch("/api/player");
   player = await res.json();
   render();
 }
 
-load();
+if (requireAuthToken()) {
+  load();
+}

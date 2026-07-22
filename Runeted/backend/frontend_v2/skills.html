@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runeted — Skills</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-home-link" href="/">🏠 Runeted</a>
+  </header>
+  <main id="loadout-screen">
+    <header id="loadout-header">
+      <h1>Skills</h1>
+      <p id="loadout-budget" class="muted"></p>
+    </header>
+    <p class="muted">Click an equipped square to unequip it or move it to another slot. Click an empty square to fill it. Changes apply immediately — the next fight uses exactly this loadout.</p>
+    <div id="loadout-notice" class="hidden"></div>
+
+    <div id="slot-grid" aria-label="Skill loadout slots"></div>
+  </main>
+
+  <div id="loadout-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="loadout-modal-title">
+    <div id="loadout-modal-card">
+      <button id="loadout-modal-close" type="button" aria-label="Close">✕</button>
+      <h3 id="loadout-modal-title"></h3>
+      <div id="loadout-modal-body"></div>
+    </div>
+  </div>
+
+  <script src="/static/auth-client.js"></script>
+  <script src="/static/loadout-client.js"></script>
+  <script src="/static/skills.js"></script>
+</body>
+</html>

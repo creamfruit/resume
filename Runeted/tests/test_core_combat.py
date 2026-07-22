@@ -362,7 +362,7 @@ class PlayerStateTests(unittest.TestCase):
         gained = state.gain_exp(100)
         self.assertEqual(gained, 1)
         self.assertEqual(state.level, 2)
-        self.assertEqual(state.stat_points, 5)
+        self.assertEqual(state.stat_points, 3)
         self.assertEqual(state.exp_to_next, 150)
         self.assertIsNone(state.hp)  # level-up restores to full
 
@@ -371,7 +371,7 @@ class PlayerStateTests(unittest.TestCase):
         self.assertFalse(state.spend_stat("strength"))
         state.stat_points = 2
         self.assertTrue(state.spend_stat("strength"))
-        self.assertEqual(state.strength, 6)
+        self.assertEqual(state.strength, 1)
         self.assertFalse(state.spend_stat("not_a_stat"))
         self.assertEqual(state.stat_points, 1)
 

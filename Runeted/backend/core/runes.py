@@ -10,10 +10,14 @@ for it.
 A rune's effect is not a new effect system: each rune carries standard
 `PassiveModel` payloads (models/passive.py) resolved by the existing
 passive engine (engine/passive_system.py) — the same triggers items
-already use (on_hit, on_take_hit, start_of_turn, below_hp, ...), the
-same chance/threshold rules, and the same rarity/value limits
+already use (on_hit, on_take_hit, start_of_turn, below_hp, end_of_turn),
+the same chance/threshold rules, and the same rarity/value limits
 (`clamp_passives`). core/battle.py fires those triggers each round and
-maps the resolved effects onto battle state, which only Battle may own.
+maps the resolved effects onto battle state, which only Battle may own
+— see that module's docstring for exactly which trigger/effect-type
+pairings are mechanically live (not every combination the schema
+allows actually does anything; catalog entries below only use pairings
+that do).
 
 Equip rules, enforced at construction (the only place equipment is
 built): at most RUNE_SLOT_CAP runes, and their total cost may not
@@ -100,6 +104,84 @@ RUNE_CATALOG: list[dict[str, Any]] = [
         "passives": [{
             "name": "Berserk", "trigger": "below_hp", "threshold": 0.4, "chance": 1.0,
             "effects": [{"type": "damage_mult", "value": 0.15, "target": "self"}],
+        }],
+    },
+    # Expanded catalog: wider trigger/cost/rarity spread than the
+    # original five. Every entry below only pairs an effect type with a
+    # trigger where it's actually mechanically live in core/battle.py
+    # (see that module's docstring) -- lifesteal/thorns need the
+    # damage context on_hit/on_take_hit carry, and damage_mult/dodge_mod
+    # need to fire before this round's strike/dodge roll
+    # (start_of_turn/below_hp), so those pairings are deliberate, not
+    # arbitrary flavor.
+    {
+        "id": "pebble_ward", "name": "Pebble Ward", "rarity": "rare",
+        "cost": 1, "type": "earth", "icon": "pebble",
+        "description": "A small stone ward hardens around you every round, absorbing 5 damage.",
+        "passives": [{
+            "name": "Pebble Ward", "trigger": "start_of_turn", "chance": 1.0,
+            "effects": [{"type": "shield", "value": 5.0, "target": "self"}],
+        }],
+    },
+    {
+        "id": "phantom_step", "name": "Phantom Step", "rarity": "rare",
+        "cost": 2, "type": "wind", "icon": "phantom",
+        "description": "Landing a hit leaves you a half-step out of phase: +8% chance to dodge the enemy's answer that same round.",
+        "passives": [{
+            "name": "Phantom Step", "trigger": "on_hit", "chance": 1.0,
+            "effects": [{"type": "dodge_mod", "value": 0.08, "target": "self"}],
+        }],
+    },
+    {
+        "id": "bastion_instinct", "name": "Bastion Instinct", "rarity": "rare",
+        "cost": 2, "type": "earth", "icon": "bastion",
+        "description": "Getting hit sharpens your guard: each blow that lands on you raises a 6-point ward against the next one.",
+        "passives": [{
+            "name": "Bastion Instinct", "trigger": "on_take_hit", "chance": 1.0,
+            "effects": [{"type": "shield", "value": 6.0, "target": "self"}],
+        }],
+    },
+    {
+        "id": "crimson_reprisal", "name": "Crimson Reprisal", "rarity": "epic",
+        "cost": 3, "type": "blood", "icon": "crimson",
+        "description": "Pain feeds you back: taking a hit heals you for a tenth of the damage you just suffered.",
+        "passives": [{
+            "name": "Crimson Reprisal", "trigger": "on_take_hit", "chance": 1.0,
+            "effects": [{"type": "lifesteal", "value": 0.10, "target": "self"}],
+        }],
+    },
+    {
+        "id": "last_breath_ward", "name": "Last Breath Ward", "rarity": "epic",
+        "cost": 3, "type": "wind", "icon": "lastbreath",
+        "description": "When you drop below 30% health, desperation sharpens your reflexes: +15% chance to dodge each round.",
+        "passives": [{
+            "name": "Last Breath Ward", "trigger": "below_hp", "threshold": 0.3, "chance": 1.0,
+            "effects": [{"type": "dodge_mod", "value": 0.15, "target": "self"}],
+        }],
+    },
+    {
+        "id": "dusk_bulwark", "name": "Dusk Bulwark", "rarity": "rare",
+        "cost": 2, "type": "arcane", "icon": "dusk",
+        "description": "As every round closes, a fading ward gathers around you, absorbing 7 damage against whatever comes next.",
+        "passives": [{
+            "name": "Dusk Bulwark", "trigger": "end_of_turn", "chance": 1.0,
+            "effects": [{"type": "shield", "value": 7.0, "target": "self"}],
+        }],
+    },
+    # The drawback rune: a real, always-on trade-off rather than a
+    # situational bonus -- more damage, paired with a genuine downside
+    # (a persistently lower dodge chance, so more of the enemy's
+    # attacks land) baked into the same passive, not a separate item.
+    {
+        "id": "reckless_warbrand", "name": "Reckless Warbrand", "rarity": "legendary",
+        "cost": 4, "type": "blood", "icon": "warbrand",
+        "description": "Every advantage costs something: your strikes hit 20% harder, but the recklessness leaves your guard down — your dodge chance drops by 10% for as long as it's equipped.",
+        "passives": [{
+            "name": "Reckless Warbrand", "trigger": "start_of_turn", "chance": 1.0,
+            "effects": [
+                {"type": "damage_mult", "value": 0.20, "target": "self"},
+                {"type": "dodge_mod", "value": -0.10, "target": "self"},
+            ],
         }],
     },
 ]

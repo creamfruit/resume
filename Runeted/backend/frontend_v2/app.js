@@ -30,7 +30,11 @@ const SKILL_ICONS = {
 const STATUS_ICONS = { exposed: "🎯", empowered: "⬆", poison: "☠" };
 // Passive-rune glyphs — a separate map from skill/status glyphs so the
 // three icon families never collide visually.
-const RUNE_ICONS = { ember: "❤️‍🔥", thorn: "🌵", zephyr: "🪶", ward: "🧿", brand: "💢", rune: "◈" };
+const RUNE_ICONS = {
+  ember: "❤️‍🔥", thorn: "🌵", zephyr: "🪶", ward: "🧿", brand: "💢",
+  pebble: "🪨", phantom: "👻", bastion: "🛡", crimson: "🩸", lastbreath: "🌬",
+  dusk: "🌙", warbrand: "🗡", rune: "◈",
+};
 
 // ---------- API ----------
 
@@ -104,12 +108,6 @@ function render() {
   // The toggle's icon spins while auto-battle is on so the mode is
   // obvious at a glance.
   $("auto-icon").classList.toggle("spinning", state.auto);
-  // Auto-battle drives its own rounds (see maybeScheduleAutoRound below);
-  // the manual pass button only makes sense when the player is in
-  // control, so it disappears entirely while auto is on and reappears
-  // the moment auto is turned back off.
-  $("hold-button").className = state.auto ? "hidden" : "";
-  $("hold-button").disabled = state.finished;
   renderSkills();
   renderRunes();
   renderConfirmBar();
@@ -150,6 +148,32 @@ async function bankPending() {
     window.location.href = "/";
   } catch (err) {
     notify(err.message);
+  }
+}
+
+// While auto-battle is on, a win never waits for a manual bank/continue
+// click -- the server decides for itself (battle_app._maybe_auto_advance)
+// and reports what it did in `auto_advance` on the round/auto response.
+// This just surfaces that decision and, for the two cases that don't
+// leave the player on this same in-progress battle, navigates on:
+// banking (HP dropped below the safety threshold, so the run cashes out
+// instead of pushing on) and landing on a non-combat event (never
+// auto-resolved -- the player gets the same explicit engage/walk-away
+// choice a manual continue would have handed them). A plain "continue"
+// needs no navigation: the response's `state` is already the next,
+// still-in-progress battle, so the normal auto-battle round loop just
+// keeps going.
+function handleAutoAdvance(advance) {
+  if (!advance) return;
+  const pct = Math.round(advance.hp_pct * 100);
+  if (advance.action === "bank") {
+    notify(`Auto-battle banked the run at ${pct}% HP instead of pushing on.`);
+    setTimeout(() => { window.location.href = "/"; }, 1400);
+  } else if (advance.action === "event") {
+    notify("Auto-battle paused for a non-combat encounter.");
+    setTimeout(() => { window.location.href = "/event"; }, 700);
+  } else if (advance.action === "continue") {
+    appendSystemLog(`Auto-battle pushes on at ${pct}% HP: a ${state.enemy.name} appears, tougher than before.`);
   }
 }
 
@@ -426,6 +450,7 @@ async function playRound(response) {
     spawnFloaters(body.event);
     render();
     describePushLuckResult(body.push_luck_result);
+    handleAutoAdvance(body.auto_advance);
   } catch (err) {
     notify(err.message);
   }
@@ -443,9 +468,13 @@ function describePushLuckResult(result) {
 
 async function toggleAuto() {
   try {
-    state = await apiAuto(!state.auto);
+    const body = await apiAuto(!state.auto);
+    state = body;
     selectedSkill = null;
     render();
+    // Turning auto on while a bank/continue decision is already sitting
+    // unresolved acts on it immediately -- see _maybe_auto_advance.
+    handleAutoAdvance(body.auto_advance);
   } catch (err) {
     notify(err.message);
   }
@@ -457,8 +486,15 @@ async function toggleAuto() {
 // manual "play next round" step. render() calls this after every state
 // update; it arms at most one pending round at a time, so it can never
 // fire a round while the previous one is still in flight, and it stops
-// itself the instant auto turns off or the battle finishes (a defeat,
-// or a victory that needs the push-your-luck decision).
+// itself the instant auto turns off or the battle finishes.
+//
+// A win no longer stops the loop to wait on the push-your-luck panel:
+// the server decides bank-or-continue for itself (handleAutoAdvance
+// above) and, for a "continue", hands back the next battle already
+// in progress -- state.finished is false again, so this just keeps
+// scheduling rounds through it with no extra wiring needed here. The
+// loop only actually stops on a defeat, an auto-bank (HP safety net),
+// or a non-combat event interrupting the continue roll.
 
 function stopAutoLoop() {
   if (autoTimer !== null) {
@@ -599,7 +635,6 @@ function spawnFloaters(ev) {
 
 $("confirm-use").addEventListener("click", () => selectedSkill && playRound(selectedSkill));
 $("confirm-cancel").addEventListener("click", cancelSelection);
-$("hold-button").addEventListener("click", () => playRound(null));
 $("auto-toggle").addEventListener("click", toggleAuto);
 $("push-luck-bank").addEventListener("click", bankPending);
 $("push-luck-continue").addEventListener("click", continuePushingLuck);

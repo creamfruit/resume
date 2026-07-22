@@ -102,6 +102,36 @@ class EquipBudgetTests(unittest.TestCase):
                 self.assertNotIn(internal, text["short"], rune.id)
                 self.assertNotIn(internal, text["full"], rune.id)
 
+    def test_catalog_spans_a_range_of_costs_and_rarities(self):
+        # Cheap-and-minor and expensive-and-strong runes both exist, the
+        # same way the skill catalog spans cheap/weak to expensive/strong.
+        runes = catalog_runes()
+        self.assertGreaterEqual(len(runes), 12)
+        costs = {r.cost for r in runes}
+        self.assertIn(1, costs)
+        self.assertGreaterEqual(max(costs), 4)
+        self.assertGreaterEqual(len({r.rarity for r in runes}), 3)
+
+    def test_catalog_uses_a_range_of_triggers(self):
+        # Every mechanically-live trigger core/battle.py fires should be
+        # represented somewhere in the catalog, not just the original
+        # four -- including end_of_turn, wired up alongside this batch.
+        triggers = {
+            p.trigger
+            for rune in catalog_runes()
+            for p in rune.clamped_passives()
+        }
+        self.assertEqual(
+            triggers,
+            {"on_hit", "on_take_hit", "start_of_turn", "below_hp", "end_of_turn"},
+        )
+
+    def test_reckless_warbrand_has_a_real_drawback_not_just_a_bonus(self):
+        rune = rune_by_id("reckless_warbrand")
+        effects = {e.type: e.value for e in rune.clamped_passives()[0].effects}
+        self.assertGreater(effects["damage_mult"], 0)
+        self.assertLess(effects["dodge_mod"], 0)
+
 
 class PassiveFiringTests(unittest.TestCase):
     def test_on_hit_lifesteal_heals_a_share_of_strike_damage(self):
@@ -209,6 +239,139 @@ class PassiveFiringTests(unittest.TestCase):
         event = battle.play_round(None)
         self.assertEqual(event["rune_events"], [])
 
+    # ---- Expanded catalog ----
+
+    def test_start_of_turn_shield_builds_every_round_unconditionally(self):
+        # Unlike wardstone (below_hp-gated), pebble_ward has no threshold
+        # -- it should fire at full HP too.
+        battle = battle_with(["pebble_ward"])
+        event = battle.play_round(None)  # full HP
+        (ward,) = rune_hits(event, "shield")
+        self.assertEqual(ward["trigger"], "start_of_turn")
+        self.assertEqual(ward["amount"], 5.0)
+        self.assertAlmostEqual(
+            event["player"]["hp"]["delta"],
+            -event["enemy"]["damage_dealt"],
+            places=2,
+        )
+
+    def test_on_hit_dodge_bonus_feeds_the_same_rounds_dodge_roll(self):
+        # Landing a strike fires before the enemy's move resolves, so an
+        # on_hit dodge bonus is still live for this round's dodge roll.
+        battle = battle_with(["phantom_step"])
+        battle._rng = FixedRoll(0.079)  # just under the +8% rune bonus
+        event = battle.play_round(None)
+        (dodge,) = rune_hits(event, "dodge_mod")
+        self.assertEqual(dodge["trigger"], "on_hit")
+        self.assertAlmostEqual(dodge["amount"], 0.08, places=3)
+        self.assertTrue(event["enemy"]["dodged"])
+        self.assertEqual(event["enemy"]["damage_dealt"], 0)
+
+        control = battle_with([])
+        control._rng = FixedRoll(0.079)
+        plain = control.play_round(None)
+        self.assertFalse(plain["enemy"]["dodged"])
+
+    def test_on_take_hit_shield_builds_for_the_next_hit(self):
+        # Reactive: the shield is raised only after a hit lands, so it
+        # can't absorb the hit that triggered it -- only the next one.
+        battle = battle_with(["bastion_instinct"])
+        r1 = battle.play_round(None)
+        (built,) = rune_hits(r1, "shield")
+        self.assertEqual(built["trigger"], "on_take_hit")
+        self.assertEqual(built["amount"], 6.0)
+        self.assertEqual(battle._player_shield, 6.0)
+
+        r2 = battle.play_round(None)
+        (absorbed,) = rune_hits(r2, "shield_absorbed")
+        self.assertGreater(absorbed["amount"], 0)
+
+    def test_on_take_hit_lifesteal_heals_a_share_of_damage_taken(self):
+        # Distinct from emberheart: heals off damage suffered, not dealt.
+        battle = battle_with(["crimson_reprisal"])
+        battle.player_hp = 10.0  # headroom so the heal is visible
+        # Force the weakest enemy move so this round's hit can't be
+        # lethal -- see the on-hit lifesteal test above for why.
+        battle.tracker.current = build_intent("basic", battle.tracker.archetype)
+        event = battle.play_round(None)
+
+        taken = event["enemy"]["damage_dealt"]
+        self.assertGreater(taken, 0)
+        (steal,) = rune_hits(event, "lifesteal")
+        self.assertEqual(steal["trigger"], "on_take_hit")
+        self.assertAlmostEqual(steal["amount"], round(0.10 * taken, 2), places=2)
+        self.assertGreater(steal["amount"], 0)
+        self.assertAlmostEqual(
+            event["player"]["hp"]["after"],
+            10.0 - taken + steal["amount"],
+            places=2,
+        )
+
+    def test_below_hp_dodge_bonus_feeds_the_single_dodge_roll(self):
+        battle = battle_with(["last_breath_ward"])
+        battle.player_hp = round(battle.stats.max_hp * 0.2, 2)  # under the 30% threshold
+        battle._rng = FixedRoll(0.149)  # just under the +15% rune bonus
+        event = battle.play_round(None)
+        (dodge,) = rune_hits(event, "dodge_mod")
+        self.assertEqual(dodge["trigger"], "below_hp")
+        self.assertAlmostEqual(dodge["amount"], 0.15, places=3)
+        self.assertTrue(event["enemy"]["dodged"])
+        self.assertEqual(event["enemy"]["damage_dealt"], 0)
+
+    def test_below_hp_dodge_bonus_stays_dormant_above_threshold(self):
+        battle = battle_with(["last_breath_ward"])
+        event = battle.play_round(None)  # full HP
+        self.assertEqual(rune_hits(event, "dodge_mod"), [])
+
+    def test_end_of_turn_shield_builds_for_the_next_round(self):
+        battle = battle_with(["dusk_bulwark"])
+        r1 = battle.play_round(None)
+        (built,) = rune_hits(r1, "shield")
+        self.assertEqual(built["trigger"], "end_of_turn")
+        self.assertEqual(built["amount"], 7.0)
+        self.assertEqual(battle._player_shield, 7.0)
+
+        r2 = battle.play_round(None)
+        (absorbed,) = rune_hits(r2, "shield_absorbed")
+        self.assertGreater(absorbed["amount"], 0)
+
+    def test_end_of_turn_does_not_fire_once_the_battle_is_finished(self):
+        # A win this round ends the battle before "end of round"
+        # processing runs -- there's no next round for an end-of-turn
+        # effect to matter for, so it must not fire.
+        battle = battle_with(["dusk_bulwark"], player_level=10, enemy_level=1)
+        event = battle.play_round(None)
+        self.assertEqual(event["outcome"], "victory")
+        self.assertEqual(rune_hits(event, "shield"), [])
+
+    def test_drawback_rune_boosts_damage_and_lowers_dodge_chance(self):
+        boosted = battle_with(["reckless_warbrand"])
+        event = boosted.play_round(None)
+
+        (dmg,) = rune_hits(event, "damage_mult")
+        self.assertEqual(dmg["trigger"], "start_of_turn")
+        self.assertAlmostEqual(dmg["amount"], 0.20, places=3)
+        expected = round(max(1.0, boosted.stats.attack * 1.20 - boosted.enemy_stats.defense), 2)
+        self.assertAlmostEqual(event["player"]["damage_dealt"], expected, places=2)
+
+        (dodge,) = rune_hits(event, "dodge_mod")
+        self.assertEqual(dodge["trigger"], "start_of_turn")
+        self.assertAlmostEqual(dodge["amount"], -0.10, places=3)
+
+    def test_drawback_runes_dodge_penalty_actually_suppresses_a_dodge(self):
+        # Baseline dodge chance is 0 at default attributes, so proving
+        # the penalty is real needs a positive dodge source to cancel --
+        # pair it with zephyr_charm's +5% (net -5%, so it never fires).
+        with_both = battle_with(["reckless_warbrand", "zephyr_charm"])
+        with_both._rng = FixedRoll(0.01)  # would dodge under +5% alone
+        event = with_both.play_round(None)
+        self.assertFalse(event["enemy"]["dodged"])
+
+        control = battle_with(["zephyr_charm"])
+        control._rng = FixedRoll(0.01)
+        plain = control.play_round(None)
+        self.assertTrue(plain["enemy"]["dodged"])
+
 
 class BattleScreenRuneTests(unittest.TestCase):
     """The battle screen serves the equipped runes and ships the row +
@@ -251,13 +414,15 @@ class BattleScreenRuneTests(unittest.TestCase):
         self.assertEqual(html.count('role="dialog"'), 1)
         self.assertIn(".rune-chip", css)
 
-    def test_action_bar_pass_rename_and_auto_spin_markers(self):
+    def test_action_bar_pass_button_removed_and_auto_spin_markers(self):
         html = self.client.get("/battle").text
         js = self.client.get("/static/app.js").text
         css = self.client.get("/static/style.css").text
-        self.assertIn("Pass (no skill)", html)
+        # The standalone Pass button was removed entirely -- the 0-cost
+        # recovery skill already guarantees a legal action every round.
+        self.assertNotIn("Pass (no skill)", html)
         self.assertNotIn("Hold (no skill)", html + js)
-        self.assertIn('id="hold-icon"', html)
+        self.assertNotIn('id="hold-icon"', html)
         self.assertIn('id="auto-icon"', html)
         self.assertIn('classList.toggle("spinning", state.auto)', js)
         self.assertIn("@keyframes icon-spin", css)

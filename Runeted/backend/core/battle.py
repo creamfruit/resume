@@ -45,20 +45,34 @@ Round order:
    the round event once it has already resolved.
 
 Passive runes (core/runes.py) hook into the round through the shared
-passive engine: battle fires the standard triggers — start_of_turn and
-below_hp at round start, on_hit when the player's strike lands,
-on_take_hit when the player loses HP to the enemy's move — through
+passive engine: battle fires start_of_turn and below_hp at round start,
+on_hit when the player's strike lands, on_take_hit when the player
+loses HP to the enemy's move, and end_of_turn once the round is fully
+resolved (only when the battle isn't finished — there's no next round
+for its effect to matter for otherwise) — through
 engine/passive_system.resolve_triggered_effects (same models, chances,
-thresholds, and limits as item passives). The resolved effects are then
-mapped onto battle state here, the one module that owns it: damage_mult
-adds to this round's strike, dodge_mod to this round's dodge roll,
-shield to an absorb pool that persists until consumed, lifesteal heals
-the player from strike damage, thorns reflects a share of damage taken
-(an enemy HP decrease, so the enemy-HP invariant is untouched). A round
-with no runes equipped fires nothing and draws no rng, so baseline
-combat is byte-identical to the pre-rune loop. A lethal hit ends the
-round before reactive passives fire, preserving the no-simultaneous-
-death rule. Every fired hook is reported in the event's `rune_events`.
+thresholds, and limits as item passives; models/passive.py's schema
+also declares on_kill and on_dodge, but nothing fires those yet). The
+resolved effects are then mapped onto battle state here, the one
+module that owns it: damage_mult adds to this round's strike, dodge_mod
+to this round's dodge roll, shield to an absorb pool that persists
+until consumed, lifesteal heals the player from strike damage, thorns
+reflects a share of damage taken (an enemy HP decrease, so the
+enemy-HP invariant is untouched). Only start_of_turn/below_hp fire
+before this round's strike, and only on_hit/on_take_hit carry a
+`damage` context — so a lifesteal or thorns rune only ever does
+anything paired with on_hit or on_take_hit respectively (elsewhere
+`damage` defaults to 0 and the heal/reflect is always zero), and a
+damage_mult or dodge_mod rune only ever does anything paired with
+start_of_turn/below_hp (their per-round bonus resets before the next
+round's strike/dodge roll, so triggering on_hit/on_take_hit/end_of_turn
+would set a bonus nothing ever reads) — shield is the one effect type
+safe on every trigger, since its pool persists across rounds instead of
+resetting. A round with no runes equipped fires nothing and draws no
+rng, so baseline combat is byte-identical to the pre-rune loop. A
+lethal hit ends the round before reactive passives fire, preserving the
+no-simultaneous-death rule. Every fired hook is reported in the event's
+`rune_events`.
 
 Combat reads DerivedStats only — raw player/enemy fields never appear in
 the damage math. At default attributes dodge chance is 0, so baseline
@@ -440,6 +454,11 @@ class Battle:
             self.player_stamina = round(self.player_stamina + player_regen, 2)
             enemy_regen = round(min(self.enemy_stats.stamina_regen, self.enemy_stats.max_stamina - self.enemy_stamina), 2)
             self.enemy_stamina = round(self.enemy_stamina + enemy_regen, 2)
+            # Only fired when there's a next round for its effect to
+            # matter for -- no damage context (nothing was just dealt or
+            # taken here), so only timing-safe, persistent effect types
+            # (shield) actually do anything; see core/runes.py.
+            rune_events += self._fire_runes("end_of_turn")
             self.tracker.advance(stamina_budget=self.enemy_stamina)
         else:
             self._write_back()

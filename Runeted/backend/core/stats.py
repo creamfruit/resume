@@ -17,18 +17,35 @@ from typing import Any, Iterable
 
 GROWTH_PER_LEVEL = 1.7
 
-# Player base curve (at default attributes of 5).
+# Player base curve (at default attributes of 0 -- nothing invested yet).
 PLAYER_BASE_ATTACK = 10.0
 PLAYER_BASE_DEFENSE = 4.0
 PLAYER_BASE_HP = 70.0
-ATTACK_PER_STRENGTH = 1.6
-DEFENSE_PER_VITALITY = 0.8
-HP_PER_VITALITY = 6.0
 CRIT_BASE = 0.05
 CRIT_PER_LUCK = 0.01
 CRIT_CAP = 0.35
 DODGE_PER_DEXTERITY = 0.01
 DODGE_CAP = 0.20
+
+# Per-point contribution from allocated stat points. These are flat
+# bonuses added *after* the base stat is scaled by level, not a raw
+# value that itself gets multiplied by level_scale -- the level curve
+# already carries the "equal-level fights play identically" growth on
+# its own, so folding stat points into that same multiplication made a
+# level-up compound every point ever spent, on top of granting new
+# ones. That compounding is what made 5 levels of invested strength
+# turn a 7-damage hit into 29: the level curve was silently re-scaling
+# the stat bonus every time it grew. Kept flat, a given number of
+# invested points buys the same absolute damage/HP/defense at level 1
+# as at level 20 -- tuned against LEVEL_UP_STAT_POINTS (3/level) so 5
+# levels' worth of pure-strength investment (15 points) moves a
+# level-1 hit from 7 to ~9 damage, and 5 levels' worth of pure-vitality
+# investment adds ~15 HP per level, not an exponentially growing
+# amount. See tests/test_leveling.py::DerivedStatGrowthCurveTests for
+# the simulation this was tuned against.
+ATTACK_PER_STRENGTH = 2 / 15  # +15 str (5 levels) -> +2 damage vs. a same-level foe
+DEFENSE_PER_VITALITY = 0.8
+HP_PER_VITALITY = 5.0  # 3 pts/level (LEVEL_UP_STAT_POINTS) * 5.0 = +15 max HP/level if all-in
 
 # Stamina is scale-free: it does not grow with level, and neither do
 # action costs, so the pacing pressure is identical at every level.
@@ -78,18 +95,21 @@ class StatContribution:
 
 def compute_player_stats(state: Any, contributions: Iterable[StatContribution] = ()) -> DerivedStats:
     scale = level_scale(getattr(state, "level", 1))
-    strength = float(getattr(state, "strength", 5))
-    vitality = float(getattr(state, "vitality", 5))
-    luck = float(getattr(state, "luck", 5))
-    dexterity = float(getattr(state, "dexterity", 5))
-    intelligence = float(getattr(state, "intelligence", 5))
+    strength = float(getattr(state, "strength", 0))
+    vitality = float(getattr(state, "vitality", 0))
+    luck = float(getattr(state, "luck", 0))
+    dexterity = float(getattr(state, "dexterity", 0))
+    intelligence = float(getattr(state, "intelligence", 0))
 
-    attack = (PLAYER_BASE_ATTACK + ATTACK_PER_STRENGTH * (strength - 5)) * scale
-    defense = (PLAYER_BASE_DEFENSE + DEFENSE_PER_VITALITY * (vitality - 5)) * scale
-    max_hp = (PLAYER_BASE_HP + HP_PER_VITALITY * (vitality - 5)) * scale
-    crit = CRIT_BASE + CRIT_PER_LUCK * (luck - 5)
-    dodge = DODGE_PER_DEXTERITY * (dexterity - 5)
-    max_stamina = PLAYER_BASE_STAMINA + STAMINA_PER_INTELLIGENCE * (intelligence - 5)
+    # Base scales with level (the shared growth curve); the stat-point
+    # contribution is flat and added after scaling, so it never
+    # compounds with level -- see the ATTACK_PER_STRENGTH comment above.
+    attack = PLAYER_BASE_ATTACK * scale + ATTACK_PER_STRENGTH * strength
+    defense = PLAYER_BASE_DEFENSE * scale + DEFENSE_PER_VITALITY * vitality
+    max_hp = PLAYER_BASE_HP * scale + HP_PER_VITALITY * vitality
+    crit = CRIT_BASE + CRIT_PER_LUCK * luck
+    dodge = DODGE_PER_DEXTERITY * dexterity
+    max_stamina = PLAYER_BASE_STAMINA + STAMINA_PER_INTELLIGENCE * intelligence
 
     attack_mult = defense_mult = hp_mult = 0.0
     attack_flat = defense_flat = hp_flat = stamina_flat = 0.0
