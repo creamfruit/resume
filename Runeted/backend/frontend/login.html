@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runeted — Log In</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: #14161c; color: #e8e8ec; font-family: "Segoe UI", system-ui, sans-serif;
+    }
+    #login-card {
+      width: 100%; max-width: 340px; background: #1a1d26; border: 1px solid #303750;
+      border-radius: 10px; padding: 24px; display: flex; flex-direction: column; gap: 14px;
+    }
+    h1 { font-size: 1.2rem; margin: 0; text-align: center; }
+    label { font-size: 0.85rem; color: #aab0c0; display: flex; flex-direction: column; gap: 4px; }
+    input {
+      background: #14161c; border: 1px solid #303750; border-radius: 6px; color: inherit;
+      padding: 8px 10px; font-size: 0.95rem; font-family: inherit;
+    }
+    input:focus { outline: none; border-color: #af8b4c; }
+    #login-actions { display: flex; gap: 10px; }
+    button {
+      flex: 1; border: none; border-radius: 6px; padding: 10px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 600; font-family: inherit;
+    }
+    #login-submit { background: #af8b4c; color: #14161c; }
+    #login-submit:hover { background: #c19d5c; }
+    #register-submit { background: #303750; color: inherit; }
+    #register-submit:hover { background: #404970; }
+    #login-error { color: #f0b8bc; font-size: 0.85rem; min-height: 1.1em; }
+    .muted { color: #9aa1b4; font-size: 0.8rem; text-align: center; margin: 0; }
+  </style>
+</head>
+<body>
+  <form id="login-card" data-redirect="/game">
+    <h1>Runeted</h1>
+    <label>Username
+      <input id="login-username" type="text" autocomplete="username" required minlength="3" maxlength="32">
+    </label>
+    <label>Password
+      <input id="login-password" type="password" autocomplete="current-password" required minlength="8">
+    </label>
+    <div id="login-error" role="alert"></div>
+    <div id="login-actions">
+      <button id="login-submit" type="submit">Log in</button>
+      <button id="register-submit" type="button">Register</button>
+    </div>
+    <p class="muted">New here? Fill in a username and password, then click Register.</p>
+  </form>
+  <script src="/static/login.js"></script>
+</body>
+</html>

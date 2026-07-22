@@ -1,25 +1,56 @@
 from typing import Dict, Any, Optional
+import contextvars
 import math
 import random
 from models.enemy import Enemy
 from engine.boss_ai import is_boss, roll_enemy_intent
+from services.request_scope import ContextDictProxy
 
-# Single-player in-memory session (for now)
-SESSION: Dict[str, Any] = {
-    "active": False,
-    "risk": 0,
-    "depth": 1,
-    "room_index": 0,
-    "rooms": [],          # list of dicts: {"type": room_type, "enemy": Enemy|None}
-    "current_enemy": None,
-    "modifiers": [],
-    "log": [],
-    "awaiting_enemy_attack": False,
-    "pending_player_action": "",
-    "boss_defeated": False,
-    "can_leave": False,
-    "start_snapshot": {},
-}
+
+def new_session_dict() -> Dict[str, Any]:
+    """A fresh dungeon-run session dict with every key at its default --
+    used both for the module-level fallback below and by main.py's auth
+    middleware to give each account its own session (see
+    set_active_session)."""
+    return {
+        "active": False,
+        "risk": 0,
+        "depth": 1,
+        "room_index": 0,
+        "rooms": [],          # list of dicts: {"type": room_type, "enemy": Enemy|None}
+        "current_enemy": None,
+        "modifiers": [],
+        "log": [],
+        "awaiting_enemy_attack": False,
+        "pending_player_action": "",
+        "boss_defeated": False,
+        "can_leave": False,
+        "start_snapshot": {},
+    }
+
+
+# One dungeon-run session per account, not one global -- resolved per
+# request by main.py's auth middleware via set_active_session(), which
+# is what makes two accounts' runs independent instead of one shared
+# global clobbering whichever account touched it last. The default
+# below (a single shared dict) only matters for code that imports this
+# module and calls it directly, outside of any authenticated request
+# (e.g. a script, or a test that doesn't go through the middleware).
+_session_ctx: "contextvars.ContextVar[Dict[str, Any]]" = contextvars.ContextVar(
+    "session_ctx", default=new_session_dict()
+)
+
+SESSION: Dict[str, Any] = ContextDictProxy(_session_ctx)  # type: ignore[assignment]
+
+
+def set_active_session(session_dict: Dict[str, Any]) -> "contextvars.Token":
+    """Bind `session_dict` as SESSION for the rest of the current request
+    context. Returns a token for `_session_ctx.reset(token)` afterward."""
+    return _session_ctx.set(session_dict)
+
+
+def reset_active_session(token: "contextvars.Token") -> None:
+    _session_ctx.reset(token)
 
 def reset_session():
     SESSION["active"] = False

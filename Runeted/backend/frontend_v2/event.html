@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runeted — Event</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-home-link" href="/">🏠 Runeted</a>
+  </header>
+
+  <main id="event-screen">
+    <div id="notice" class="hidden"></div>
+
+    <section id="event-card">
+      <div id="event-type-tag" class="muted"></div>
+      <h1 id="event-name">—</h1>
+      <p id="event-description" class="muted"></p>
+      <div id="event-tier-banner"></div>
+      <ul id="event-outcome-list"></ul>
+    </section>
+
+    <section id="event-push-luck-panel" class="hidden">
+      <p id="event-push-luck-summary" class="muted"></p>
+      <div id="event-push-luck-actions">
+        <button id="event-bank" type="button">Bank and return to hub</button>
+        <button id="event-continue" type="button">Continue pushing your luck</button>
+      </div>
+    </section>
+
+    <a id="event-return-hub" class="placeholder-back hidden" href="/">← Return to the hub</a>
+  </main>
+
+  <script src="/static/auth-client.js"></script>
+  <script src="/static/event.js"></script>
+</body>
+</html>

@@ -1,4 +1,15 @@
-﻿const output = document.getElementById("output");
+﻿// Every request in this file funnels through api() below, which now
+// requires an account token (see services/auth.py). A visitor with no
+// token yet should never see a flash of stale/empty game state -- bail
+// out to the login screen before any of this file's top-level fetches
+// or DOM setup below run. Classic (non-module) script, so `throw` after
+// the redirect is what actually halts the rest of this file executing.
+if (!localStorage.getItem("runeted_token")) {
+  window.location.href = "/login";
+  throw new Error("Not authenticated -- redirecting to /login");
+}
+
+const output = document.getElementById("output");
 const debug = document.getElementById("debug");
 const inventoryEl = document.getElementById("inventory");
 const statsEl = document.getElementById("stats");
@@ -3488,8 +3499,20 @@ async function api(url, opts = {}) {
     if (controller && !requestOpts.signal) {
       requestOpts.signal = controller.signal;
     }
+    // Every call in this file funnels through here, so this is the one
+    // place the account token needs attaching -- and the one place a
+    // 401 (missing/expired/tampered token) means "log in again".
+    requestOpts.headers = Object.assign({}, requestOpts.headers, {
+      Authorization: `Bearer ${localStorage.getItem("runeted_token") || ""}`,
+    });
     const res = await fetch(url, requestOpts);
     if (timeoutId) clearTimeout(timeoutId);
+    if (res.status === 401) {
+      localStorage.removeItem("runeted_token");
+      localStorage.removeItem("runeted_account");
+      window.location.href = "/login";
+      return { error: "Not authenticated" };
+    }
     const text = await res.text();
     let data;
     try { data = JSON.parse(text); } catch { data = { raw: text }; }

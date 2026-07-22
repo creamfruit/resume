@@ -14,6 +14,7 @@ import unittest
 from fastapi.testclient import TestClient
 
 import battle_app
+from _account_test_helpers import authed_client
 from core.battle import Battle
 from core.intent import build_intent
 from core.player_state import PlayerState
@@ -214,9 +215,7 @@ class BattleScreenRuneTests(unittest.TestCase):
     modal affordances the JS builds from that payload."""
 
     def setUp(self):
-        battle_app.CURRENT["battle"] = None
-        battle_app.CURRENT["player"] = PlayerState()
-        self.client = TestClient(battle_app.app)
+        self.client = authed_client()
 
     def start(self):
         res = self.client.post(

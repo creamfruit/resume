@@ -100,6 +100,41 @@ MAX_ROUNDS = 200
 _HP_EPSILON = 1e-6
 
 
+def _buff_entry(skill: Skill, round_no: int) -> dict[str, Any]:
+    """One `_buffs` entry for a buff-kind skill (or a dodge skill's
+    on-success bonus, which reuses the same fields) -- always carries
+    every key `buff_attack_bonus`/`buff_defense_bonus`/`buff_dodge_bonus`
+    and the drawback tick read, so no caller has to remember which
+    fields a particular skill actually set."""
+    return {
+        "status": skill.applies_status.status if skill.applies_status else "empowered",
+        "attack_mult": float(skill.buff_attack_mult),
+        "defense_mult": float(skill.buff_defense_mult),
+        "dodge_mod": float(skill.buff_dodge_mod),
+        "self_damage_pct": float(skill.buff_self_damage_pct),
+        "stamina_drain": float(skill.buff_stamina_drain),
+        "rounds_left": int(skill.buff_duration),
+        "applied_round": round_no,
+    }
+
+
+def _buff_status_detail(skill: Skill) -> str:
+    """Plain-language summary of a buff's effect, for the round event's
+    StatusChange -- whichever single stat the skill actually targets."""
+    if skill.buff_defense_mult > 0:
+        detail = f"-{skill.buff_defense_mult:.0%} damage taken"
+    elif skill.buff_dodge_mod > 0:
+        detail = f"+{skill.buff_dodge_mod:.0%} dodge chance"
+    else:
+        detail = f"+{skill.buff_attack_mult:.0%} attack"
+    detail += f" for {skill.buff_duration} round(s)"
+    if skill.buff_self_damage_pct > 0:
+        detail += f", {skill.buff_self_damage_pct:.0%} max HP lost each round"
+    if skill.buff_stamina_drain > 0:
+        detail += f", {skill.buff_stamina_drain:g} stamina drained each round"
+    return detail
+
+
 class Battle:
     def __init__(
         self,
@@ -110,6 +145,7 @@ class Battle:
         contributions: tuple[StatContribution, ...] = (),
         rng_seed: int | None = None,
         auto: bool = False,
+        initial_buffs: list[dict[str, Any]] | None = None,
     ):
         self.player = player
         self.enemy = enemy
@@ -149,6 +185,17 @@ class Battle:
         # Active temporary bonuses from buff skills:
         # {"status", "attack_mult", "rounds_left", "applied_round"}
         self._buffs: list[dict[str, Any]] = []
+        # A shrine event's blessing (core/events.py) seeds in here at
+        # construction, `applied_round=0` matching `self.round_no`'s
+        # starting value so it's active from round 1 and ticks down on
+        # the same schedule as a buff skill sung mid-battle.
+        for buff in (initial_buffs or []):
+            self._buffs.append({
+                "status": str(buff.get("status", "blessed")),
+                "attack_mult": float(buff.get("attack_mult", 0.0)),
+                "rounds_left": int(buff.get("rounds_left", 0)),
+                "applied_round": 0,
+            })
         # Rune passive state: a shield pool that persists until consumed,
         # and per-round strike/dodge bonuses reset each round.
         self._player_shield = 0.0
@@ -170,6 +217,15 @@ class Battle:
 
     def buff_attack_bonus(self) -> float:
         return sum(float(b["attack_mult"]) for b in self._buffs)
+
+    def buff_defense_bonus(self) -> float:
+        # Capped well short of 1.0 so stacked defense buffs can never
+        # fully negate incoming damage, only reduce it.
+        total = sum(float(b.get("defense_mult", 0.0) or 0.0) for b in self._buffs)
+        return min(0.8, total)
+
+    def buff_dodge_bonus(self) -> float:
+        return sum(float(b.get("dodge_mod", 0.0) or 0.0) for b in self._buffs)
 
     def _fire_runes(self, trigger: str, damage: float = 0.0) -> list[dict[str, Any]]:
         """Fire one passive trigger through the shared passive engine and
@@ -309,15 +365,9 @@ class Battle:
             status_name = skill.applies_status.status if skill.applies_status else "empowered"
             # Re-singing a buff refreshes it rather than stacking it.
             self._buffs = [b for b in self._buffs if b["status"] != status_name]
-            self._buffs.append({
-                "status": status_name,
-                "attack_mult": float(skill.buff_attack_mult),
-                "rounds_left": int(skill.buff_duration),
-                "applied_round": self.round_no,
-            })
+            self._buffs.append(_buff_entry(skill, self.round_no))
             statuses_applied.append(StatusChange(
-                "player", status_name,
-                f"+{skill.buff_attack_mult:.0%} attack for {skill.buff_duration} round(s)",
+                "player", status_name, _buff_status_detail(skill),
             ))
 
         # The exposed status is consumed by the next strike, so it

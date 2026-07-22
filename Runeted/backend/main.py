@@ -1,10 +1,12 @@
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+import contextvars
 import json
 import os
 import random
 import time
+from typing import Any
 
 from models.player import Player
 from models.enemy import Enemy
@@ -35,7 +37,8 @@ from services.currency import (
 from services.currency_exchange import get_exchange_rates
 from services.chest import award_battle_chest, open_chest as open_reward_chest
 from services.trade_hub import all_requests as trade_all_requests, list_requests as trade_list_requests, create_request as trade_create_request, get_request as trade_get_request, update_request as trade_update_request
-from services import session
+from services import auth, session
+from services.request_scope import ContextDictProxy, ContextObjectProxy
 from engine.combat import player_attack as engine_player_attack, enemy_attack as engine_enemy_attack
 from engine.loot import generate_loot
 from ai.gemini_client import has_api_key
@@ -84,11 +87,36 @@ from services.rune_system import (
 app = FastAPI(title="AI Dungeon RPG", docs_url="/docs", redoc_url="/redoc")
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "frontend")), name="static")
 
-current_player = Player()
 STATE_FILE = os.path.join(BASE_DIR, "database", "game_state.json")
 ACCOUNTS_DIR = os.path.join(BASE_DIR, "database", "accounts")
 ACCOUNT_INDEX_FILE = os.path.join(BASE_DIR, "database", "accounts.json")
-ACTIVE_ACCOUNT = "default"
+
+# --- Per-account request-scoped state -----------------------------------
+#
+# Real accounts (services/auth.py: username/password, a signed session
+# token) replace the old "type any name, no password" save-slot
+# switcher. Every authenticated request resolves its OWN account's
+# Player via the auth middleware below, bound through this ContextVar --
+# so `current_player` keeps behaving like a single live global to every
+# existing call site in this file (hundreds of them), while actually
+# being isolated per account. See services/request_scope.py for why a
+# ContextVar -- not a plain "reassign the global" -- is what makes two
+# accounts playing concurrently safe (Starlette dispatches sync `def`
+# routes to a real threadpool, so two requests can genuinely run at the
+# same time).
+_player_ctx: "contextvars.ContextVar[Player]" = contextvars.ContextVar("player_ctx", default=Player())
+current_player: Player = ContextObjectProxy(_player_ctx)  # type: ignore[assignment]
+
+# ACTIVE_ACCOUNT was a bare string, which (unlike current_player above)
+# can't be proxied the same way -- a str can't lazily recompute its own
+# value on read. Every former bare reference to it in this file has been
+# mechanically rewritten to call _active_account() instead.
+_active_account_ctx: "contextvars.ContextVar[str]" = contextvars.ContextVar("active_account_ctx", default="default")
+
+
+def _active_account() -> str:
+    return _active_account_ctx.get()
+
 
 TELEMETRY = {"counts": {}, "events": []}
 GAME_EVENTS: list[dict] = []
@@ -173,7 +201,7 @@ OBJECTIVE_CONFIG = [
     {"id": "idle_6h", "label": "Accumulate 6h idle time", "counter": "idle_seconds", "target": 6 * 3600, "reward_gold": 900, "reward_tonic": 1},
 ]
 
-IDLE_SKILLS = {
+_IDLE_SKILLS_DEFAULT = {
     "woodcutting": {
         "name": "Woodcutting",
         "xp_per_hour": 62.0,
@@ -418,7 +446,7 @@ IDLE_BOOST_CONFIG = {
     },
 }
 
-IDLE_TUNING = {
+_IDLE_TUNING_DEFAULT = {
     # Global idle output scaler. Keep below active efficiency.
     "idle_rate_mult": 0.92,
     # Diminishing returns segments after 8h/24h.
@@ -432,7 +460,7 @@ IDLE_TUNING = {
     "item_drop_rate_mult": 1.0,
 }
 
-IDLE_TUNING_PRESETS = {
+_IDLE_TUNING_PRESETS_DEFAULT = {
     "active_favor": {
         "idle_rate_mult": 0.75,
         "rare_drop_rate_mult": 0.9,
@@ -457,13 +485,52 @@ IDLE_TUNING_PRESETS = {
 }
 CORE_IDLE_TUNING_PRESETS = {"active_favor", "neutral", "idle_favor"}
 
-IDLE_SKILL_TUNING_PRESETS: dict[str, dict[str, dict[str, float]]] = {
-    skill_id: {} for skill_id in IDLE_SKILLS.keys()
+_IDLE_SKILL_TUNING_PRESETS_DEFAULT: dict[str, dict[str, dict[str, float]]] = {
+    skill_id: {} for skill_id in _IDLE_SKILLS_DEFAULT.keys()
 }
-DEFAULT_IDLE_TUNING = dict(IDLE_TUNING)
-DEFAULT_IDLE_TUNING_PRESETS = dict(IDLE_TUNING_PRESETS)
-DEFAULT_IDLE_SKILLS = {sid: dict(cfg) for sid, cfg in IDLE_SKILLS.items()}
-DEFAULT_IDLE_SKILL_TUNING_PRESETS = {skill_id: {} for skill_id in IDLE_SKILLS.keys()}
+DEFAULT_IDLE_TUNING = dict(_IDLE_TUNING_DEFAULT)
+DEFAULT_IDLE_TUNING_PRESETS = dict(_IDLE_TUNING_PRESETS_DEFAULT)
+DEFAULT_IDLE_SKILLS = {sid: dict(cfg) for sid, cfg in _IDLE_SKILLS_DEFAULT.items()}
+DEFAULT_IDLE_SKILL_TUNING_PRESETS = {skill_id: {} for skill_id in _IDLE_SKILLS_DEFAULT.keys()}
+
+# Each of the four dicts above is per-account state (it's already saved
+# into each account's own JSON file by _persist_state()) -- so the LIVE,
+# mutable versions everything else in this file reads/writes by these
+# same bare names must resolve per authenticated request too, exactly
+# like current_player/SESSION below, or one account's idle-tuning tweaks
+# would silently bleed into another's. Same ContextDictProxy trick, same
+# zero-call-site-change property: every existing `IDLE_TUNING["x"]` /
+# `IDLE_SKILLS.items()` / `.update(...)` call in this file keeps working
+# unmodified. The default bound below (a copy of the factory defaults)
+# only matters outside of any authenticated request.
+_idle_tuning_ctx: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "idle_tuning_ctx", default=dict(_IDLE_TUNING_DEFAULT)
+)
+_idle_tuning_presets_ctx: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "idle_tuning_presets_ctx", default={k: dict(v) for k, v in _IDLE_TUNING_PRESETS_DEFAULT.items()}
+)
+_idle_skill_tuning_presets_ctx: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "idle_skill_tuning_presets_ctx", default={k: dict(v) for k, v in _IDLE_SKILL_TUNING_PRESETS_DEFAULT.items()}
+)
+_idle_skills_ctx: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "idle_skills_ctx", default={sid: dict(cfg) for sid, cfg in _IDLE_SKILLS_DEFAULT.items()}
+)
+
+IDLE_TUNING = ContextDictProxy(_idle_tuning_ctx)
+IDLE_TUNING_PRESETS = ContextDictProxy(_idle_tuning_presets_ctx)
+IDLE_SKILL_TUNING_PRESETS = ContextDictProxy(_idle_skill_tuning_presets_ctx)
+IDLE_SKILLS = ContextDictProxy(_idle_skills_ctx)
+
+
+def _fresh_idle_runtime_bundle() -> dict[str, dict]:
+    """A brand-new account's starting idle-tuning state -- copies of the
+    factory defaults, independent of any other account's live dicts."""
+    return {
+        "idle_tuning": dict(DEFAULT_IDLE_TUNING),
+        "idle_tuning_presets": {k: dict(v) for k, v in DEFAULT_IDLE_TUNING_PRESETS.items()},
+        "idle_skill_tuning_presets": {k: dict(v) for k, v in DEFAULT_IDLE_SKILL_TUNING_PRESETS.items()},
+        "idle_skills": {sid: dict(cfg) for sid, cfg in DEFAULT_IDLE_SKILLS.items()},
+    }
 
 
 
@@ -900,10 +967,16 @@ def _write_account_index(active: str, accounts: list[str]) -> None:
 
 
 def _load_state_from_file(path: str) -> None:
-    global current_player
+    """Populates whichever player/idle-tuning objects are CURRENTLY
+    bound in the ambient context with what's saved at `path` (or fresh
+    defaults if there's nothing there / it fails to parse). Only called
+    by _build_account_bundle below, which binds fresh placeholders
+    first so this has somewhere to write, then captures the result --
+    never called directly against "the" global anymore, since there
+    isn't one."""
     _reset_idle_runtime_configs()
     if not os.path.exists(path):
-        current_player = Player()
+        _player_ctx.set(Player())
         _apply_battle_defaults(current_player)
         return
     try:
@@ -912,11 +985,11 @@ def _load_state_from_file(path: str) -> None:
         player_data = raw.get("player", {})
         if isinstance(player_data, dict) and player_data:
             if hasattr(Player, "model_validate"):
-                current_player = Player.model_validate(player_data)
+                _player_ctx.set(Player.model_validate(player_data))
             else:
-                current_player = Player(**player_data)
+                _player_ctx.set(Player(**player_data))
         else:
-            current_player = Player()
+            _player_ctx.set(Player())
 
         idle_tuning = raw.get("idle_tuning", {})
         if isinstance(idle_tuning, dict):
@@ -947,9 +1020,40 @@ def _load_state_from_file(path: str) -> None:
                     IDLE_SKILLS[sid].update(cfg)
         _apply_battle_defaults(current_player)
     except Exception:
-        current_player = Player()
+        _player_ctx.set(Player())
         _reset_idle_runtime_configs()
         _apply_battle_defaults(current_player)
+
+
+def _build_account_bundle(account_id: str) -> dict[str, Any]:
+    """Everything one account's live game state needs: its Player, its
+    own idle-tuning dicts, and a fresh dungeon-run session -- loaded
+    once per account per process lifetime (from that account's save
+    file, or defaulted if it has none yet) and cached by the auth
+    middleware in _ACCOUNT_CACHE. Reuses _load_state_from_file's
+    parsing/migration logic by binding scratch placeholders, running
+    it, then capturing whatever it produced."""
+    player_token = _player_ctx.set(Player())
+    tuning_token = _idle_tuning_ctx.set({})
+    presets_token = _idle_tuning_presets_ctx.set({})
+    skill_presets_token = _idle_skill_tuning_presets_ctx.set({})
+    skills_token = _idle_skills_ctx.set({})
+    try:
+        _load_state_from_file(_state_file_for_account(account_id))
+        return {
+            "player": _player_ctx.get(),
+            "idle_tuning": _idle_tuning_ctx.get(),
+            "idle_tuning_presets": _idle_tuning_presets_ctx.get(),
+            "idle_skill_tuning_presets": _idle_skill_tuning_presets_ctx.get(),
+            "idle_skills": _idle_skills_ctx.get(),
+            "session": session.new_session_dict(),
+        }
+    finally:
+        _player_ctx.reset(player_token)
+        _idle_tuning_ctx.reset(tuning_token)
+        _idle_tuning_presets_ctx.reset(presets_token)
+        _idle_skill_tuning_presets_ctx.reset(skill_presets_token)
+        _idle_skills_ctx.reset(skills_token)
 
 
 def _reset_idle_runtime_configs() -> None:
@@ -967,25 +1071,23 @@ def _reset_idle_runtime_configs() -> None:
 
 
 def _account_state_payload() -> dict:
-    idx = _read_account_index()
-    accounts = sorted(list({_safe_account_name(x) for x in idx.get("accounts", []) if str(x).strip()}))
-    if ACTIVE_ACCOUNT not in accounts:
-        accounts.append(ACTIVE_ACCOUNT)
-    items = []
-    for acc in accounts:
-        path = _state_file_for_account(acc)
-        saved_at = 0
-        if os.path.exists(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    raw = json.load(f)
-                saved_at = int(raw.get("saved_at", 0) or 0)
-            except Exception:
-                saved_at = 0
-        items.append({"id": acc, "active": acc == ACTIVE_ACCOUNT, "saved_at": saved_at})
+    # One account IS one authenticated identity now -- this used to list
+    # every save slot that had ever existed on the server (a real
+    # information leak once accounts are real, separate users). It now
+    # only ever describes the caller's own account.
+    account_id = _active_account()
+    path = _state_file_for_account(account_id)
+    saved_at = 0
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            saved_at = int(raw.get("saved_at", 0) or 0)
+        except Exception:
+            saved_at = 0
     return {
-        "active": ACTIVE_ACCOUNT,
-        "accounts": items,
+        "active": account_id,
+        "accounts": [{"id": account_id, "active": True, "saved_at": saved_at}],
         "single_save_per_account": True,
     }
 
@@ -1153,7 +1255,8 @@ def _snapshot_trade_item(item: Item) -> dict:
 
 def _persist_state() -> None:
     try:
-        state_file = _state_file_for_account(ACTIVE_ACCOUNT)
+        account_id = _active_account()
+        state_file = _state_file_for_account(account_id)
         os.makedirs(os.path.dirname(state_file), exist_ok=True)
         player_payload = current_player.model_dump() if hasattr(current_player, "model_dump") else current_player.dict()
         payload = {
@@ -1163,32 +1266,45 @@ def _persist_state() -> None:
             "idle_skill_tuning_presets": dict(IDLE_SKILL_TUNING_PRESETS),
             "idle_skills": dict(IDLE_SKILLS),
             "saved_at": int(time.time()),
-            "account": ACTIVE_ACCOUNT,
+            "account": account_id,
         }
         with open(state_file, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=True)
         idx = _read_account_index()
         accounts = idx.get("accounts", [])
-        if ACTIVE_ACCOUNT not in accounts:
-            accounts.append(ACTIVE_ACCOUNT)
-        _write_account_index(ACTIVE_ACCOUNT, accounts)
+        if account_id not in accounts:
+            accounts.append(account_id)
+        _write_account_index(account_id, accounts)
     except Exception:
         # Persistence errors should never break gameplay loops.
         pass
 
 
-def _load_persisted_state() -> None:
-    global ACTIVE_ACCOUNT
-    idx = _read_account_index()
-    ACTIVE_ACCOUNT = _safe_account_name(idx.get("active", "default"))
-    state_file = _state_file_for_account(ACTIVE_ACCOUNT)
-    if os.path.exists(state_file):
-        _load_state_from_file(state_file)
+def _migrate_legacy_state_file() -> None:
+    """One-time migration from the old single-save file
+    (database/game_state.json, from before per-account saves existed)
+    into the new per-account format, so a "default" account inherits
+    whatever was there. Runs once at import; unlike the old
+    _load_persisted_state, it never sets a "the" active account --
+    there isn't one until a request is authenticated."""
+    default_file = _state_file_for_account("default")
+    if os.path.exists(default_file) or not os.path.exists(STATE_FILE):
         return
-    # Backward compatibility migration from previous single-save file.
-    if os.path.exists(STATE_FILE):
-        _load_state_from_file(STATE_FILE)
-        _persist_state()
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        raw["account"] = "default"
+        raw["saved_at"] = int(time.time())
+        os.makedirs(os.path.dirname(default_file), exist_ok=True)
+        with open(default_file, "w", encoding="utf-8") as f:
+            json.dump(raw, f, ensure_ascii=True)
+        idx = _read_account_index()
+        accounts = idx.get("accounts", ["default"])
+        if "default" not in accounts:
+            accounts.append("default")
+        _write_account_index(idx.get("active", "default"), accounts)
+    except Exception:
+        pass
 
 
 def _now_ts() -> float:
@@ -2143,7 +2259,98 @@ def _apply_cursed_skill(player: Player, enemy: Enemy, rolled_skill: dict) -> dic
     }
 
 
-_load_persisted_state()
+_migrate_legacy_state_file()
+
+
+# One in-memory bundle per account, populated (once, from that
+# account's save file) the first time this process sees it, then
+# reused every later request for that account -- the same effective
+# behavior as the old single cached current_player, just one per
+# account instead of one for the whole process.
+_ACCOUNT_CACHE: dict[str, dict[str, Any]] = {}
+
+
+def _get_or_create_account_bundle(account_id: str) -> dict[str, Any]:
+    bundle = _ACCOUNT_CACHE.get(account_id)
+    if bundle is None:
+        bundle = _build_account_bundle(account_id)
+        _ACCOUNT_CACHE[account_id] = bundle
+    return bundle
+
+
+# Paths reachable with no login at all: the page shells (their own JS
+# calls the real data endpoints below, which DO require a token, and
+# redirects to /login on a 401), the auth endpoints that issue a token
+# in the first place, a status probe, and the API docs. Every other
+# path 401s immediately unless the request carries a valid
+# `Authorization: Bearer <token>`.
+_PUBLIC_PATHS = {"/", "/game", "/login", "/ai/status", "/docs", "/redoc", "/openapi.json",
+                  "/auth/register", "/auth/login"}
+_PUBLIC_PREFIXES = ("/static/",)
+
+
+@app.middleware("http")
+async def _auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if path in _PUBLIC_PATHS or path.startswith(_PUBLIC_PREFIXES):
+        return await call_next(request)
+
+    token = auth.token_from_authorization_header(request.headers.get("authorization"))
+    account_id = auth.verify_token(token) if token else None
+    if account_id is None:
+        return JSONResponse({"error": "Not authenticated. Log in first (POST /auth/login)."}, status_code=401)
+
+    bundle = _get_or_create_account_bundle(account_id)
+    ctx_tokens = [
+        _player_ctx.set(bundle["player"]),
+        _active_account_ctx.set(account_id),
+        _idle_tuning_ctx.set(bundle["idle_tuning"]),
+        _idle_tuning_presets_ctx.set(bundle["idle_tuning_presets"]),
+        _idle_skill_tuning_presets_ctx.set(bundle["idle_skill_tuning_presets"]),
+        _idle_skills_ctx.set(bundle["idle_skills"]),
+        session.set_active_session(bundle["session"]),
+    ]
+    try:
+        return await call_next(request)
+    finally:
+        for ctx_token in reversed(ctx_tokens):
+            ctx_token.var.reset(ctx_token)
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page():
+    with open(os.path.join(BASE_DIR, "frontend", "login.html"), "r", encoding="utf-8") as f:
+        return f.read()
+
+
+# -------------------------
+# Auth
+# -------------------------
+@app.post("/auth/register")
+def auth_register(payload: dict):
+    username = str(payload.get("username", "") or "")
+    password = str(payload.get("password", "") or "")
+    try:
+        account_id = auth.register(username, password)
+    except auth.AuthError as e:
+        return {"error": str(e)}
+    return {"ok": True, "account": account_id, "token": auth.issue_token(account_id)}
+
+
+@app.post("/auth/login")
+def auth_login(payload: dict):
+    username = str(payload.get("username", "") or "")
+    password = str(payload.get("password", "") or "")
+    try:
+        account_id = auth.verify_login(username, password)
+    except auth.AuthError as e:
+        return {"error": str(e)}
+    return {"ok": True, "account": account_id, "token": auth.issue_token(account_id)}
+
+
+@app.get("/auth/me")
+def auth_me():
+    return {"account": _active_account()}
 
 
 # -------------------------
@@ -2159,58 +2366,22 @@ def account_list():
     return _account_state_payload()
 
 
+# These three used to let anyone jump to any named save with zero
+# ownership check -- exactly the hole real accounts close. "Account"
+# now means "one authenticated login", not "one of several named save
+# slots a single unauthenticated session can switch between", so
+# switching/renaming/deleting someone's account no longer has a
+# coherent meaning here; log in as the account you want instead.
+_ACCOUNT_SWITCHING_RETIRED = (
+    "This endpoint is no longer supported. Log in as a different "
+    "account instead (POST /auth/login) -- each login is its own "
+    "account now, not a save slot to switch between."
+)
+
+
 @app.post("/account/use")
 def account_use(payload: dict):
-    global ACTIVE_ACCOUNT, current_player
-
-    requested = str(payload.get("account", "") or "").strip()
-    if not requested:
-        return {"error": "Missing account"}
-
-    target = _safe_account_name(requested)
-    create = bool(payload.get("create", True))
-
-    if target == ACTIVE_ACCOUNT:
-        _persist_state()
-        return {
-            "ok": True,
-            "account": ACTIVE_ACCOUNT,
-            "created": False,
-            "state": _account_state_payload(),
-        }
-
-    # Save current account before switching.
-    _persist_state()
-    ACTIVE_ACCOUNT = target
-
-    target_file = _state_file_for_account(target)
-    existed = os.path.exists(target_file)
-    if existed:
-        _load_state_from_file(target_file)
-    else:
-        if not create:
-            prev = _read_account_index().get("active", "default")
-            ACTIVE_ACCOUNT = _safe_account_name(prev)
-            _load_state_from_file(_state_file_for_account(ACTIVE_ACCOUNT))
-            return {"error": "Account not found", "account": target}
-        current_player = Player()
-        _persist_state()
-
-    idx = _read_account_index()
-    accounts = list(idx.get("accounts", []))
-    if ACTIVE_ACCOUNT not in accounts:
-        accounts.append(ACTIVE_ACCOUNT)
-    _write_account_index(ACTIVE_ACCOUNT, accounts)
-
-    # Account switch should always clear active dungeon session.
-    session.reset_session()
-
-    return {
-        "ok": True,
-        "account": ACTIVE_ACCOUNT,
-        "created": not existed,
-        "state": _account_state_payload(),
-    }
+    return {"error": _ACCOUNT_SWITCHING_RETIRED}
 
 
 @app.post("/account/save")
@@ -2228,80 +2399,12 @@ def account_save():
 
 @app.post("/account/rename")
 def account_rename(payload: dict):
-    global ACTIVE_ACCOUNT
-
-    src_raw = str(payload.get("account", "") or "").strip()
-    dst_raw = str(payload.get("new_name", "") or "").strip()
-    if not src_raw or not dst_raw:
-        return {"error": "Missing account or new_name"}
-
-    src = _safe_account_name(src_raw)
-    dst = _safe_account_name(dst_raw)
-    if src == dst:
-        return {"error": "Source and destination are the same"}
-    if src == "default":
-        return {"error": "Default account cannot be renamed"}
-    if dst == "default":
-        return {"error": "Destination name is reserved"}
-
-    idx = _read_account_index()
-    accounts = list(idx.get("accounts", []))
-    known_accounts = set(accounts)
-    if src not in known_accounts and not os.path.exists(_state_file_for_account(src)):
-        return {"error": "Account not found", "account": src}
-    if dst in known_accounts or os.path.exists(_state_file_for_account(dst)):
-        return {"error": "Target account already exists", "account": dst}
-
-    src_file = _state_file_for_account(src)
-    dst_file = _state_file_for_account(dst)
-    try:
-        if os.path.exists(src_file):
-            os.makedirs(os.path.dirname(dst_file), exist_ok=True)
-            os.replace(src_file, dst_file)
-    except Exception:
-        return {"error": "Failed to rename account file"}
-
-    updated_accounts = [dst if _safe_account_name(a) == src else _safe_account_name(a) for a in accounts]
-    if dst not in updated_accounts:
-        updated_accounts.append(dst)
-    if src in updated_accounts:
-        updated_accounts = [a for a in updated_accounts if a != src]
-
-    if ACTIVE_ACCOUNT == src:
-        ACTIVE_ACCOUNT = dst
-    _write_account_index(ACTIVE_ACCOUNT, updated_accounts)
-    _persist_state()
-    return {"ok": True, "renamed": {"from": src, "to": dst}, "state": _account_state_payload()}
+    return {"error": _ACCOUNT_SWITCHING_RETIRED}
 
 
 @app.post("/account/delete")
 def account_delete(payload: dict):
-    target_raw = str(payload.get("account", "") or "").strip()
-    if not target_raw:
-        return {"error": "Missing account"}
-
-    target = _safe_account_name(target_raw)
-    if target == "default":
-        return {"error": "Default account cannot be deleted"}
-    if target == ACTIVE_ACCOUNT:
-        return {"error": "Cannot delete active account. Switch first."}
-
-    idx = _read_account_index()
-    accounts = list(idx.get("accounts", []))
-    known_accounts = set(_safe_account_name(a) for a in accounts)
-    target_file = _state_file_for_account(target)
-    if target not in known_accounts and not os.path.exists(target_file):
-        return {"error": "Account not found", "account": target}
-
-    try:
-        if os.path.exists(target_file):
-            os.remove(target_file)
-    except Exception:
-        return {"error": "Failed to delete account file"}
-
-    updated_accounts = [_safe_account_name(a) for a in accounts if _safe_account_name(a) != target]
-    _write_account_index(ACTIVE_ACCOUNT, updated_accounts)
-    return {"ok": True, "deleted": target, "state": _account_state_payload()}
+    return {"error": _ACCOUNT_SWITCHING_RETIRED}
 
 
 # -------------------------
@@ -2372,7 +2475,7 @@ def player_stats():
         "idle": idle_state,
         "mechanics_learned": dict(getattr(current_player, "mechanics_learned", {}) or {}),
         "account": {
-            "active": ACTIVE_ACCOUNT,
+            "active": _active_account(),
             "single_save_per_account": True,
         },
         "battle": _battle_loadout_state(current_player),
@@ -5151,15 +5254,15 @@ def view_auctions():
 @app.get("/auction/mine")
 def view_my_auctions():
     return {
-        "account": ACTIVE_ACCOUNT,
-        "listings": get_auctions(seller=ACTIVE_ACCOUNT),
-        "history": get_auction_history(seller=ACTIVE_ACCOUNT),
+        "account": _active_account(),
+        "listings": get_auctions(seller=_active_account()),
+        "history": get_auction_history(seller=_active_account()),
     }
 
 
 @app.post("/auction/list")
 def auction_list(item_index: int, price: int, allow_item_offers: bool = True):
-    out = list_item(current_player, item_index, price, allow_item_offers=allow_item_offers, seller=ACTIVE_ACCOUNT)
+    out = list_item(current_player, item_index, price, allow_item_offers=allow_item_offers, seller=_active_account())
     if not out.get("error"):
         _event_log_add(
             "market",
@@ -5175,7 +5278,7 @@ def auction_list_rune(payload: dict):
     rune_id = str(payload.get("rune_id", "") or "").strip()
     price = int(payload.get("price", 0) or 0)
     allow_item_offers = bool(payload.get("allow_item_offers", True))
-    out = list_rune(current_player, rune_id, price, allow_item_offers=allow_item_offers, seller=ACTIVE_ACCOUNT)
+    out = list_rune(current_player, rune_id, price, allow_item_offers=allow_item_offers, seller=_active_account())
     if not out.get("error"):
         _event_log_add(
             "market",
@@ -5191,7 +5294,7 @@ def auction_list_currency(payload: dict):
     currency_id = str(payload.get("currency_id", "") or "").strip()
     amount = int(payload.get("amount", 0) or 0)
     price = int(payload.get("price", 0) or 0)
-    out = list_currency(current_player, currency_id, amount, price, seller=ACTIVE_ACCOUNT)
+    out = list_currency(current_player, currency_id, amount, price, seller=_active_account())
     if not out.get("error"):
         _persist_state()
         _event_log_add(
@@ -5214,7 +5317,7 @@ def exchange_rates():
 
 @app.post("/auction/buy")
 def auction_buy(auction_id: str):
-    out = buy_item(current_player, auction_id, buyer=ACTIVE_ACCOUNT)
+    out = buy_item(current_player, auction_id, buyer=_active_account())
     if not out.get("error"):
         _event_log_add(
             "market",
@@ -5231,7 +5334,7 @@ def auction_offer(payload: dict):
     item_indices = payload.get("item_indices", [])
     if not auction_id:
         return {"error": "Missing auction_id"}
-    out = offer_items(current_player, auction_id, item_indices, buyer=ACTIVE_ACCOUNT)
+    out = offer_items(current_player, auction_id, item_indices, buyer=_active_account())
     if not out.get("error"):
         if out.get("accepted"):
             _event_log_add(
@@ -5257,13 +5360,13 @@ def auction_cancel(payload: dict):
     auction_id = str(payload.get("auction_id", "") or "").strip()
     if not auction_id:
         return {"error": "Missing auction_id"}
-    out = cancel_listing(current_player, auction_id, seller=ACTIVE_ACCOUNT)
+    out = cancel_listing(current_player, auction_id, seller=_active_account())
     if not out.get("error"):
         _event_log_add(
             "market",
             "Listing cancelled",
             f"{auction_id} returned to stash",
-            meta={"auction_id": auction_id, "account": ACTIVE_ACCOUNT},
+            meta={"auction_id": auction_id, "account": _active_account()},
         )
     return out
 
@@ -5274,11 +5377,11 @@ def trade_requests_view():
     idx = _read_account_index()
     accounts = [
         acc for acc in sorted(list({_safe_account_name(x) for x in idx.get("accounts", []) if str(x).strip()}))
-        if acc != ACTIVE_ACCOUNT
+        if acc != _active_account()
     ]
-    rows = trade_list_requests(ACTIVE_ACCOUNT)
+    rows = trade_list_requests(_active_account())
     return {
-        "account": ACTIVE_ACCOUNT,
+        "account": _active_account(),
         "targets": accounts,
         "inbox": [_trade_request_summary(row) for row in rows.get("inbox", [])],
         "outbox": [_trade_request_summary(row) for row in rows.get("outbox", [])],
@@ -5291,7 +5394,7 @@ def trade_requests_view():
 def trade_target_preview(account: str):
     _expire_pending_trades()
     target = _safe_account_name(str(account or ""))
-    if not target or target == ACTIVE_ACCOUNT:
+    if not target or target == _active_account():
         return {"error": "Choose another account"}
     raw, player = _load_account_player(target)
     stash = list(getattr(player, "stash", []) or [])
@@ -5312,7 +5415,7 @@ def trade_request_create(payload: dict):
     gold_request = max(0, int(payload.get("gold_request", 0) or 0))
     item_indices = payload.get("item_indices", [])
     requested_indices = payload.get("requested_indices", [])
-    if not target or target == ACTIVE_ACCOUNT:
+    if not target or target == _active_account():
         return {"error": "Choose another account"}
 
     known_accounts = set(_safe_account_name(x) for x in _read_account_index().get("accounts", []))
@@ -5374,7 +5477,7 @@ def trade_request_create(payload: dict):
         spend_currency(current_player, cid, amount)
 
     row = trade_create_request(
-        sender=ACTIVE_ACCOUNT,
+        sender=_active_account(),
         target=target,
         item_payloads=offered_payloads,
         gold_offer=gold_offer,
@@ -5401,7 +5504,7 @@ def trade_request_cancel(payload: dict):
     row = trade_get_request(trade_id)
     if not row:
         return {"error": "Trade request not found"}
-    if str(row.get("sender", "") or "") != ACTIVE_ACCOUNT:
+    if str(row.get("sender", "") or "") != _active_account():
         return {"error": "Only sender can cancel this trade"}
     if str(row.get("status", "pending") or "pending") != "pending":
         return {"error": "Trade request is no longer pending"}
@@ -5427,7 +5530,7 @@ def trade_request_decline(payload: dict):
     row = trade_get_request(trade_id)
     if not row:
         return {"error": "Trade request not found"}
-    if str(row.get("target", "") or "") != ACTIVE_ACCOUNT:
+    if str(row.get("target", "") or "") != _active_account():
         return {"error": "Only recipient can decline this trade"}
     if str(row.get("status", "pending") or "pending") != "pending":
         return {"error": "Trade request is no longer pending"}
@@ -5455,7 +5558,7 @@ def trade_request_accept(payload: dict):
     row = trade_get_request(trade_id)
     if not row:
         return {"error": "Trade request not found"}
-    if str(row.get("target", "") or "") != ACTIVE_ACCOUNT:
+    if str(row.get("target", "") or "") != _active_account():
         return {"error": "Only recipient can accept this trade"}
     if str(row.get("status", "pending") or "pending") != "pending":
         return {"error": "Trade request is no longer pending"}

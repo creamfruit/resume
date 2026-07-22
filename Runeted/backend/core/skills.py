@@ -9,17 +9,43 @@ unchanged, only the concept is renamed. The passive Rune system
 and is not referenced here.
 
 Skill kinds (the `method` tag stays the coarse category):
-- attack   (offense):  strike + counter attempt against the telegraph
-- defend   (defense):  blocks the telegraphed effect, deals no damage
-- dodge    (defense):  evades the whole telegraphed move, deals no damage
-- buff     (utility):  spends stamina for a temporary attack bonus
+- attack   (offense):  strike + counter attempt against the telegraph.
+                       May also carry a conditional damage bonus
+                       (`bonus_condition`) that rewards a specific
+                       drawback's exact downside — see below.
+- defend   (defense):  blocks the telegraphed effect, deals no damage.
+                       May also reflect a share of the enemy's attack
+                       back as damage (`reflect_pct`).
+- dodge    (defense):  evades the whole telegraphed move, deals no
+                       damage. May also grant a temporary attack bonus
+                       on a successful dodge, via the same
+                       `buff_attack_mult`/`buff_duration` fields a buff
+                       skill uses.
+- buff     (utility):  spends stamina for a temporary bonus to exactly
+                       one stat — attack (`buff_attack_mult`), damage
+                       taken (`buff_defense_mult`), or dodge chance
+                       (`buff_dodge_mod`).
 - recovery (utility):  costs 0 stamina and restores stamina, so an empty
                        stamina bar never leaves the player without a
                        legal action
 
+Drawback skills (`method="drawback"`) are buffs with a real per-round
+downside for as long as the bonus is active — self-damage
+(`buff_self_damage_pct`, a percentage of max HP) or a stamina drain
+(`buff_stamina_drain`, flat, beyond the one-time cast cost) — not just a
+one-time cost. Every drawback in the catalog is paired with at least one
+attack elsewhere in the catalog whose `bonus_condition` specifically
+rewards that drawback's exact downside (being low on HP or low on
+stamina), so a drawback is a build-around, not a trap: run the drawback
+and its partner attack together and the downside becomes the setup for
+a bigger payoff.
+
 Loadout rules, enforced at construction (the only place loadouts are
 built): at most SKILL_SLOT_CAP skills, and their total value may not
 exceed the value budget (base cap plus any equipped budget modifiers).
+A drawback's real downside is reflected in a low or negative `value` —
+its risk already costs the player something in play, so it shouldn't
+also be expensive to equip.
 """
 from __future__ import annotations
 
@@ -36,6 +62,7 @@ STAMINA_COST_MIN = 1
 
 SkillKind = Literal["attack", "defend", "dodge", "buff", "recovery"]
 SkillMethod = Literal["offense", "defense", "utility", "drawback", "amplifier"]
+BonusCondition = Literal["none", "below_hp", "below_stamina"]
 
 
 class SkillStatus(BaseModel):
@@ -58,9 +85,27 @@ class Skill(BaseModel):
     applies_status: SkillStatus | None = None
     # Overrides the value-derived stamina cost (recovery skills cost 0).
     stamina_cost: int | None = Field(default=None, ge=0)
-    # Buff skills: temporary attack bonus and how many rounds it lasts.
+    # Buff/dodge skills: a temporary bonus to exactly one stat, and how
+    # many rounds it lasts. Attack is the original/most common target;
+    # defense reduces damage taken, dodge raises dodge chance. A dodge
+    # skill that also sets buff_attack_mult grants that bonus whenever
+    # it's used (dodge skills always succeed once used).
     buff_attack_mult: float = Field(default=0.0, ge=0.0, le=2.0)
+    buff_defense_mult: float = Field(default=0.0, ge=0.0, le=1.0)
+    buff_dodge_mod: float = Field(default=0.0, ge=0.0, le=0.5)
     buff_duration: int = Field(default=0, ge=0)
+    # Drawback buffs (method="drawback"): a real downside for every
+    # round the bonus above stays active, not just once at cast time.
+    buff_self_damage_pct: float = Field(default=0.0, ge=0.0, le=0.5)  # % of max HP, per round
+    buff_stamina_drain: float = Field(default=0.0, ge=0.0)  # flat stamina, per round
+    # Defend skills: reflects a share of the enemy's attack stat back as
+    # damage when the block lands.
+    reflect_pct: float = Field(default=0.0, ge=0.0, le=1.0)
+    # Attack skills: a conditional damage bonus that rewards a specific
+    # drawback's exact downside -- see the drawback/synergy note above.
+    bonus_condition: BonusCondition = "none"
+    bonus_threshold_pct: float = Field(default=0.0, ge=0.0, le=1.0)
+    bonus_damage_mult: float = Field(default=0.0, ge=0.0, le=2.0)
     # Recovery skills: stamina restored on use.
     stamina_restore: float = Field(default=0.0, ge=0.0)
     # Raises the loadout's value budget while equipped.

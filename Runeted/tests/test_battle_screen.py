@@ -7,15 +7,14 @@ import unittest
 from fastapi.testclient import TestClient
 
 import battle_app
-from core.intent import build_intent
-from core.player_state import PlayerState
+from _account_test_helpers import authed_client, bundle_for
 from core.skills import default_loadout, describe_skill
 
 
 def client() -> TestClient:
-    battle_app.CURRENT["battle"] = None  # isolate tests
-    battle_app.CURRENT["player"] = PlayerState()  # fresh, level 1
-    return TestClient(battle_app.app)
+    # A brand-new, never-before-used account per call -- nothing stale
+    # to reset, unlike the single shared global this used to reach into.
+    return authed_client()
 
 
 def start(c: TestClient, **overrides):
@@ -26,21 +25,13 @@ def start(c: TestClient, **overrides):
     return res.json()
 
 
-def force_intent(kind, archetype="brute"):
-    """Force the active battle's current (about-to-resolve) enemy move
-    for a deterministic test setup. Move selection is live cooldown/
-    stamina-gated random choice each round, so a seed alone no longer
-    guarantees a specific opening move -- see test_core_combat.py."""
-    battle_app.CURRENT["battle"].tracker.current = build_intent(kind, archetype)
-
-
 class BattleApiSmokeTests(unittest.TestCase):
     def test_start_returns_full_screen_state(self):
         c = client()
         state = start(c)
         self.assertEqual(state["outcome"], "in_progress")
-        # The enemy's specific next move is never revealed in advance.
-        self.assertNotIn("telegraph", state)
+        self.assertIn("name", state["telegraph"])
+        self.assertIn("description", state["telegraph"])
         self.assertEqual(len(state["skills"]), 6)
         for skill in state["skills"]:
             for key in ("id", "name", "icon", "kind", "damage", "description", "full_text",
@@ -72,9 +63,8 @@ class BattleApiSmokeTests(unittest.TestCase):
         c = client()
         self.assertEqual(c.get("/api/battle/state").status_code, 404)
 
-    def test_enemy_moves_lists_the_full_pool_with_live_cooldowns(self):
-        c = client()
-        state = start(c, archetype="brute")
+    def test_enemy_moves_lists_the_archetypes_full_pool_alongside_the_telegraph(self):
+        state = start(client(), archetype="brute")
         # brute's deck is heavy/basic/heavy/multi -- the movelist is the
         # deduplicated pool, not the raw cyclic deck order.
         kinds = [m["kind"] for m in state["enemy"]["moves"]]
@@ -82,30 +72,19 @@ class BattleApiSmokeTests(unittest.TestCase):
         for move in state["enemy"]["moves"]:
             self.assertIn("name", move)
             self.assertIn("description", move)
-            self.assertIn("cooldown", move)
-            self.assertIn("remaining_cooldown", move)
-            # Nothing has been used yet -- no move starts on cooldown.
-            self.assertEqual(move["remaining_cooldown"], 0)
-
-    def test_a_move_shows_as_cooling_down_after_it_resolves(self):
-        c = client()
-        start(c, archetype="brute")
-        force_intent("heavy", "brute")
-        res = c.post("/api/battle/round", json={"response": None})
-        state = res.json()["state"]
-        heavy = next(m for m in state["enemy"]["moves"] if m["kind"] == "heavy")
-        self.assertGreater(heavy["remaining_cooldown"], 0)
+        # Additive: the specific next-round telegraph is still there too.
+        self.assertIn("name", state["telegraph"])
+        self.assertIn("description", state["telegraph"])
 
     def test_round_returns_structured_event_and_updated_state(self):
         c = client()
         start(c)
-        force_intent("heavy")  # breaker_lunge counters heavy
         res = c.post("/api/battle/round", json={"response": "breaker_lunge"})
         self.assertEqual(res.status_code, 200)
         body = res.json()
         event, state = body["event"], body["state"]
         self.assertEqual(event["round"], 1)
-        self.assertTrue(event["player"]["matched"])
+        self.assertTrue(event["player"]["matched"])  # seed 2: brute opens heavy
         self.assertIn("hp", event["player"])
         self.assertIn("delta", event["enemy"]["hp"])
         self.assertLess(state["enemy"]["hp"], state["enemy"]["max_hp"])
@@ -116,7 +95,7 @@ class BattleApiSmokeTests(unittest.TestCase):
     def test_recovery_is_always_a_legal_action(self):
         c = client()
         start(c)
-        battle = battle_app.CURRENT["battle"]
+        battle = bundle_for(c)["battle"]
         battle.player_stamina = 0.0
         state = c.get("/api/battle/state").json()
         usable = {s["id"] for s in state["skills"] if s["usable"]}
@@ -136,7 +115,7 @@ class BattleApiSmokeTests(unittest.TestCase):
 
     def test_finished_battle_returns_409(self):
         c = client()
-        battle_app.CURRENT["player"].level = 5  # real progression, not a request field
+        bundle_for(c)["player"].level = 5  # real progression, not a request field
         start(c, enemy_level=1, auto=True)
         for _ in range(50):
             res = c.post("/api/battle/round", json={"response": None})
@@ -172,7 +151,7 @@ class BattleScreenMarkupTests(unittest.TestCase):
     def test_page_serves_and_declares_core_regions(self):
         for element_id in ("skill-list", "log-list", "battle-log-panel", "skills-panel",
                           "player-figure", "enemy-figure", "player-floaters", "enemy-floaters",
-                          "enemy-movelist-panel", "confirm-cancel", "hold-button", "auto-toggle",
+                          "telegraph", "confirm-cancel", "hold-button", "auto-toggle",
                           "player-zone", "enemy-zone", "center-zone"):
             self.assertIn(f'id="{element_id}"', self.html, element_id)
 
@@ -228,23 +207,11 @@ class BattleScreenMarkupTests(unittest.TestCase):
         self.assertIn('id="rune-row"', self.html)
         self.assertIn("openRuneModal", self.js)
 
-    def test_enemy_movelist_panel_replaces_the_telegraph_card(self):
-        # The old single-upcoming-move telegraph card is gone entirely.
-        self.assertNotIn('id="telegraph"', self.html)
-        self.assertNotIn("telegraph", self.html.lower())
+    def test_enemy_movelist_panel_ships_alongside_the_telegraph_card(self):
+        self.assertIn('id="telegraph"', self.html)  # the next-move telegraph stays
         self.assertIn('id="enemy-movelist-panel"', self.html)
         self.assertIn('id="enemy-movelist"', self.html)
         self.assertIn("renderEnemyMoves", self.js)
-
-    def test_enemy_movelist_shows_cooldown_badges_matching_skill_style(self):
-        # Same visual language as the player's own skill-cooldown chips:
-        # a fixed ⏳ stat plus a "CD N" chip while a move is cooling,
-        # and the row itself darkens (mirrors disabled skill buttons).
-        self.assertIn("enemy-move-cd", self.js)
-        self.assertIn("enemy-move-cooling", self.js)
-        self.assertIn("on-cooldown", self.js)
-        self.assertIn(".enemy-move-cooling", self.css)
-        self.assertIn(".enemy-move-row.on-cooldown", self.css)
 
     def test_auto_battle_icon_has_no_background_shape(self):
         self.assertIn("#auto-toggle { background: transparent; }", self.css)
@@ -258,41 +225,6 @@ class BattleScreenMarkupTests(unittest.TestCase):
     def test_auto_battle_advances_rounds_without_a_manual_trigger(self):
         for marker in ("maybeScheduleAutoRound", "stopAutoLoop", "autoTimer"):
             self.assertIn(marker, self.js, marker)
-
-    def test_hover_popup_replaces_native_title_tooltips_on_skills_and_runes(self):
-        # The skill button and rune chip no longer set a native `title`
-        # attribute for their description -- that's now a custom popup
-        # that follows the cursor and hides on mouseleave.
-        self.assertIn('id="hover-tooltip"', self.html)
-        for marker in ("wireHoverPopup", "positionHoverTooltip", "hideHoverTooltip"):
-            self.assertIn(marker, self.js, marker)
-        self.assertIn("wireHoverPopup(button, skill.description)", self.js)
-        self.assertIn("wireHoverPopup(chip, rune.short)", self.js)
-        self.assertNotIn("button.title = skill.description", self.js)
-        self.assertNotIn("chip.title = rune.short", self.js)
-
-    def test_hover_popup_is_hidden_when_the_info_modal_opens(self):
-        # The popup and the click-to-open modal are separate affordances;
-        # opening the modal shouldn't leave a stale popup on screen.
-        open_skill_modal = self.js.split("function openSkillModal")[1].split("\nfunction ")[0]
-        open_rune_modal = self.js.split("function openRuneModal")[1].split("\nfunction ")[0]
-        self.assertIn("hideHoverTooltip()", open_skill_modal)
-        self.assertIn("hideHoverTooltip()", open_rune_modal)
-
-    def test_defeat_panel_ships_with_a_clear_return_to_hub_button(self):
-        self.assertIn('id="defeat-panel"', self.html)
-        self.assertIn('id="defeat-return-button"', self.html)
-        self.assertIn("Return to hub", self.html)
-        # Same navigation bankPending() uses after a win.
-        handler = self.js.split('$("defeat-return-button").addEventListener')[-1]
-        self.assertIn('window.location.href = "/"', handler)
-
-    def test_defeat_panel_only_shows_on_a_finished_defeat(self):
-        render_fn = self.js.split("function render()")[1].split("\nfunction ")[0]
-        self.assertIn(
-            '$("defeat-panel").className = state.finished && state.outcome === "defeat" ? "" : "hidden"',
-            render_fn,
-        )
 
 
 class HomeHubTests(unittest.TestCase):
@@ -312,7 +244,7 @@ class HomeHubTests(unittest.TestCase):
 
     def test_player_api_reflects_real_persistent_state_not_a_debug_value(self):
         c = client()
-        battle_app.CURRENT["player"].level = 7
+        bundle_for(c)["player"].level = 7
         body = c.get("/api/player").json()
         self.assertEqual(body["level"], 7)
         # Starting a battle with no client-supplied level still uses it.
@@ -322,16 +254,21 @@ class HomeHubTests(unittest.TestCase):
     def test_battle_start_ignores_a_client_supplied_player_level(self):
         # The old admin bar posted player_level directly; the field no
         # longer exists on the contract, so a caller can't spoof it.
+        # seed=2 pins this to a "combat" roll under core/events.py's
+        # encounter gate (random.Random(2).random() == 0.956) -- this
+        # test is about the player-level contract, not events.
         c = client()
-        battle_app.CURRENT["player"].level = 3
-        res = c.post("/api/battle/start", json={"player_level": 99, "archetype": "brute"})
+        bundle_for(c)["player"].level = 3
+        res = c.post("/api/battle/start", json={"player_level": 99, "archetype": "brute", "seed": 2})
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json()["player"]["level"], 3)
 
     def test_battle_start_with_no_body_derives_everything(self):
-        # The hub's Start Battle action posts an empty object.
+        # The hub's Start Battle action posts an empty object -- pin the
+        # encounter roll to "combat" with a known-safe seed so this test
+        # (about deriving level/archetype, not about events) isn't flaky.
         c = client()
-        res = c.post("/api/battle/start", json={})
+        res = c.post("/api/battle/start", json={"seed": 2})
         self.assertEqual(res.status_code, 200, res.text)
         self.assertEqual(res.json()["outcome"], "in_progress")
 

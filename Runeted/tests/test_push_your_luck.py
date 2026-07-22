@@ -14,6 +14,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import battle_app
+from _account_test_helpers import authed_client, bundle_for
 from core.gauntlet import (
     MAX_DEPTH,
     MAX_RISK,
@@ -179,17 +180,28 @@ class ForfeitTests(unittest.TestCase):
 # ---------- End-to-end API flow ----------
 
 def client() -> TestClient:
-    battle_app.CURRENT["battle"] = None
-    battle_app.CURRENT["player"] = PlayerState()
-    battle_app.CURRENT["wallet"] = Wallet()
-    battle_app.CURRENT["pending"] = PendingPool()
-    return TestClient(battle_app.app)
+    # A brand-new, never-before-used account per call -- nothing stale
+    # to reset, unlike the single shared global this used to reach into.
+    return authed_client()
 
 
 def start(c: TestClient, **overrides):
-    payload = {"archetype": "brute"}
+    # seed=2 is a known "combat" roll under core/events.py's encounter
+    # gate (random.Random(2).random() == 0.956, well above EVENT_CHANCE)
+    # -- this suite is about push-your-luck, not events, so every call
+    # needs a fight, deterministically.
+    payload = {"archetype": "brute", "seed": 2}
     payload.update(overrides)
     res = c.post("/api/battle/start", json=payload)
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+def continue_(c: TestClient, **overrides):
+    # Same known-safe seed as start() above, for the same reason.
+    payload = {"seed": 2}
+    payload.update(overrides)
+    res = c.post("/api/battle/continue", json=payload)
     assert res.status_code == 200, res.text
     return res.json()
 
@@ -197,7 +209,7 @@ def start(c: TestClient, **overrides):
 def force_a_win(c: TestClient) -> dict:
     """Player level 10 vs. a level-1 enemy on auto-battle reliably wins
     (the same technique test_battle_screen.py uses for its 409 test)."""
-    battle_app.CURRENT["player"].level = 10
+    bundle_for(c)["player"].level = 10
     start(c, enemy_level=1, auto=True)
     last = None
     for _ in range(50):
@@ -217,7 +229,7 @@ def force_a_loss(c: TestClient) -> dict:
     deterministically. Default-attribute passive dodge is 0%, but the
     default rune loadout's Zephyr Charm adds a small start-of-turn dodge
     bonus -- stripped here so the forced loss can't flake."""
-    battle = battle_app.CURRENT["battle"]
+    battle = bundle_for(c)["battle"]
     battle._rune_passives = []
     battle.player_hp = 0.5
     res = c.post("/api/battle/round", json={"response": "second_wind"})
@@ -288,9 +300,8 @@ class ContinueEndpointTests(unittest.TestCase):
         win_body = force_a_win(c)
         streak_before = win_body["push_luck_result"]["pending"]["streak"]
 
-        res = c.post("/api/battle/continue")
-        self.assertEqual(res.status_code, 200, res.text)
-        state = res.json()
+        state = continue_(c)
+        self.assertEqual(state["kind"], "combat")
         self.assertEqual(state["outcome"], "in_progress")
         self.assertFalse(state["finished"])
         # The pool carried over untouched -- continuing doesn't bank or
@@ -305,9 +316,9 @@ class ContinueEndpointTests(unittest.TestCase):
         # real after the win, then prove continue doesn't top it back up.
         c = client()
         force_a_win(c)
-        battle_app.CURRENT["player"].hp = 1.0
+        bundle_for(c)["player"].hp = 1.0
 
-        state = c.post("/api/battle/continue").json()
+        state = continue_(c)
         self.assertEqual(state["player"]["hp"], 1.0)
         self.assertLess(state["player"]["hp"], state["player"]["max_hp"])
 
@@ -316,7 +327,7 @@ class ContinueEndpointTests(unittest.TestCase):
         # battle from the hub should restore HP -- continuing must not.
         c = client()
         force_a_win(c)
-        battle_app.CURRENT["player"].hp = 1.0
+        bundle_for(c)["player"].hp = 1.0
         c.post("/api/battle/bank")
         state = start(c)
         self.assertEqual(state["player"]["hp"], state["player"]["max_hp"])
@@ -324,14 +335,14 @@ class ContinueEndpointTests(unittest.TestCase):
     def test_continue_without_a_finished_victory_is_rejected(self):
         c = client()
         start(c)
-        self.assertEqual(c.post("/api/battle/continue").status_code, 409)
+        self.assertEqual(c.post("/api/battle/continue", json={"seed": 2}).status_code, 409)
 
     def test_continuation_enemy_escalates_with_the_streak(self):
         c = client()
         force_a_win(c)
         with patch("battle_app.next_encounter_enemy") as mock_next:
             mock_next.return_value = battle_app.baseline_enemy(1, archetype="brute")
-            c.post("/api/battle/continue")
+            continue_(c)
         mock_next.assert_called_once_with(1)  # streak after exactly one win
 
 
@@ -339,7 +350,7 @@ class LosingForfeitsOnlyTheUnbankedRunTests(unittest.TestCase):
     def test_a_loss_while_pushing_luck_forfeits_the_pending_pool(self):
         c = client()
         force_a_win(c)
-        c.post("/api/battle/continue")
+        continue_(c)
         body = force_a_loss(c)
 
         result = body["push_luck_result"]
@@ -354,7 +365,7 @@ class LosingForfeitsOnlyTheUnbankedRunTests(unittest.TestCase):
     def test_a_forfeited_run_never_reaches_the_wallet(self):
         c = client()
         force_a_win(c)
-        c.post("/api/battle/continue")
+        continue_(c)
         force_a_loss(c)
         wallet = c.get("/api/player/wallet").json()
         self.assertEqual(wallet["gold"], 0)
@@ -369,7 +380,7 @@ class LosingForfeitsOnlyTheUnbankedRunTests(unittest.TestCase):
 
         # Run 2: win again, push on, then lose it all.
         force_a_win(c)
-        c.post("/api/battle/continue")
+        continue_(c)
         force_a_loss(c)
 
         wallet_after = c.get("/api/player/wallet").json()
